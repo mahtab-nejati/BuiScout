@@ -16,6 +16,7 @@ with open(ROOT_PATH/'config.json', 'r') as f:
 
 DATA_PATH = Path(config['DATA_PATH'])
 PROJECT = config['PROJECT']
+REPOSITORY = config['REPOSITORY']
 BUILD_SYSTEM = config['BUILD_SYSTEM'].lower()
 COMMITS = config['COMMITS']
 
@@ -27,13 +28,13 @@ if BUILD_SYSTEM == 'cmake':
     patterns = ['CMakeLists.txt', '.cmake']
 
 if COMMITS == "ALL":
-    repo = Repository(str(DATA_PATH/PROJECT), 
-                      #   only_modifications_with_file_types=patterns, # This currently throws an error
+    repo = Repository(REPOSITORY, 
+                      # only_modifications_with_file_types=patterns, # This currently throws an error
                       only_in_branch='master', 
                       order='reverse')
 elif type(COMMITS) is list:
-    repo = Repository(str(DATA_PATH/PROJECT), 
-                      #   only_modifications_with_file_types=patterns, # This currently throws an error
+    repo = Repository(REPOSITORY, 
+                      # only_modifications_with_file_types=patterns, # This currently throws an error
                       only_commits=COMMITS,
                       only_in_branch='master', 
                       order='reverse')
