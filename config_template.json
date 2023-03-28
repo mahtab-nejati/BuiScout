@@ -1,0 +1,6 @@
+{
+  "DATA_PATH": "URL or Path to repository",
+  "PROJECT": "Project name",
+  "BUILD_SYSTEM": "Build system, e.g., cmake",
+  "COMMITS": "the keyword 'ALL' or list of commit hashes"
+}
