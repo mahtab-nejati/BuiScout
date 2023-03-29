@@ -26,6 +26,10 @@ SAVE_PATH.mkdir(parents=True, exist_ok=True)
 patterns = []
 if BUILD_SYSTEM == 'cmake':
     patterns = ['CMakeLists.txt', '.cmake']
+    build_language = 'cmake'
+if BUILD_SYSTEM == 'bazel':
+    patterns = ['BUILD.bazel', '.bzl']
+    build_language = 'python'
 
 if COMMITS == "ALL":
     repo = Repository(REPOSITORY, 
@@ -115,7 +119,7 @@ for commit in repo.traverse_commits():
             
             # run GumTree
             command = f'{ROOT_PATH/"process.sh"} '+\
-                        f'{commit_dir} '+\
+                        f'{build_language} {commit_dir} '+\
                             f'{file_modification_data["saved_as"]} '+\
                                 f'{gumtree_output_dir} '
             process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
