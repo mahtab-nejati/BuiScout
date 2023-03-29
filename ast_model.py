@@ -4,6 +4,7 @@ import pygraphviz as pgv
 from functools import reduce
 from copy import deepcopy
 import importlib
+from utils import parse_label
 
 LANGUAGE = 'cmake'
 rg = importlib.import_module(f'node_stringifier.{LANGUAGE}_node_stringifier')
@@ -79,7 +80,7 @@ class PairedAST(nx.DiGraph):
         """
         Parses node label and cleans it into a dict of {'node_id': dict(nod_data)}
         """
-        content = node_data['label'].split('@#$$#@')
+        label_content = parse_label(node_data['label'])
         color = node_data['color']
         
         del node_data['label']
@@ -97,11 +98,8 @@ class PairedAST(nx.DiGraph):
             operation = "no-op"
         attrs = {node_id: {"id": node_id,
                            "cluster": 'source' if '_src_' in node_id else 'destination',
-                           "type": content[0].strip() if content[0].strip()!="" else 'quotation',
-                           "content": '\n'.join(content[1:-2]).strip() if content[0].strip()!="" else '"',
                            "operation": operation,
-                           "s_pos": int(content[-2].strip()),
-                           "e_pos": int(content[-1].strip())}}
+                           **label_content}}
         attrs[node_id]['label'] = f'cluster: {attrs[node_id]["cluster"]}\ntype: {attrs[node_id]["type"]}\n'
         attrs[node_id]['label'] += f'content: {attrs[node_id]["content"]}\npostion: {attrs[node_id]["s_pos"]}-{attrs[node_id]["e_pos"]}'
         return attrs

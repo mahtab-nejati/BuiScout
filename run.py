@@ -4,7 +4,7 @@ from pydriller import Repository
 import pandas as pd
 import subprocess
 from datetime import datetime
-from utils import *
+from utils import write_source_code, file_is_build, get_processed_path
 
 from ast_model import PairedAST
 from networkx.drawing.nx_agraph import read_dot, write_dot
