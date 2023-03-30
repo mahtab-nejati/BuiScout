@@ -23,7 +23,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         return node_type
     
     if node_type == "normal_command":
-        identifier = ast.get_data(ast.get_typed_children(node_data, 'identifier'))['content']
+        identifier = ast.get_data(ast.get_typed_children(node_data, 'identifier'))['content'].upper()
         return node_type + ' "' + identifier + '"'
     
     if node_type == "if_statement":
@@ -51,7 +51,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
     
     if node_type == "function_definition":
         function_header_data = ast.get_data(ast.get_typed_children(node_data, 'function_header'))
-        identifier = ast.get_data(ast.get_typed_children(function_header_data, 'identifier'))['content']
+        identifier = ast.get_data(ast.get_typed_children(function_header_data, 'identifier'))['content'].upper()
         body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
@@ -60,7 +60,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
 
     if node_type == "macro_definition":
         macro_header_data = ast.get_data(ast.get_typed_children(node_data, 'macro_header'))
-        identifier = ast.get_data(ast.get_typed_children(macro_header_data, 'identifier'))['content']
+        identifier = ast.get_data(ast.get_typed_children(macro_header_data, 'identifier'))['content'].upper()
         body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
@@ -70,24 +70,24 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
     if node_type == "block_definition":
         body_data = ast.get_data(ast.get_typed_children(node_data, 'body')) # does not have and identifier
         if body_data: # body is an optional node ased on the grammar
-            return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+            return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
             return node_type + ' with empty body'
 
     if node_type == "arguments":
         parent_data = ast.get_data(ast.get_parent(node_data)) # can be function/macro_header or normal_command
+        identifier = ast.get_data(ast.get_typed_children(parent_data, 'identifier'))['content'].upper()
         if "header" in parent_data['type']: # parent is function/macro_header 
             parent_data = ast.get_data(ast.get_parent(parent_data))
-            return node_type + f' of ' + parent_data['type']
         else: # parent is normal_command
-            identifier = ast.get_data(ast.get_typed_children(parent_data, 'identifier'))['content']
-            return node_type + ' of ' + parent_data['type'] + ' "' + identifier + '"'
+            pass
+        return node_type + ' of ' + parent_data['type'] + ' "' + identifier + '"'
     
     if node_type == "identifier":
         parent_data = ast.get_data(ast.get_parent(node_data)) # can be function/macro_header or normal_command
         if "header" in parent_data['type']: # parent is function/macro_header
             parent_data = ast.get_data(ast.get_parent(parent_data)) # grab grandparent instead of parent for clarity
-        return node_type + f' "{node_data["content"]}" of ' + parent_data['type']
+        return node_type + f' "{node_data["content"].upper()}" of ' + parent_data['type']
 
     if node_type == "elseif_clause":
         body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
@@ -115,7 +115,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         if parent_data['type'] in ['function_definition', 'macro_definition']: # function/macro_definition have identifiers
             parent_header_data = ast.get_data(ast.get_typed_children(parent_data, 
                                                                      'function_header' if parent_data['type']=='function_definition' else 'macro_header'))
-            parent_identifier = ast.get_data(ast.get_typed_children(parent_header_data, 'identifier'))['content']
+            parent_identifier = ast.get_data(ast.get_typed_children(parent_header_data, 'identifier'))['content'].upper()
             return node_type + ' of ' + parent_data['type'] + f' "{parent_identifier}"'
         else:
             return node_type + ' of ' + parent_data['type']
