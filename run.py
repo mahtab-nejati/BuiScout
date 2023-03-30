@@ -18,6 +18,7 @@ DATA_PATH = Path(config['DATA_PATH'])
 PROJECT = config['PROJECT']
 REPOSITORY = config['REPOSITORY']
 BUILD_SYSTEM = config['BUILD_SYSTEM'].lower()
+SUMMARIZATION_METHODS = config['SUMMARIZATION_METHODS']
 COMMITS = config['COMMITS']
 
 SAVE_PATH = Path(DATA_PATH/f'{PROJECT}_results')
@@ -46,8 +47,9 @@ elif type(COMMITS) is list:
 # Initialize
 modified_build_files = []
 all_commits = []
-summaries = []
-
+summaries = {}.copy()
+for sm in SUMMARIZATION_METHODS:
+    summaries[sm] = [].copy()
 
 all_commits_start = datetime.now()
 # Run tool on commits
@@ -154,11 +156,12 @@ for commit in repo.traverse_commits():
                 output, error = process.communicate()
 
                 # Summarize and log
-                summary = ast.summarize()
-                summaries += list(map(lambda entry: {'commit': commit.hash,
-                                                        'subject_file': file_modification_data['saved_as'],
-                                                        **entry},
-                                        summary))
+                for sm in SUMMARIZATION_METHODS:
+                    summary = ast.summarize(method=sm)
+                    summaries[sm] += list(map(lambda entry: {'commit': commit.hash,
+                                                             'subject_file': file_modification_data['saved_as'],
+                                                             **entry},
+                                                summary))
 
             # End of file analysis
             file_modification_data['elapsed_time'] = datetime.now()-file_start
@@ -177,8 +180,9 @@ for commit in repo.traverse_commits():
                         'elapsed_time': datetime.now()-commit_start})
 
 # Save summaries
-summaries_df = pd.DataFrame(summaries)
-summaries_df.to_csv(SAVE_PATH/'summaries.csv', index=False)
+for sm in SUMMARIZATION_METHODS:
+    summaries_df = pd.DataFrame(summaries[sm])
+    summaries_df.to_csv(SAVE_PATH/f'summaries_{sm.lower()}.csv', index=False)
 
 # Save metadata on build changes
 modified_build_files_df = pd.DataFrame(modified_build_files)

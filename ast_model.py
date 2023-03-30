@@ -243,56 +243,61 @@ class PairedAST(nx.DiGraph):
                                        subtree_nodes.values()),
                                    key=lambda cp: cp[-1])))
 
-    def update_summarization_status(self, head_data, *args, **kwargs):
-        subtree = self.get_subtree_nodes(head_data)
-        summerized = dict(filter(lambda node: node[-1]['operation']==head_data['operation'] or node[-1]['operation']=='no-op',
-                                 subtree.items()))
+    def update_summarization_status(self, head_data, method, *args, **kwargs):
+        if method == "SUBTREE":
+            subtree = self.get_subtree_nodes(head_data)
+            summarized = dict(filter(lambda node: node[-1]['operation']==head_data['operation'] or node[-1]['operation']=='no-op',
+                                    subtree.items()))
+        elif method == "NODE":
+            summarized = {head_data['id']: head_data}
+        else:
+            raise KeyError('SUMMARIZATION_METHOD can be SUBTREE or NODE')
         self.summarized_nodes['source'].update(dict(filter(lambda node: node[-1]['cluster']=='source',
-                                                           summerized.items())))
-        
+                                                           summarized.items())))
         self.summarized_nodes['destination'].update(dict(filter(lambda node: node[-1]['cluster']=='destination',
-                                                                summerized.items())))
-        
+                                                                summarized.items())))
+
     def get_summarization_status(self, node_data, *args, **kwargs):
         return node_data['id'] in self.summarized_nodes[node_data['cluster']]
 
     def export_dot(self, path, *args, **kwargs):
         write_dot(self, path)
 
-    def summarize(self, *args, **kwargs):
+    def summarize(self, method="SUBTREE", *args, **kwargs):
+        self.summarized_nodes = {'source':dict(),
+                                 'destination':dict()}
         for level in range(self.depth):
             # DELETIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='deleted' and\
                                                     not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
                                 self.affected_nodes['source'].values())
             for node_data in in_process:
-                self.summarize_deletion(node_data)
+                self.summarize_deletion(node_data, method)
 
             # ADDITIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='added' and\
                                                     not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
                                 self.affected_nodes['destination'].values())
             for node_data in in_process:
-                self.summarize_addition(node_data)
+                self.summarize_addition(node_data, method)
             
             # MOVEMENTS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='moved' and\
                                                     not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
                                 self.affected_nodes['source'].values())
             for node_data in in_process:
-                self.summarize_movement(node_data)
+                self.summarize_movement(node_data, method)
 
             # UPDATES
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='updated' and\
                                                     not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
                                 self.affected_nodes['source'].values())
             for node_data in in_process:
-                self.summarize_update(node_data)
-
+                self.summarize_update(node_data, method)
 
         return self.summary
     
-    def summarize_deletion(self, node_data, *args, **kwargs):
+    def summarize_deletion(self, node_data, method, *args, **kwargs):
         self.summary.append({'operation': 'deleted',
                              'source_node': node_data['type'],
                              'source_node_summary': rg.stringify(self, node_data),
@@ -301,9 +306,9 @@ class PairedAST(nx.DiGraph):
                              'destination_node_summary': None,
                              'destination_postion': None})
         
-        self.update_summarization_status(node_data)
+        self.update_summarization_status(node_data, method)
             
-    def summarize_addition(self, node_data, *args, **kwargs):
+    def summarize_addition(self, node_data, method, *args, **kwargs):
         self.summary.append({'operation': 'added',
                              'source_node': None,
                              'source_node_summary': None,
@@ -312,9 +317,9 @@ class PairedAST(nx.DiGraph):
                              'destination_node_summary': rg.stringify(self, node_data),
                              'destination_postion': f'{node_data["s_pos"]}-{node_data["e_pos"]}'})
         
-        self.update_summarization_status(node_data)
+        self.update_summarization_status(node_data, method)
 
-    def summarize_movement(self, node_data, *args, **kwargs):
+    def summarize_movement(self, node_data, method, *args, **kwargs):
         source_node = node_data
         source_parent = self.get_data(self.get_parent(source_node))
         source_parent_match = self.get_data(self.get_match(source_parent))
@@ -332,10 +337,10 @@ class PairedAST(nx.DiGraph):
                              'destination_node_summary': rg.stringify(self, destination_node),
                              'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
-        self.update_summarization_status(source_node)
-        self.update_summarization_status(destination_node)
+        self.update_summarization_status(source_node, method)
+        self.update_summarization_status(destination_node, method)
     
-    def summarize_update(self, node_data, *args, **kwargs):
+    def summarize_update(self, node_data, method, *args, **kwargs):
         source_node = node_data
         destination_node = self.get_data(self.get_match(source_node))
         self.summary.append({'operation': 'updated',
@@ -346,8 +351,8 @@ class PairedAST(nx.DiGraph):
                              'destination_node_summary': rg.stringify(self, destination_node),
                              'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
-        self.update_summarization_status(source_node)
-        self.update_summarization_status(destination_node)
+        self.update_summarization_status(source_node, method)
+        self.update_summarization_status(destination_node, method)
 
     
 class SlicedAST(PairedAST):

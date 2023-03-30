@@ -111,7 +111,8 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         # parent can be if/elseif/else/while/foreach_clasue or function/macro/block_definition
         parent_data = ast.get_data(ast.get_parent(node_data))
         if parent_data['type'] in ['function_definition', 'macro_definition']: # function/macro_definition have identifiers
-            parent_header_data = ast.get_data(ast.get_typed_children(node_data, 'function_header'))
+            parent_header_data = ast.get_data(ast.get_typed_children(parent_data, 
+                                                                     'function_header' if parent_data['type']=='function_definition' else 'macro_header'))
             parent_identifier = ast.get_data(ast.get_typed_children(parent_header_data, 'identifier'))['content']
             return node_type + ' of ' + parent_data['type'] + f' "{parent_identifier}"'
         else:
