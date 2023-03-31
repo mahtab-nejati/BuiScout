@@ -7,8 +7,8 @@ IGNORED_TYPES = ['bracket_comment',
                  '(', ')',
                  '{', '}',
                  '<', '>',
-                 '/n', '/t',
-                 '$', ';',
+                 '\\n', '\\t',
+                 '$', ';', ':',
                  'quotation']
 BASIC_TYPES = [ROOT_TYPE]
 
