@@ -379,7 +379,7 @@ class SlicedAST(PairedAST):
         if self.cluster is None:
             return super(SlicedAST, self).get_affected_nodes(*args, **kwargs)
         else:
-            return super(SlicedAST, self).get_affected_nodes(self.cluster, *args, **kwargs)
+            return super(SlicedAST, self).get_affected_nodes(self.cluster)
     
     def get_slice(self, *args, **kwargs):
         pass
