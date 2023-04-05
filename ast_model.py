@@ -7,7 +7,7 @@ import importlib
 from utils import parse_label
 
 LANGUAGE = 'cmake'
-rg = importlib.import_module(f'node_stringifier.{LANGUAGE}_node_stringifier')
+rg = importlib.import_module(f'languages.{LANGUAGE}.node_stringifier')
 
 
 class PairedAST(nx.DiGraph):
