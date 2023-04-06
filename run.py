@@ -4,10 +4,9 @@ from pydriller import Repository
 import pandas as pd
 import subprocess
 from datetime import datetime
-from utils import write_source_code, file_is_build, get_processed_path
+from utils import write_source_code, file_is_build, get_processed_path, read_dotdiff
 
-from ast_model import PairedAST
-from networkx.drawing.nx_agraph import read_dot, write_dot
+from ast_model import ASTDiff
 
 ROOT_PATH = Path(__file__).parent
 
@@ -137,17 +136,16 @@ for commit in repo.traverse_commits():
 
             # Check if the output of the GumTree is valid.
             try:
-                dot_content = read_dot(f'{gumtree_output_dir}/{file_modification_data["saved_as"]}_dotdiff.dot')
+                dotdiff_content = read_dotdiff(f'{gumtree_output_dir}/{file_modification_data["saved_as"]}_dotdiff.dot')
             except:
                 file_modification_data['has_gumtree_error'] = True
 
             # Do not apply method if GumTree output throws an error
             if not file_modification_data['has_gumtree_error']:
                 # Load GumTree output and slice
-                ast = PairedAST(dot_content)
-                ast.slices['source'].export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_source.dot')
-                ast.slices['destination'].export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_destination.dot')
-                ast.slices['change'].export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice.dot')
+                diff = ASTDiff(*dotdiff_content)
+                diff.source.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_source.dot')
+                diff.destination.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_destination.dot')
 
                 # Convert slices to svg
                 command = f'{ROOT_PATH/"convert.sh"} '+\
@@ -157,7 +155,7 @@ for commit in repo.traverse_commits():
 
                 # Summarize and log
                 for sm in SUMMARIZATION_METHODS:
-                    summary = ast.summarize(method=sm)
+                    summary = diff.summarize(method=sm)
                     summaries[sm] += list(map(lambda entry: {'commit': commit.hash,
                                                              'subject_file': file_modification_data['saved_as'],
                                                              **entry},

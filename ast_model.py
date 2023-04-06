@@ -1,5 +1,5 @@
 import networkx as nx
-from networkx.drawing.nx_agraph import read_dot, write_dot
+from networkx.drawing.nx_agraph import write_dot
 import pygraphviz as pgv
 from functools import reduce
 from copy import deepcopy
@@ -9,15 +9,12 @@ from utils import parse_label
 LANGUAGE = 'cmake'
 rg = importlib.import_module(f'languages.{LANGUAGE}.node_stringifier')
 
-
-class PairedAST(nx.DiGraph):
-    
+class AST(nx.DiGraph):
+    """
+    Represents a build specification file state (version).
+    """
     def __init__(self, *args, **kwargs):
-        """
-        Initializes the AST pair as a nx.DiGraph.
-        Cleans the AST pair and sets node/AST pair attributes.
-        """
-        super(PairedAST, self).__init__(*args, **kwargs)
+        super(AST, self).__init__(*args, **kwargs)
 
         # Remove extra nodes
         none_nodes = list(filter(lambda node: node[-1].get('label') is None, self.nodes.items()))
@@ -29,28 +26,18 @@ class PairedAST(nx.DiGraph):
         self.set_node_attributes()
         self.set_nodes_levels()
 
-        # Set AST pair attributes
+        # Set AST attributes
         # Also sets self.depth = max(levels)+1
+        self.root = self.get_root()
         self.depth = max([0]+list(map(lambda node: node['level']+1, self.nodes.values())))
-        self.node_types = set(map(lambda node: node['type'], self.nodes.values()))
-        self.affected_nodes = {'source': self.get_affected_nodes('source'),
-                               'destination': self.get_affected_nodes('destination')}
-        self.summarized_nodes = {'source':dict(),
-                                 'destination':dict()}
-        self.roots = {'source': self.get_root('source'),
-                      'destination': self.get_root('destination')}
+        self.affected_nodes = self.get_affected_nodes()
+        self.summarized_nodes = dict()
         
         # Slice up changes
-        self.slices = {'source': self.get_slice('source'),
-                       'destination': self.get_slice('destination')}
-        self.slices['change'] = nx.union(self.slices['source'], self.slices['destination'])
-        # TODO: add matching edges to the slice? (messes up the visualization)
-        # self.slice.add_edges_from(list(filter(lambda edge: 
-        #                                       edge[0] in self.slice.nodes() and edge[1] in self.slice.nodes(),
-        #                                       self.get_matching_edges())))
+        self.slice = self.get_slice()
 
-        # Initialize summary of the change
-        self.summary = []
+    def export_dot(self, path, *args, **kwargs):
+        write_dot(self, path)
     
     def set_node_attributes(self, *args, **kwargs):
         """
@@ -75,7 +62,7 @@ class PairedAST(nx.DiGraph):
                 next_level_nodes.update(self.get_children(node_data))
             depth += 1
             current_level_nodes = dict(next_level_nodes)
-                
+    
     def clean_node_attributes(self, node_id, node_data, *args, **kwargs):
         """
         Parses node label and cleans it into a dict of {'node_id': dict(nod_data)}
@@ -97,10 +84,10 @@ class PairedAST(nx.DiGraph):
         else:
             operation = "no-op"
         attrs = {node_id: {"id": node_id,
-                           "cluster": 'source' if '_src_' in node_id else 'destination',
+                        #    "cluster": self.name, # TODO: Remove this
                            "operation": operation,
                            **label_content}}
-        attrs[node_id]['label'] = f'cluster: {attrs[node_id]["cluster"]}\ntype: {attrs[node_id]["type"]}\n'
+        attrs[node_id]['label'] = f'cluster: {self.name}\ntype: {attrs[node_id]["type"]}\n'
         attrs[node_id]['label'] += f'content: {attrs[node_id]["content"]}\npostion: {attrs[node_id]["s_pos"]}-{attrs[node_id]["e_pos"]}'
         return attrs
  
@@ -114,11 +101,11 @@ class PairedAST(nx.DiGraph):
         except IndexError:
             return {}
     
-    def get_root(self, cluster, *args, **kwargs):
+    def get_root(self, *args, **kwargs):
         """
         Returns the root node of the cluster as a dict of {'node_id': dict(nod_data)}
         """
-        return dict(filter(lambda node: node[-1]['cluster']==cluster and node[-1]['type']==rg.ROOT_TYPE,
+        return dict(filter(lambda node: node[-1]['type']==rg.ROOT_TYPE,
                            self.nodes.items()))
                 
     def get_parent(self, node_data, *args, **kwargs):
@@ -126,16 +113,14 @@ class PairedAST(nx.DiGraph):
         Returns the parent of the node as a dict of {'node_id': dict(nod_data)}
         """
         return dict(map(lambda parent_id: (parent_id, self.nodes[parent_id]),
-                        filter(lambda parent_id: self.nodes[parent_id]['cluster']==node_data['cluster'],
-                               self.predecessors(node_data['id']))))
+                        self.predecessors(node_data['id'])))
     
     def get_children(self, node_data, *args, **kwargs):
         """
         Returns the children of the node as a dict of {'node_id': dict(nod_data)}
         """
         return dict(map(lambda child_id: (child_id, self.nodes[child_id]),
-                        filter(lambda child_id: self.nodes[child_id]['cluster']==node_data['cluster'],
-                               self.successors(node_data['id']))))
+                        self.successors(node_data['id'])))
     
     def get_typed_children(self, node_data, child_type, *args, **kwargs):
         """
@@ -144,55 +129,31 @@ class PairedAST(nx.DiGraph):
         return dict(filter(lambda node: node[-1]['type']==child_type,
                     self.get_children(node_data).items()))
 
-    def get_match(self, node_data, *args, **kwargs):
+    def get_affected_nodes(self, *args, **kwargs):
         """
-        Returns the match of the node in the other cluster
-        as a dict of {'node_id': dict(nod_data)}.
-        Returns dict() if no match exists.
-        """
-        if node_data['cluster']=='source':
-            target_node_set = self.successors(node_data['id'])
-        elif node_data['cluster']=='destination':
-            target_node_set = self.predecessors(node_data['id'])
-        else:
-            target_node_set = []
-        return dict(map(lambda match_id: (match_id, self.nodes[match_id]),
-                        filter(lambda match_id: self.nodes[match_id]['cluster']!=node_data['cluster'],
-                               target_node_set)))
-    
-    def get_matching_edges(self, *args, **kwargs):
-        """
-        Returns the list of matching edges between the clusters.
-        """
-        return list(filter(lambda edge: edge[-1].get('style')=='dashed', self.edges.data()))
-        
-    def get_affected_nodes(self, cluster, *args, **kwargs):
-        """
-        Returns the affected nodes in the change from the cluster
+        Returns the affected nodes in the change from the AST
         as a dict of {'node_id': dict(nod_data)}.
         Currently excludes comments as GumTree underperforms and
         poses overplotting problems.
         """
-        affected_nodes =  dict(filter(lambda node:
-                                      node[-1]['cluster']==cluster and node[-1]['operation']!='no-op',
+        affected_nodes =  dict(filter(lambda node: node[-1]['operation']!='no-op',
                                       self.nodes.items()))
         ignored_nodes = filter(lambda node_data: node_data['type'] in rg.IGNORED_TYPES, affected_nodes.values())
-        for ignored_node_data in ignored_nodes:
+        for ignored_node_data in ignored_nodes: # TODO: Convert to non-loop
             ignored_subtree_nodes = self.get_subtree_nodes(ignored_node_data)
             affected_nodes = dict(filter(lambda node: node[-1]['id'] not in ignored_subtree_nodes,
                                          affected_nodes.items()))
         return affected_nodes
 
-    def get_slice(self, cluster, *args, **kwargs):
+    def get_slice(self, *args, **kwargs):
         """
         Returns contaminated slice from the cluster as a SlicedAST() object.
         """
-
         # Initialize slice data
-        affected_nodes = self.affected_nodes[cluster]
+        affected_nodes = self.affected_nodes
         impact_depth = max([0]+list(map(lambda node_data: node_data['level'], affected_nodes.values())))
         current_slice = dict(zip(list(range(self.depth)), [None]*self.depth))
-        current_slice[0] = self.roots[cluster]
+        current_slice[0] = self.root
         
         # Slice upwards
         for l in range(impact_depth, 0, -1):
@@ -223,7 +184,7 @@ class PairedAST(nx.DiGraph):
         slice_edges = list(filter(lambda edge: edge[0] in slice_nodes and edge[1] in slice_nodes, self.edges.data()))
         
         # Create slice
-        return SlicedAST(cluster, slice_nodes, slice_edges)
+        return ASTSlice(self.name, slice_nodes, slice_edges)
     
     def get_subtree_nodes(self, head_data, *args, **kwargs):
         subtree_nodes = {head_data['id']: head_data}
@@ -252,134 +213,160 @@ class PairedAST(nx.DiGraph):
             summarized = {head_data['id']: head_data}
         else:
             raise KeyError('SUMMARIZATION_METHOD can be SUBTREE or NODE')
-        self.summarized_nodes['source'].update(dict(filter(lambda node: node[-1]['cluster']=='source',
-                                                           summarized.items())))
-        self.summarized_nodes['destination'].update(dict(filter(lambda node: node[-1]['cluster']=='destination',
-                                                                summarized.items())))
+        self.summarized_nodes[method].update(summarized)
 
-    def get_summarization_status(self, node_data, *args, **kwargs):
-        return node_data['id'] in self.summarized_nodes[node_data['cluster']]
+    def get_summarization_status(self, node_data, method, *args, **kwargs):
+        return node_data['id'] in self.summarized_nodes[method]
 
-    def export_dot(self, path, *args, **kwargs):
-        write_dot(self, path)
+class ASTSlice(AST):
+    """
+    Represents the slice of the AST that contains only the contaminated
+    nodes in the change.
+    """
+    def __init__(self, cluster=None, nodes={}, edges=[], *args, **kwargs):
+        if edges:
+            super(AST, self).__init__(edges)
+            nx.set_node_attributes(self, nodes)
+        else:
+            super(AST, self).__init__()
+            self.add_nodes_from(nodes)
+            nx.set_node_attributes(self, nodes)
 
+        self.cluster = cluster
+        self.root = self.get_root()
+        self.depth = max([0]+list(map(lambda node: node[1].get('level')+1, self.nodes.items())))
+    
+    def get_slice(self, *args, **kwargs):
+        pass
+
+class ASTDiff(object):
+    """
+    Represents a pair of ASTs with their corresponding diff.
+    Initialization:
+        diff = ASTDiff(*utils.read_dotdiff(path)) 
+    This contains the source and destination nx.DiGraph objects
+    and the dictionary {source_node: destination_node} of matched nodes.
+    """
+    def __init__(self, source, destination, matches, *args, **kwargs) -> None:
+        self.source = AST(source)
+        self.destination = AST(destination)
+        self.source_match = matches
+        self.destination_match = dict(map(lambda pair: (pair[1], pair[0]), self.source_match.items()))
+
+        self.summary = dict()
+    
+    def get_match(self, node_data, *args, **kwargs):
+        """
+        Returns the match of the node in the other cluster
+        as a dict of {'node_id': dict(nod_data)}.
+        Returns dict() if no match exists.
+        """
+        
+        if node_data['id'] in self.source_match:
+            match_id = self.source_match[node_data['id']]
+            return {match_id: self.destination.nodes[match_id]}
+        
+        if node_data['id'] in self.destination_match:
+            match_id = self.destination_match[node_data['id']]
+            return {match_id: self.source.nodes[match_id]}
+        
+        return dict()
+    
     def summarize(self, method="SUBTREE", *args, **kwargs):
-        self.summarized_nodes = {'source':dict(),
-                                 'destination':dict()}
-        for level in range(self.depth):
+        if method in self.summary:
+            return self.summary[method]
+        else:
+            self.summary[method] = [].copy()
+        
+        self.source.summarized_nodes[method] = dict()
+        self.destination.summarized_nodes[method] = dict()
+
+        depth = max([self.source.depth, self.destination.depth])
+
+        for level in range(depth):
             # DELETIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='deleted' and\
-                                                    not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
-                                self.affected_nodes['source'].values())
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_deletion(node_data, method)
 
             # ADDITIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='added' and\
-                                                    not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
-                                self.affected_nodes['destination'].values())
+                                                    not self.destination.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                self.destination.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_addition(node_data, method)
             
             # MOVEMENTS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='moved' and\
-                                                    not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
-                                self.affected_nodes['source'].values())
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_movement(node_data, method)
 
             # UPDATES
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='updated' and\
-                                                    not self.get_summarization_status(node_data) and node_data['type'] not in rg.IGNORED_TYPES,
-                                self.affected_nodes['source'].values())
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_update(node_data, method)
 
-        return self.summary
+        return self.summary[method]
     
     def summarize_deletion(self, node_data, method, *args, **kwargs):
-        self.summary.append({'operation': 'deleted',
-                             'source_node': node_data['type'],
-                             'source_node_summary': rg.stringify(self, node_data),
-                             'source_position': f'{node_data["s_pos"]}-{node_data["e_pos"]}',
-                             'destination_node': None,
-                             'destination_node_summary': None,
-                             'destination_postion': None})
+        self.summary[method].append({'operation': 'deleted',
+                                     'source_node': node_data['type'],
+                                     'source_node_summary': rg.stringify(self.source, node_data),
+                                     'source_position': f'{node_data["s_pos"]}-{node_data["e_pos"]}',
+                                     'destination_node': None,
+                                     'destination_node_summary': None,
+                                     'destination_postion': None})
         
-        self.update_summarization_status(node_data, method)
+        self.source.update_summarization_status(node_data, method)
             
     def summarize_addition(self, node_data, method, *args, **kwargs):
-        self.summary.append({'operation': 'added',
-                             'source_node': None,
-                             'source_node_summary': None,
-                             'source_position': None,
-                             'destination_node': node_data['type'],
-                             'destination_node_summary': rg.stringify(self, node_data),
-                             'destination_postion': f'{node_data["s_pos"]}-{node_data["e_pos"]}'})
+        self.summary[method].append({'operation': 'added',
+                                     'source_node': None,
+                                     'source_node_summary': None,
+                                     'source_position': None,
+                                     'destination_node': node_data['type'],
+                                     'destination_node_summary': rg.stringify(self.destination, node_data),
+                                     'destination_postion': f'{node_data["s_pos"]}-{node_data["e_pos"]}'})
         
-        self.update_summarization_status(node_data, method)
+        self.destination.update_summarization_status(node_data, method)
 
     def summarize_movement(self, node_data, method, *args, **kwargs):
         source_node = node_data
-        source_parent = self.get_data(self.get_parent(source_node))
-        source_parent_match = self.get_data(self.get_match(source_parent))
-        destination_node = self.get_data(self.get_match(source_node))
-        destination_parent = self.get_data(self.get_parent(destination_node))
+        source_parent = self.source.get_data(self.source.get_parent(source_node))
+        source_parent_match = self.destination.get_data(self.get_match(source_parent))
+        destination_node = self.destination.get_data(self.get_match(source_node))
+        destination_parent = self.destination.get_data(self.destination.get_parent(destination_node))
         if source_parent_match and source_parent_match['id'] == destination_parent['id']:
             movement_type = 'moved_same_parent'
         else:
             movement_type = 'moved_changed_parent'
-        self.summary.append({'operation': movement_type,
-                             'source_node': source_node['type'],
-                             'source_node_summary': rg.stringify(self, source_node),
-                             'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
-                             'destination_node': destination_node['type'],
-                             'destination_node_summary': rg.stringify(self, destination_node),
-                             'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
+        self.summary[method].append({'operation': movement_type,
+                                     'source_node': source_node['type'],
+                                     'source_node_summary': rg.stringify(self.source, source_node),
+                                     'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
+                                     'destination_node': destination_node['type'],
+                                     'destination_node_summary': rg.stringify(self.destination, destination_node),
+                                     'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
-        self.update_summarization_status(source_node, method)
-        self.update_summarization_status(destination_node, method)
+        self.source.update_summarization_status(source_node, method)
+        self.destination.update_summarization_status(destination_node, method)
     
     def summarize_update(self, node_data, method, *args, **kwargs):
         source_node = node_data
-        destination_node = self.get_data(self.get_match(source_node))
-        self.summary.append({'operation': 'updated',
-                             'source_node': source_node['type'],
-                             'source_node_summary': rg.stringify(self, source_node),
-                             'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
-                             'destination_node': destination_node['type'],
-                             'destination_node_summary': rg.stringify(self, destination_node),
-                             'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
+        destination_node = self.destination.get_data(self.get_match(source_node))
+        self.summary[method].append({'operation': 'updated',
+                                     'source_node': source_node['type'],
+                                     'source_node_summary': rg.stringify(self.source, source_node),
+                                     'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
+                                     'destination_node': destination_node['type'],
+                                     'destination_node_summary': rg.stringify(self.destination, destination_node),
+                                     'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
-        self.update_summarization_status(source_node, method)
-        self.update_summarization_status(destination_node, method)
-
-    
-class SlicedAST(PairedAST):
-    def __init__(self, cluster=None, nodes={}, edges=[], *args, **kwargs):
-        if edges:
-            super(PairedAST, self).__init__(edges)
-            nx.set_node_attributes(self, nodes)
-        else:
-            super(PairedAST, self).__init__()
-            self.add_nodes_from(nodes)
-            nx.set_node_attributes(self, nodes)
-
-        self.cluster = cluster
-        self.depth = max([0]+list(map(lambda node: node[1].get('level')+1, self.nodes.items())))
-        self.root = self.get_root(self.cluster)
-    
-    def get_root(self, *args, **kwargs):
-        if self.cluster is None:
-            return super(SlicedAST, self).get_root(*args, **kwargs)
-        else:
-            return super(SlicedAST, self).get_root(self.cluster)
-    
-    def get_affected_nodes(self, *args, **kwargs):
-        if self.cluster is None:
-            return super(SlicedAST, self).get_affected_nodes(*args, **kwargs)
-        else:
-            return super(SlicedAST, self).get_affected_nodes(self.cluster)
-    
-    def get_slice(self, *args, **kwargs):
-        pass
+        self.source.update_summarization_status(source_node, method)
+        self.destination.update_summarization_status(destination_node, method)
