@@ -5,8 +5,8 @@ from functools import reduce
 from copy import deepcopy
 import importlib
 from utils import parse_label
+from configure import LANGUAGE
 
-LANGUAGE = 'cmake'
 rg = importlib.import_module(f'languages.{LANGUAGE}.node_stringifier')
 
 class AST(nx.DiGraph):

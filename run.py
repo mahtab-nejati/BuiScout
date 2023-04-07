@@ -1,44 +1,22 @@
-import json
 from pathlib import Path
 from pydriller import Repository
 import pandas as pd
 import subprocess
 from datetime import datetime
-from utils import write_source_code, file_is_build, get_processed_path, read_dotdiff
-
+from utils import (write_source_code, file_is_build,
+                   get_processed_path, read_dotdiff)
+from configure import (COMMITS, REPOSITORY, SUMMARIZATION_METHODS,
+                       PATTERNS, ROOT_PATH, SAVE_PATH, LANGUAGE)
 from ast_model import ASTDiff
-
-ROOT_PATH = Path(__file__).parent
-
-with open(ROOT_PATH/'config.json', 'r') as f:
-    config = json.load(f)
-
-DATA_PATH = Path(config['DATA_PATH'])
-PROJECT = config['PROJECT']
-REPOSITORY = config['REPOSITORY']
-BUILD_SYSTEM = config['BUILD_SYSTEM'].lower()
-SUMMARIZATION_METHODS = config['SUMMARIZATION_METHODS']
-COMMITS = config['COMMITS']
-
-SAVE_PATH = Path(DATA_PATH/f'{PROJECT}_results')
-SAVE_PATH.mkdir(parents=True, exist_ok=True)
-
-patterns = []
-if BUILD_SYSTEM == 'cmake':
-    patterns = ['CMakeLists.txt', '.cmake']
-    build_language = 'cmake'
-if BUILD_SYSTEM == 'bazel':
-    patterns = ['BUILD.bazel', '.bzl']
-    build_language = 'python'
 
 if COMMITS == "ALL":
     repo = Repository(REPOSITORY, 
-                      # only_modifications_with_file_types=patterns, # This currently throws an error
+                      # only_modifications_with_file_types=PATTERNS, # This currently throws an error
                       only_in_branch='master', 
                       order='reverse')
 elif type(COMMITS) is list:
     repo = Repository(REPOSITORY, 
-                      # only_modifications_with_file_types=patterns, # This currently throws an error
+                      # only_modifications_with_file_types=PATTERNS, # This currently throws an error
                       only_commits=COMMITS,
                       only_in_branch='master', 
                       order='reverse')
@@ -83,7 +61,7 @@ for commit in repo.traverse_commits():
     for modified_file in commit.modified_files:
 
         # Identify if the file is a build specification file
-        if file_is_build(modified_file.filename, patterns):
+        if file_is_build(modified_file.filename, PATTERNS):
             # Commit-level attribute to show that the commit has affected build files.
             has_build = True
 
@@ -120,7 +98,7 @@ for commit in repo.traverse_commits():
             
             # run GumTree
             command = f'{ROOT_PATH/"process.sh"} '+\
-                        f'{build_language} {commit_dir} '+\
+                        f'{LANGUAGE} {commit_dir} '+\
                             f'{file_modification_data["saved_as"]} '+\
                                 f'{gumtree_output_dir} '
             process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
