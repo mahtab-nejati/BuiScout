@@ -180,6 +180,7 @@ class AST(nx.DiGraph):
                                                            current_slice[l].values()))))
 
         # Clean slice data
+        current_slice = dict(filter(lambda level_nodes: level_nodes[1] is not None, current_slice.items()))
         slice_nodes = reduce(lambda a, b: {**a, **b}, [{}]+list(current_slice.values()))
         slice_edges = list(filter(lambda edge: edge[0] in slice_nodes and edge[1] in slice_nodes, self.edges.data()))
         
