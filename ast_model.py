@@ -122,7 +122,7 @@ class AST(nx.DiGraph):
         return dict(map(lambda child_id: (child_id, self.nodes[child_id]),
                         self.successors(node_data['id'])))
     
-    def get_typed_children(self, node_data, child_type, *args, **kwargs):
+    def get_children_by_type(self, node_data, child_type, *args, **kwargs):
         """
         Returns the children of the node with child_type as a dict of {'node_id': dict(nod_data)}
         """

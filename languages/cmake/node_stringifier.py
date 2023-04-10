@@ -23,52 +23,52 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         return node_type
     
     if node_type == "normal_command":
-        identifier = ast.get_data(ast.get_typed_children(node_data, 'identifier'))['content'].upper()
+        identifier = ast.get_data(ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
         return node_type + ' "' + identifier + '"'
     
     if node_type == "if_statement":
-        conditional_branch_count = len(ast.get_typed_children(node_data, 'elseif_clause'))+1 # +1 becuase of if_clause
-        default_branch = 'a' if ast.get_typed_children(node_data, 'else_clause') else 'no' # is there is an else_clause
+        conditional_branch_count = len(ast.get_children_by_type(node_data, 'elseif_clause'))+1 # +1 becuase of if_clause
+        default_branch = 'a' if ast.get_children_by_type(node_data, 'else_clause') else 'no' # is there is an else_clause
         return node_type + ' with ' + str(conditional_branch_count) + \
                     ' conditional branche(s) and ' + \
                         default_branch +' default branch'
     
     if node_type == "foreach_statement": 
-        foreach_clause_data = ast.get_data(ast.get_typed_children(node_data, 'foreach_clause'))
-        body_data = ast.get_data(ast.get_typed_children(foreach_clause_data, 'body'))
+        foreach_clause_data = ast.get_data(ast.get_children_by_type(node_data, 'foreach_clause'))
+        body_data = ast.get_data(ast.get_children_by_type(foreach_clause_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
             return node_type + ' with empty body'
     
     if node_type == "while_statement":
-        while_clause_data = ast.get_data(ast.get_typed_children(node_data, 'while_clause'))
-        body_data = ast.get_data(ast.get_typed_children(while_clause_data, 'body'))
+        while_clause_data = ast.get_data(ast.get_children_by_type(node_data, 'while_clause'))
+        body_data = ast.get_data(ast.get_children_by_type(while_clause_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
             return node_type + ' with empty body'
     
     if node_type == "function_definition":
-        function_header_data = ast.get_data(ast.get_typed_children(node_data, 'function_header'))
-        identifier = ast.get_data(ast.get_typed_children(function_header_data, 'identifier'))['content'].upper()
-        body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
+        function_header_data = ast.get_data(ast.get_children_by_type(node_data, 'function_header'))
+        identifier = ast.get_data(ast.get_children_by_type(function_header_data, 'identifier'))['content'].upper()
+        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
             return node_type + ' with empty body'
 
     if node_type == "macro_definition":
-        macro_header_data = ast.get_data(ast.get_typed_children(node_data, 'macro_header'))
-        identifier = ast.get_data(ast.get_typed_children(macro_header_data, 'identifier'))['content'].upper()
-        body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
+        macro_header_data = ast.get_data(ast.get_children_by_type(node_data, 'macro_header'))
+        identifier = ast.get_data(ast.get_children_by_type(macro_header_data, 'identifier'))['content'].upper()
+        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
             return node_type + ' with empty body'
 
     if node_type == "block_definition":
-        body_data = ast.get_data(ast.get_typed_children(node_data, 'body')) # does not have and identifier
+        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body')) # does not have and identifier
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
         else:
@@ -76,7 +76,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
 
     if node_type == "arguments":
         parent_data = ast.get_data(ast.get_parent(node_data)) # can be function/macro_header or normal_command
-        identifier = ast.get_data(ast.get_typed_children(parent_data, 'identifier'))['content'].upper()
+        identifier = ast.get_data(ast.get_children_by_type(parent_data, 'identifier'))['content'].upper()
         if "header" in parent_data['type']: # parent is function/macro_header 
             parent_data = ast.get_data(ast.get_parent(parent_data))
         else: # parent is normal_command
@@ -90,7 +90,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         return node_type + f' "{node_data["content"].upper()}" of ' + parent_data['type']
 
     if node_type == "elseif_clause":
-        body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
+        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' conditional branch with ' + \
                 str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
@@ -98,7 +98,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
             return node_type + ' conditional branch with empty body'
     
     if node_type == "else_clause":
-        body_data = ast.get_data(ast.get_typed_children(node_data, 'body'))
+        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
         if body_data: # body is an optional node ased on the grammar
             return node_type + ' default branch with ' + \
                 str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
@@ -113,9 +113,9 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         # parent can be if/elseif/else/while/foreach_clasue or function/macro/block_definition
         parent_data = ast.get_data(ast.get_parent(node_data))
         if parent_data['type'] in ['function_definition', 'macro_definition']: # function/macro_definition have identifiers
-            parent_header_data = ast.get_data(ast.get_typed_children(parent_data, 
+            parent_header_data = ast.get_data(ast.get_children_by_type(parent_data, 
                                                                      'function_header' if parent_data['type']=='function_definition' else 'macro_header'))
-            parent_identifier = ast.get_data(ast.get_typed_children(parent_header_data, 'identifier'))['content'].upper()
+            parent_identifier = ast.get_data(ast.get_children_by_type(parent_header_data, 'identifier'))['content'].upper()
             return node_type + ' of ' + parent_data['type'] + f' "{parent_identifier}"'
         else:
             return node_type + ' of ' + parent_data['type']
