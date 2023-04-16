@@ -13,8 +13,12 @@ class AST(nx.DiGraph):
     """
     Represents a build specification file state (version).
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, file_name=None, commit=None, **kwargs):
         super(AST, self).__init__(*args, **kwargs)
+
+        # Set file and commit
+        self.file_name = file_name
+        self.commit = commit
 
         # Remove extra nodes
         none_nodes = list(filter(lambda node: node[-1].get('label') is None, self.nodes.items()))
@@ -45,7 +49,8 @@ class AST(nx.DiGraph):
         using the self.clean_node_attributes.
         Sets the extracted cleaned data as node attributes.
         """
-        node_attrs = list(map(lambda node: self.clean_node_attributes(node[0], node[-1]), self.nodes.items()))
+        node_attrs = list(map(lambda node: self.clean_node_attributes(node[0], node[-1]),
+                              self.nodes.items()))
         nx.set_node_attributes(self, reduce(lambda a, b: {**a, **b}, node_attrs))
     
     def set_nodes_levels(self, *args, **kwargs):
@@ -84,7 +89,6 @@ class AST(nx.DiGraph):
         else:
             operation = "no-op"
         attrs = {node_id: {"id": node_id,
-                        #    "cluster": self.name, # TODO: Remove this
                            "operation": operation,
                            **label_content}}
         attrs[node_id]['label'] = f'cluster: {self.name}\ntype: {attrs[node_id]["type"]}\n'
@@ -128,6 +132,26 @@ class AST(nx.DiGraph):
         """
         return dict(filter(lambda node: node[-1]['type']==child_type,
                     self.get_children(node_data).items()))
+    
+    def get_children_by_content(self, node_data, child_content, matching_method="exact", *args, **kwargs):
+        """
+        Returns the children of the node with child_content as a dict of {'node_id': dict(nod_data)}.
+        The matching_method argument specifies which nodes are returned and can be set to
+        "exact", "contains", "starts_with", or "ends_with".
+        """
+        child_content = child_content.lower()
+        if matching_method=="exact":
+            return dict(filter(lambda node: node[-1]['content'].lower()==child_content,
+                        self.get_children(node_data).items()))
+        if matching_method=="contains":
+            return dict(filter(lambda node: child_content in node[-1]['content'].lower(),
+                        self.get_children(node_data).items()))
+        if matching_method=="exact":
+            return dict(filter(lambda node: node[-1]['content'].lower().startswith(child_content),
+                        self.get_children(node_data).items()))
+        if matching_method=="exact":
+            return dict(filter(lambda node: node[-1]['content'].lower().endswith(child_content),
+                        self.get_children(node_data).items()))
 
     def get_affected_nodes(self, *args, **kwargs):
         """
@@ -240,17 +264,53 @@ class ASTSlice(AST):
     def get_slice(self, *args, **kwargs):
         pass
 
+class NodeVisitor(object):
+    """
+    Adopted from https://github.com/python/cpython/blob/3.11/Lib/ast.py, modified.
+    A node visitor base class that walks the abstract syntax tree and calls a
+    visitor function for every node found. The `visit` method may return a 
+    value or perform some operation on the node.
+    The input is the output of the ast.get_data(node).
+    This class is meant to be subclassed, with the subclass adding visitor
+    methods.
+    Per default the visitor functions for the nodes are ``'visit_'`` +
+    node_data['type']. So a `variable` node visit function would
+    be `visit_variable`. This behavior can be changed by overriding
+    the `visit` method. If no visitor function exists for a node
+    (return value `None`) the `generic_visit` visitor is used instead.
+    Don't use the `NodeVisitor` if you want to apply changes to nodes during
+    traversing.
+    """
+
+    def visit(self, node_data):
+        """
+        Visit a node.
+        The input is the output of the ast.get_data(node), i.e., node_data.
+        """
+        method = 'visit_' + node_data['type']
+        visitor = getattr(self, method, self.generic_visit)
+        return visitor(node_data)
+
+    def generic_visit(self, node_data):
+        """
+        Called if no explicit visitor function exists for a node.
+        """
+        print(f'No visitor defined for {node_data["type"]}')
+
 class ASTDiff(object):
     """
     Represents a pair of ASTs with their corresponding diff.
     Initialization:
-        diff = ASTDiff(*utils.read_dotdiff(path)) 
-    This contains the source and destination nx.DiGraph objects
+        diff = ASTDiff(*utils.read_dotdiff(path), file_name, commit) 
+    The output of utils.read_dotdiff(path) includes 
+    the source and destination nx.DiGraph objects
     and the dictionary {source_node: destination_node} of matched nodes.
     """
-    def __init__(self, source, destination, matches, *args, **kwargs) -> None:
-        self.source = AST(source)
-        self.destination = AST(destination)
+    def __init__(self, source, destination, matches, file_name, commit, *args, **kwargs) -> None:
+        self.file_name = file_name
+        self.commit = commit
+        self.source = AST(source, file_name=file_name, commit=commit)
+        self.destination = AST(destination, file_name=file_name, commit=commit)
         self.source_match = matches
         self.destination_match = dict(map(lambda pair: (pair[1], pair[0]), self.source_match.items()))
 

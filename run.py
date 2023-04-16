@@ -121,7 +121,7 @@ for commit in repo.traverse_commits():
             # Do not apply method if GumTree output throws an error
             if not file_modification_data['has_gumtree_error']:
                 # Load GumTree output and slice
-                diff = ASTDiff(*dotdiff_content)
+                diff = ASTDiff(*dotdiff_content, file_modification_data["file_name"], commit.hash)
                 diff.source.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_source.dot')
                 diff.destination.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_destination.dot')
 
