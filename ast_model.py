@@ -146,12 +146,19 @@ class AST(nx.DiGraph):
         if matching_method=="contains":
             return dict(filter(lambda node: child_content in node[-1]['content'].lower(),
                         self.get_children(node_data).items()))
-        if matching_method=="exact":
+        if matching_method=="starts_with":
             return dict(filter(lambda node: node[-1]['content'].lower().startswith(child_content),
                         self.get_children(node_data).items()))
-        if matching_method=="exact":
+        if matching_method=="ends_with":
             return dict(filter(lambda node: node[-1]['content'].lower().endswith(child_content),
                         self.get_children(node_data).items()))
+        
+    def get_child_by_position(self, node_data, child_position, *args, **kwargs):
+        """
+        Returns one child (at child_position based on s_pos) as a dict of {'node_id': dict(nod_data)}.
+        """
+        child = sorted(list(self.get_children(node_data).values()), key=lambda node_data: node_data['s_pos'])[child_position]
+        return {child['id']:{child}}
 
     def get_affected_nodes(self, *args, **kwargs):
         """
@@ -264,38 +271,6 @@ class ASTSlice(AST):
     def get_slice(self, *args, **kwargs):
         pass
 
-class NodeVisitor(object):
-    """
-    Adopted from https://github.com/python/cpython/blob/3.11/Lib/ast.py, modified.
-    A node visitor base class that walks the abstract syntax tree and calls a
-    visitor function for every node found. The `visit` method may return a 
-    value or perform some operation on the node.
-    The input is the output of the ast.get_data(node).
-    This class is meant to be subclassed, with the subclass adding visitor
-    methods.
-    Per default the visitor functions for the nodes are ``'visit_'`` +
-    node_data['type']. So a `variable` node visit function would
-    be `visit_variable`. This behavior can be changed by overriding
-    the `visit` method. If no visitor function exists for a node
-    (return value `None`) the `generic_visit` visitor is used instead.
-    Don't use the `NodeVisitor` if you want to apply changes to nodes during
-    traversing.
-    """
-
-    def visit(self, node_data):
-        """
-        Visit a node.
-        The input is the output of the ast.get_data(node), i.e., node_data.
-        """
-        method = 'visit_' + node_data['type']
-        visitor = getattr(self, method, self.generic_visit)
-        return visitor(node_data)
-
-    def generic_visit(self, node_data):
-        """
-        Called if no explicit visitor function exists for a node.
-        """
-        print(f'No visitor defined for {node_data["type"]}')
 
 class ASTDiff(object):
     """
