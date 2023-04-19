@@ -122,7 +122,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
 
     arguments = ["bracket_argument", "quoted_argument", "unquoted_argument"]
     if node_type in arguments: # RECURSIVE for parent node
-        parsed_argument =  ast.parse_subtree(node_data)
+        parsed_argument =  ast.unparse_subtree(node_data)
         parent_data = node_data
         while parent_data['type'] not in ["arguments", "condition"]: # must be condition or arguments
             parent_data = ast.get_data(ast.get_parent(parent_data))
@@ -130,7 +130,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
 
     variables = ["variable_ref", "variable", "normal_var", "env_var", "cache_var", "quoted_element", "gen_exp", "escape_sequence"]
     if node_type in variables:
-        parsed_node = ast.parse_subtree(node_data)
+        parsed_node = ast.unparse_subtree(node_data)
         parent_data = node_data
         while parent_data['type'] not in ["arguments", "condition"]: # must be condition or arguments
             parent_data = ast.get_data(ast.get_parent(parent_data))

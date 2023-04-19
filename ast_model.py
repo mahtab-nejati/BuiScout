@@ -13,12 +13,12 @@ class AST(nx.DiGraph):
     """
     Represents a build specification file state (version).
     """
-    def __init__(self, *args, file_name=None, commit=None, **kwargs):
+    def __init__(self, *args, file_name=None, commit_hash=None, **kwargs):
         super(AST, self).__init__(*args, **kwargs)
 
-        # Set file and commit
+        # Set file and commit_hash
         self.file_name = file_name
-        self.commit = commit
+        self.commit_hash = commit_hash
 
         # Remove extra nodes
         none_nodes = list(filter(lambda node: node[-1].get('label') is None, self.nodes.items()))
@@ -41,6 +41,9 @@ class AST(nx.DiGraph):
         self.slice = self.get_slice()
 
     def export_dot(self, path, *args, **kwargs):
+        """
+        Export the AST into a .dot file (included in the path)
+        """
         write_dot(self, path)
     
     def set_node_attributes(self, *args, **kwargs):
@@ -119,6 +122,18 @@ class AST(nx.DiGraph):
         return dict(map(lambda parent_id: (parent_id, self.nodes[parent_id]),
                         self.predecessors(node_data['id'])))
     
+    def get_ancestors(self, node_data, *args, **kwargs):
+        """
+        Returns the ancestors tree of the node (all nodes from root to node_data)
+        as a dict of {'node_id': dict(nod_data)} sorted by level.
+        """
+        if node_data["type"] != rg.ROOT_TYPE:
+            parent_data = self.get_data(self.get_parent(node_data))
+            ancestors = {parent_data["id"]:parent_data, **self.get_ancestors(parent_data)}
+        else:
+            return {node_data["id"]: node_data}
+        return dict(sorted(ancestors.items(), key=lambda node: node[1]["level"]))
+        
     def get_children(self, node_data, *args, **kwargs):
         """
         Returns the children of the node as a dict of {'node_id': dict(nod_data)}
@@ -153,11 +168,11 @@ class AST(nx.DiGraph):
             return dict(filter(lambda node: node[-1]['content'].lower().endswith(child_content),
                         self.get_children(node_data).items()))
         
-    def get_child_by_position(self, node_data, child_position, *args, **kwargs):
+    def get_child_by_order(self, node_data, child_order, *args, **kwargs):
         """
-        Returns one child (at child_position based on s_pos) as a dict of {'node_id': dict(nod_data)}.
+        Returns one child (at child_order based on s_pos) as a dict of {'node_id': dict(nod_data)}.
         """
-        child = sorted(list(self.get_children(node_data).values()), key=lambda node_data: node_data['s_pos'])[child_position]
+        child = sorted(list(self.get_children(node_data).values()), key=lambda node_data: node_data['s_pos'])[child_order]
         return {child['id']:{child}}
 
     def get_affected_nodes(self, *args, **kwargs):
@@ -179,6 +194,7 @@ class AST(nx.DiGraph):
     def get_slice(self, *args, **kwargs):
         """
         Returns contaminated slice from the cluster as a SlicedAST() object.
+        TODO: Redo (recursive)
         """
         # Initialize slice data
         affected_nodes = self.affected_nodes
@@ -219,6 +235,11 @@ class AST(nx.DiGraph):
         return ASTSlice(self.name, slice_nodes, slice_edges)
     
     def get_subtree_nodes(self, head_data, *args, **kwargs):
+        """
+        Returns the subtree with head_data as the head of the subtree
+        as a dictionary of {'node_id':{node_data}}
+        TODO: Redo (recursive)
+        """
         subtree_nodes = {head_data['id']: head_data}
         current_level_nodes = deepcopy(subtree_nodes)
         while current_level_nodes.keys():
@@ -229,7 +250,11 @@ class AST(nx.DiGraph):
             current_level_nodes = dict(next_level_nodes)
         return subtree_nodes
 
-    def parse_subtree(self, head_data, *args, **kwargs):
+    def unparse_subtree(self, head_data, *args, **kwargs):
+        """
+        Unparses the nodes in a subtree with the head_data as the root
+        and returns a naive stringification of the parsed subtree.
+        """
         subtree_nodes = self.get_subtree_nodes(head_data)
         return ''.join(map(lambda cp: cp[0], 
                             sorted(map(lambda node_data: (node_data['content'], node_data['s_pos']),
@@ -237,6 +262,12 @@ class AST(nx.DiGraph):
                                    key=lambda cp: cp[-1])))
 
     def update_summarization_status(self, head_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Depending on the summarization method, adds the head_data (method=="NODE") or
+        the node_data of a the nodes in the subtree with head_data as the head (method=="SUBTREE")
+        to the self.summarized_nodes[method] (a dictionary)
+        """
         if method == "SUBTREE":
             subtree = self.get_subtree_nodes(head_data)
             summarized = dict(filter(lambda node: node[-1]['operation']==head_data['operation'] or node[-1]['operation']=='no-op',
@@ -244,10 +275,14 @@ class AST(nx.DiGraph):
         elif method == "NODE":
             summarized = {head_data['id']: head_data}
         else:
-            raise KeyError('SUMMARIZATION_METHOD can be SUBTREE or NODE')
+            raise KeyError('SUMMARIZATION_METHOD can be "SUBTREE" or "NODE"')
         self.summarized_nodes[method].update(summarized)
 
     def get_summarization_status(self, node_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"]
+        Returns True if node is already summarized the the specified method.
+        """
         return node_data['id'] in self.summarized_nodes[method]
 
 class ASTSlice(AST):
@@ -271,21 +306,20 @@ class ASTSlice(AST):
     def get_slice(self, *args, **kwargs):
         pass
 
-
 class ASTDiff(object):
     """
     Represents a pair of ASTs with their corresponding diff.
     Initialization:
-        diff = ASTDiff(*utils.read_dotdiff(path), file_name, commit) 
+        diff = ASTDiff(*utils.read_dotdiff(path), file_name, commit_hash) 
     The output of utils.read_dotdiff(path) includes 
     the source and destination nx.DiGraph objects
     and the dictionary {source_node: destination_node} of matched nodes.
     """
-    def __init__(self, source, destination, matches, file_name, commit, *args, **kwargs) -> None:
+    def __init__(self, source, destination, matches, file_name, commit_hash, *args, **kwargs):
         self.file_name = file_name
-        self.commit = commit
-        self.source = AST(source, file_name=file_name, commit=commit)
-        self.destination = AST(destination, file_name=file_name, commit=commit)
+        self.commit_hash = commit_hash
+        self.source = AST(source, file_name=file_name, commit_hash=commit_hash)
+        self.destination = AST(destination, file_name=file_name, commit_hash=commit_hash)
         self.source_match = matches
         self.destination_match = dict(map(lambda pair: (pair[1], pair[0]), self.source_match.items()))
 
@@ -309,6 +343,12 @@ class ASTDiff(object):
         return dict()
     
     def summarize(self, method="SUBTREE", *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Summarizes the changes of the head_data node (method=="NODE")
+        or the subtree with head_data node as the head (method=="SUBTREE")
+        and returns the summary entry to the self.summary[method] (a list)
+        """
         if method in self.summary:
             return self.summary[method]
         else:
@@ -351,6 +391,13 @@ class ASTDiff(object):
         return self.summary[method]
     
     def summarize_deletion(self, node_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Summarizes the deletion of the head_data node (method=="NODE")
+        or the subtree with head_data node as the head (method=="SUBTREE")
+        and adds the summary entry to the self.summary[method] (a list).
+        Then, updates the summarizaiton status of the source AST.
+        """
         self.summary[method].append({'operation': 'deleted',
                                      'source_node': node_data['type'],
                                      'source_node_summary': rg.stringify(self.source, node_data),
@@ -362,6 +409,13 @@ class ASTDiff(object):
         self.source.update_summarization_status(node_data, method)
             
     def summarize_addition(self, node_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Summarizes the addition of the head_data node (method=="NODE")
+        or the subtree with head_data node as the head (method=="SUBTREE")
+        and adds the summary entry to the self.summary[method] (a list).
+        Then, updates the summarizaiton status of the destination AST.
+        """
         self.summary[method].append({'operation': 'added',
                                      'source_node': None,
                                      'source_node_summary': None,
@@ -373,6 +427,13 @@ class ASTDiff(object):
         self.destination.update_summarization_status(node_data, method)
 
     def summarize_movement(self, node_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Summarizes the movement of the head_data node (method=="NODE")
+        or the subtree with head_data node as the head (method=="SUBTREE")
+        and adds the summary entry to the self.summary[method] (a list).
+        Then, updates the summarizaiton status of the source and destination ASTs.
+        """
         source_node = node_data
         source_parent = self.source.get_data(self.source.get_parent(source_node))
         source_parent_match = self.destination.get_data(self.get_match(source_parent))
@@ -394,6 +455,13 @@ class ASTDiff(object):
         self.destination.update_summarization_status(destination_node, method)
     
     def summarize_update(self, node_data, method, *args, **kwargs):
+        """
+        Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"] 
+        Summarizes the update of the head_data node (method=="NODE")
+        or the subtree with head_data node as the head (method=="SUBTREE")
+        and adds the summary entry to the self.summary[method] (a list).
+        Then, updates the summarizaiton status of the source and destination ASTs.
+        """
         source_node = node_data
         destination_node = self.destination.get_data(self.get_match(source_node))
         self.summary[method].append({'operation': 'updated',
