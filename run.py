@@ -5,8 +5,8 @@ import subprocess
 from datetime import datetime
 from utils import (write_source_code, file_is_build,
                    get_processed_path, read_dotdiff)
-from configure import (COMMITS, REPOSITORY, SUMMARIZATION_METHODS,
-                       PATTERNS, ROOT_PATH, SAVE_PATH, LANGUAGE)
+from utils.configurations import (COMMITS, REPOSITORY, SUMMARIZATION_METHODS,
+                                  PATTERNS, ROOT_PATH, SAVE_PATH, LANGUAGE)
 from ast_model import ASTDiff
 
 if COMMITS == "ALL":

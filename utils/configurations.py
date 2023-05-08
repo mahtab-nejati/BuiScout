@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-ROOT_PATH = Path(__file__).parent
+ROOT_PATH = Path(__file__).parent.parent
 
 with open(ROOT_PATH/'config.json', 'r') as f:
     config = json.load(f)

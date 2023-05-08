@@ -1,3 +1,6 @@
+from utils.visitors import NodeVisitor
+import data_flow_analysis.chain_model as cm
+
 
 ROOT_TYPE = "module"
 # Nodes of type listed in IGNORED_TYPES
@@ -11,6 +14,76 @@ IGNORED_TYPES = ['bracket_comment',
                  '$', ';', ':',
                  'quotation']
 BASIC_TYPES = [ROOT_TYPE]
+
+BUILTIN_COMMANDS = ['SET',
+                    'LIST']
+
+class NameGetter(NodeVisitor):
+    def generic_visit(self, node_data):
+        return self.ast.unparse_subtree(node_data)
+    
+    def visit_function_definition(self):
+        header = self.ast.get_data(self.ast.get_children_by_type(self.def_node, 'function_header'))
+        return self.ast.get_data(self.ast.get_children_by_type(header, 'identifier'))['content'].upper()
+    
+    def visit_macro_definition(self, node_data):
+        header = self.ast.get_data(self.ast.get_children_by_type(self.def_node, 'macro_header'))
+        return self.ast.get_data(self.ast.get_children_by_type(header, 'identifier'))['content'].upper()
+    
+    def visit_normal_command(self, node_data):
+        command_identifier = self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
+        method = f'visit_{command_identifier}'
+        visitor = getattr(self, method, self.visit_defined_normal_command)
+        return visitor(node_data)
+    
+    def visit_user_defined_normal_command(self, node_data):
+        return self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
+    
+    def visit_bracket_argument(self, node_data):
+        self.generic_visit(node_data)
+
+    def visit_quoted_argument(self, node_data):
+        pass
+
+    def visit_unquoted_argument(self, node_data):
+        pass
+
+class DefUseChains(cm.DefUseChains):
+    
+    def visit_function_definition(self, node_data):
+        definition = self.create_and_get_definition(node_data)
+        self.add_to_definitions(definition)
+
+        header_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'function_header'))
+        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'body'))
+
+        self.process_body(body_data)
+
+    def visit_macro_definition(self, node_data):
+        definition = self.create_and_get_definition(node_data)
+        self.add_to_definitions(definition)
+
+        header_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'macro_header'))
+        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'body'))
+
+        self.process_body(body_data)
+
+    def visit_normal_command(self, node_data):
+        command_identifier = self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
+        method = f'visit_{command_identifier}'
+        visitor = getattr(self, method, self.visit_defined_normal_command)
+        return visitor(node_data)
+    
+    def visit_user_defined_normal_command(self, node_data):
+        self.add_user(node_data)
+        self.generic_visit(node_data)
+
+    
+    def visit_SET(self, node_data):
+        defined_argument = self.ast.get_data(self.ast.get_child_by_order(node_data, 0))
+        self.visit(defined_argument)
+    
+
 
 
 def stringify(ast, node_data, verbose=False, *args, **kwargs):

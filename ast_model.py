@@ -4,10 +4,10 @@ import pygraphviz as pgv
 from functools import reduce
 from copy import deepcopy
 import importlib
-from utils import parse_label
-from configure import LANGUAGE
+from utils.helpers import parse_label
+from utils.configurations import LANGUAGE
 
-rg = importlib.import_module(f'languages.{LANGUAGE}.node_stringifier')
+ls = importlib.import_module(f'languages.{LANGUAGE}.supporters')
 
 class AST(nx.DiGraph):
     """
@@ -26,7 +26,7 @@ class AST(nx.DiGraph):
             self.remove_node(node[0])
 
         # Set node attributes
-        # The head of the AST (rg.ROOT_TYPE) has level=0.
+        # The head of the AST (ls.ROOT_TYPE) has level=0.
         self.set_node_attributes()
         self.set_nodes_levels()
 
@@ -39,6 +39,9 @@ class AST(nx.DiGraph):
         
         # Slice up changes
         self.slice = self.get_slice()
+
+        # Set up the NameGetter for language support
+        self.NameGetter = ls.NameGetter(self)
 
     def export_dot(self, path, *args, **kwargs):
         """
@@ -59,10 +62,10 @@ class AST(nx.DiGraph):
     def set_nodes_levels(self, *args, **kwargs):
         """
         Sets the attribute "level" for nodes and self.depth for AST pair.
-        The head of the AST (rg.ROOT_TYPE) has level=0.
+        The head of the AST (ls.ROOT_TYPE) has level=0.
         """
         depth = 0 
-        current_level_nodes = dict(filter(lambda node: node[-1]['type']==rg.ROOT_TYPE, self.nodes.items()))
+        current_level_nodes = dict(filter(lambda node: node[-1]['type']==ls.ROOT_TYPE, self.nodes.items()))
         while current_level_nodes.keys():
             next_level_nodes = dict()
             for node_id, node_data in current_level_nodes.items():
@@ -108,11 +111,28 @@ class AST(nx.DiGraph):
         except IndexError:
             return {}
     
+    def get_name(self, node_data, *args, **kwargs):
+        """
+        Returns the proper name of the node based on language-specific rules
+        for data flow analysis
+        """
+        return self.NameGetter.visit(node_data)
+    
+    def get_location(self, node_data, *args, **kwargs):
+        """
+        Returns the location of the node_data
+        """
+        if self.file_name:
+            file_name = self.file_name
+        else:
+            file_name = "<UNKNOWN_FILE>"
+        return f' at {file_name}:{node_data["s_pos"]}-{node_data["e_pos"]}'
+
     def get_root(self, *args, **kwargs):
         """
         Returns the root node of the cluster as a dict of {'node_id': dict(nod_data)}
         """
-        return dict(filter(lambda node: node[-1]['type']==rg.ROOT_TYPE,
+        return dict(filter(lambda node: node[-1]['type']==ls.ROOT_TYPE,
                            self.nodes.items()))
                 
     def get_parent(self, node_data, *args, **kwargs):
@@ -127,7 +147,7 @@ class AST(nx.DiGraph):
         Returns the ancestors tree of the node (all nodes from root to node_data)
         as a dict of {'node_id': dict(nod_data)} sorted by level.
         """
-        if node_data["type"] != rg.ROOT_TYPE:
+        if node_data["type"] != ls.ROOT_TYPE:
             parent_data = self.get_data(self.get_parent(node_data))
             ancestors = {parent_data["id"]:parent_data, **self.get_ancestors(parent_data)}
         else:
@@ -184,7 +204,7 @@ class AST(nx.DiGraph):
         """
         affected_nodes =  dict(filter(lambda node: node[-1]['operation']!='no-op',
                                       self.nodes.items()))
-        ignored_nodes = filter(lambda node_data: node_data['type'] in rg.IGNORED_TYPES, affected_nodes.values())
+        ignored_nodes = filter(lambda node_data: node_data['type'] in ls.IGNORED_TYPES, affected_nodes.values())
         for ignored_node_data in ignored_nodes: # TODO: Convert to non-loop
             ignored_subtree_nodes = self.get_subtree_nodes(ignored_node_data)
             affected_nodes = dict(filter(lambda node: node[-1]['id'] not in ignored_subtree_nodes,
@@ -362,28 +382,28 @@ class ASTDiff(object):
         for level in range(depth):
             # DELETIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='deleted' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_deletion(node_data, method)
 
             # ADDITIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='added' and\
-                                                    not self.destination.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                                    not self.destination.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
                                 self.destination.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_addition(node_data, method)
             
             # MOVEMENTS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='moved' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_movement(node_data, method)
 
             # UPDATES
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='updated' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in rg.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_update(node_data, method)
@@ -400,7 +420,7 @@ class ASTDiff(object):
         """
         self.summary[method].append({'operation': 'deleted',
                                      'source_node': node_data['type'],
-                                     'source_node_summary': rg.stringify(self.source, node_data),
+                                     'source_node_summary': ls.stringify(self.source, node_data),
                                      'source_position': f'{node_data["s_pos"]}-{node_data["e_pos"]}',
                                      'destination_node': None,
                                      'destination_node_summary': None,
@@ -421,7 +441,7 @@ class ASTDiff(object):
                                      'source_node_summary': None,
                                      'source_position': None,
                                      'destination_node': node_data['type'],
-                                     'destination_node_summary': rg.stringify(self.destination, node_data),
+                                     'destination_node_summary': ls.stringify(self.destination, node_data),
                                      'destination_postion': f'{node_data["s_pos"]}-{node_data["e_pos"]}'})
         
         self.destination.update_summarization_status(node_data, method)
@@ -445,10 +465,10 @@ class ASTDiff(object):
             movement_type = 'moved_changed_parent'
         self.summary[method].append({'operation': movement_type,
                                      'source_node': source_node['type'],
-                                     'source_node_summary': rg.stringify(self.source, source_node),
+                                     'source_node_summary': ls.stringify(self.source, source_node),
                                      'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
                                      'destination_node': destination_node['type'],
-                                     'destination_node_summary': rg.stringify(self.destination, destination_node),
+                                     'destination_node_summary': ls.stringify(self.destination, destination_node),
                                      'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
         self.source.update_summarization_status(source_node, method)
@@ -466,10 +486,10 @@ class ASTDiff(object):
         destination_node = self.destination.get_data(self.get_match(source_node))
         self.summary[method].append({'operation': 'updated',
                                      'source_node': source_node['type'],
-                                     'source_node_summary': rg.stringify(self.source, source_node),
+                                     'source_node_summary': ls.stringify(self.source, source_node),
                                      'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
                                      'destination_node': destination_node['type'],
-                                     'destination_node_summary': rg.stringify(self.destination, destination_node),
+                                     'destination_node_summary': ls.stringify(self.destination, destination_node),
                                      'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
         self.source.update_summarization_status(source_node, method)
