@@ -13,13 +13,18 @@ BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
 SUMMARIZATION_METHODS = config["SUMMARIZATION_METHODS"]
 COMMITS = config["COMMITS"]
 
-SAVE_PATH = Path(DATA_PATH / f"{PROJECT}_results")
+SAVE_PATH = Path(DATA_PATH/f'{PROJECT}_{BUILD_SYSTEM}_results')
 SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
-PATTERNS = []
-if BUILD_SYSTEM == "cmake":
-    PATTERNS = ["CMakeLists.txt", ".cmake"]
-    LANGUAGE = "cmake"
-if BUILD_SYSTEM == "bazel":
-    PATTERNS = ["BUILD.bazel", ".bzl"]
-    LANGUAGE = "python"
+PATTERN_SETS = [[]]
+if BUILD_SYSTEM == 'cmake':
+    PATTERN_SETS = [['CMakeLists.txt', '.cmake']]
+    LANGUAGES = ['cmake']
+if BUILD_SYSTEM == 'bazel':
+    PATTERN_SETS = [['BUILD.bazel', '.bzl']]
+    LANGUAGES = ['python']
+if BUILD_SYSTEM == 'gradle':
+    PATTERN_SETS = [['.gradle.kts'], # Kotlin file name patterns
+                    ['.gradle']] # Groovy file name patterns
+    LANGUAGES = ['kotlin',
+                'groovy']
