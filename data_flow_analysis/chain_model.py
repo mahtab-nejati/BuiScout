@@ -6,6 +6,7 @@ Modified to make compatible with CMake AST.
 from collections import defaultdict
 from utils.visitors import NodeVisitor
 
+
 class Def(object):
     """
     Model a Def point and its users.
@@ -14,12 +15,11 @@ class Def(object):
     def __init__(self, def_node, ast):
         self.ast = ast
         self.def_node = def_node
-        # TODO: Implement the ast.get_name(node_data)
-        self.name = self.ast.get_name()
+        self.name = self.ast.get_name(self.def_node)
         if self.name is None:
-            print(f'{self.def_node} requires NameGetter revisit')
+            print(f"{self.def_node} requires NameGetter revisit")
         self.use_nodes = []
-    
+
     def add_use_node(self, use_node, ast):
         """
         Add use_node to the list of users if it is a user of the self.def_node
@@ -32,17 +32,16 @@ class Def(object):
     def is_user(self, use_node):
         """
         A wrapper for method uses_{self.def_node["type"]}
+        Methods must be implemented at a language support level.
         """
-        if self.def_node['type']=='normal_command':
-            method = f'uses_variable'
-        else:
-            method = 'uses_' + self.def_node['type'] # function/macro definitions
+        method = "uses_" + self.def_node["type"]
         user_detector = getattr(self, method, self.generic_uses_def)
         return user_detector(use_node)
-    
+
     def is_listed_user(self, use_node, *args, **kwargs):
         return use_node in self.use_nodes
-    
+
+
 class DefUseChains(NodeVisitor):
     """
     Module visitor that gathers two kinds of informations:
@@ -50,9 +49,10 @@ class DefUseChains(NodeVisitor):
           of variables defined in this node,
         - chains: {'node_id': Def}, a mapping between def nodes and their chains.
     """
+
     def __init__(self, ast):
         """
-            ast: ast_model.AST
+        ast: ast_model.AST
         """
         self.ast = ast
 
@@ -63,7 +63,7 @@ class DefUseChains(NodeVisitor):
         # Stores a mapping between def nodes and their chain object (Def)
         # in the form of {'node_id': Def}
         self.chains = {}
-        # Stores a mapping of the name to its definition points {'name': [Def]} 
+        # Stores a mapping of the name to its definition points {'name': [Def]}
         self.defined_names = defaultdict(list)
         # Stores a mapping of the name to undefined users {'name': [use_node]}
         self.undefined_names = defaultdict(list)
@@ -71,7 +71,7 @@ class DefUseChains(NodeVisitor):
     def unbound_identifier(self, name, node_data):
         location = self.ast.get_location(node_data)
         print(f'W: unbound identifier "{name}"{location}')
-              
+
     def invalid_name_lookup(self, name, defs):
         """
         Identify if a local variable is used before assignment.
@@ -91,8 +91,10 @@ class DefUseChains(NodeVisitor):
 
     def add_user(self, use_node):
         name = self.ast.get_name(use_node)
-        map(lambda definition: definition.add_use_node(use_node),
-            self.defined_names[name])
+        map(
+            lambda definition: definition.add_use_node(use_node),
+            self.defined_names[name],
+        )
 
     def process_body(self, head_data):
         """
@@ -100,8 +102,10 @@ class DefUseChains(NodeVisitor):
         and processes the body as a separate unit.
         Will help with branching and scopes.
         """
-        ordered_children_data = sorted(self.ast.get_children(head_data).values(), 
-                                       key=lambda node_data: node_data['s_pos'])
+        ordered_children_data = sorted(
+            self.ast.get_children(head_data).values(),
+            key=lambda node_data: node_data["s_pos"],
+        )
         for child_data in ordered_children_data:
             self.visit(child_data)
 
@@ -121,24 +125,26 @@ class DefUseChains(NodeVisitor):
         self.process_body(self.module)
 
     def create_and_get_definition(self, def_node):
-        return Def(def_node, self.ast) 
+        return Def(def_node, self.ast)
 
     def add_to_local_chains(self, definition):
-        self.local_chains[definition.def_node['id']].append(definition)
+        self.local_chains[definition.def_node["id"]].append(definition)
         ancestors = self.ast.get_ancestors(definition.def_node)
-        map(lambda node_data: self.local_chains[node_data["id"]].append(definition),
-            ancestors.values())
+        map(
+            lambda node_data: self.local_chains[node_data["id"]].append(definition),
+            ancestors.values(),
+        )
         print("check add_to_local_chains")
 
     def add_to_chains(self, definition):
-        self.chains[definition.def_node['id']] = definition
-    
+        self.chains[definition.def_node["id"]] = definition
+
     def add_to_defined_names(self, definition):
         self.defined_names[definition.name].append(definition)
-    
+
     def add_to_undefined_names(self, name, use_node):
         self.undefined_names[name].append(use_node)
-        
+
 
 # class UseDefChains(object):
 #     """

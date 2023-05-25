@@ -33,7 +33,7 @@ all_commits_start = datetime.now()
 
 # Run tool on commits
 for commit in repo.traverse_commits():
-    print(f'Commit in process: {commit.hash}')
+    print(f"Commit in process: {commit.hash}")
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
     has_build = False
@@ -43,19 +43,23 @@ for commit in repo.traverse_commits():
     commit_start = datetime.now()
 
     # Error handling for missing commits
-    # GitPython, and consequently PyDriller, 
+    # GitPython, and consequently PyDriller,
     # do not handle this well.
     try:
         # This will throw an error if the commit is missing
         commit.modified_files
     # Log missing commits and move to then next
     except ValueError:
-        all_commits.append({'commit_hash': commit.hash,
-                            'commit_parents': commit.parents,
-                            'has_build': None,
-                            'has_nonbuild': None,
-                            'is_missing': True,
-                            'elapsed_time': datetime.now()-commit_start})
+        all_commits.append(
+            {
+                "commit_hash": commit.hash,
+                "commit_parents": commit.parents,
+                "has_build": None,
+                "has_nonbuild": None,
+                "is_missing": True,
+                "elapsed_time": datetime.now() - commit_start,
+            }
+        )
         continue
     
     # Iterate over the languages and file naming conventions
@@ -155,24 +159,28 @@ for commit in repo.traverse_commits():
                 has_nonbuild = True
 
     # Log all changes
-    all_commits.append({'commit_hash': commit.hash,
-                        'commit_parents': commit.parents,
-                        'has_build': has_build,
-                        'has_nonbuild': has_nonbuild,
-                        'is_missing': False,
-                        'elapsed_time': datetime.now()-commit_start})
+    all_commits.append(
+        {
+            "commit_hash": commit.hash,
+            "commit_parents": commit.parents,
+            "has_build": has_build,
+            "has_nonbuild": has_nonbuild,
+            "is_missing": False,
+            "elapsed_time": datetime.now() - commit_start,
+        }
+    )
 
 # Save summaries
 for sm in SUMMARIZATION_METHODS:
     summaries_df = pd.DataFrame(summaries[sm])
-    summaries_df.to_csv(SAVE_PATH/f'summaries_{sm.lower()}.csv', index=False)
+    summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
 
 # Save metadata on build changes
 modified_build_files_df = pd.DataFrame(modified_build_files)
-modified_build_files_df.to_csv(SAVE_PATH/'modified_build_files.csv', index=False)
+modified_build_files_df.to_csv(SAVE_PATH / "modified_build_files.csv", index=False)
 
 # Save metadata on all changes
 all_commits_df = pd.DataFrame(all_commits)
-all_commits_df.to_csv(SAVE_PATH/'all_commits.csv', index=False)
+all_commits_df.to_csv(SAVE_PATH / "all_commits.csv", index=False)
 
-print(f'Finished processing in {datetime.now()-all_commits_start}')
+print(f"Finished processing in {datetime.now()-all_commits_start}")

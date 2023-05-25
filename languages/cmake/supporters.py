@@ -5,40 +5,60 @@ import data_flow_analysis.chain_model as cm
 ROOT_TYPE = "module"
 # Nodes of type listed in IGNORED_TYPES
 # and their entire subtree are ignored
-IGNORED_TYPES = ['bracket_comment',
-                 'line_comment',
-                 '(', ')',
-                 '{', '}',
-                 '<', '>',
-                 '\\n', '\\t',
-                 '$', ';', ':',
-                 'quotation']
+IGNORED_TYPES = [
+    "bracket_comment",
+    "line_comment",
+    "(",
+    ")",
+    "{",
+    "}",
+    "<",
+    ">",
+    "\\n",
+    "\\t",
+    "$",
+    ";",
+    ":",
+    "quotation",
+]
 BASIC_TYPES = [ROOT_TYPE]
 
-BUILTIN_COMMANDS = ['SET',
-                    'LIST']
+BUILTIN_COMMANDS = ["SET", "LIST"]
+
 
 class NameGetter(NodeVisitor):
     def generic_visit(self, node_data):
         return self.ast.unparse_subtree(node_data)
-    
+
     def visit_function_definition(self):
-        header = self.ast.get_data(self.ast.get_children_by_type(self.def_node, 'function_header'))
-        return self.ast.get_data(self.ast.get_children_by_type(header, 'identifier'))['content'].upper()
-    
+        header = self.ast.get_data(
+            self.ast.get_children_by_type(self.def_node, "function_header")
+        )
+        return self.ast.get_data(self.ast.get_children_by_type(header, "identifier"))[
+            "content"
+        ].upper()
+
     def visit_macro_definition(self, node_data):
-        header = self.ast.get_data(self.ast.get_children_by_type(self.def_node, 'macro_header'))
-        return self.ast.get_data(self.ast.get_children_by_type(header, 'identifier'))['content'].upper()
-    
+        header = self.ast.get_data(
+            self.ast.get_children_by_type(self.def_node, "macro_header")
+        )
+        return self.ast.get_data(self.ast.get_children_by_type(header, "identifier"))[
+            "content"
+        ].upper()
+
     def visit_normal_command(self, node_data):
-        command_identifier = self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
-        method = f'visit_{command_identifier}'
+        command_identifier = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "identifier")
+        )["content"].upper()
+        method = f"visit_{command_identifier}"
         visitor = getattr(self, method, self.visit_defined_normal_command)
         return visitor(node_data)
-    
+
     def visit_user_defined_normal_command(self, node_data):
-        return self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
-    
+        return self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "identifier")
+        )["content"].upper()
+
     def visit_bracket_argument(self, node_data):
         self.generic_visit(node_data)
 
@@ -48,14 +68,16 @@ class NameGetter(NodeVisitor):
     def visit_unquoted_argument(self, node_data):
         pass
 
+
 class DefUseChains(cm.DefUseChains):
-    
     def visit_function_definition(self, node_data):
         definition = self.create_and_get_definition(node_data)
         self.add_to_definitions(definition)
 
-        header_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'function_header'))
-        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'body'))
+        header_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "function_header")
+        )
+        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
 
         self.process_body(body_data)
 
@@ -63,153 +85,255 @@ class DefUseChains(cm.DefUseChains):
         definition = self.create_and_get_definition(node_data)
         self.add_to_definitions(definition)
 
-        header_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'macro_header'))
-        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, 'body'))
+        header_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "macro_header")
+        )
+        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
 
         self.process_body(body_data)
 
     def visit_normal_command(self, node_data):
-        command_identifier = self.ast.get_data(self.ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
-        method = f'visit_{command_identifier}'
+        command_identifier = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "identifier")
+        )["content"].upper()
+        method = f"visit_{command_identifier}"
         visitor = getattr(self, method, self.visit_defined_normal_command)
         return visitor(node_data)
-    
+
     def visit_user_defined_normal_command(self, node_data):
         self.add_user(node_data)
         self.generic_visit(node_data)
 
-    
     def visit_SET(self, node_data):
         defined_argument = self.ast.get_data(self.ast.get_child_by_order(node_data, 0))
         self.visit(defined_argument)
-    
-
 
 
 def stringify(ast, node_data, verbose=False, *args, **kwargs):
     if verbose:
         return stringify_verbose(ast, node_data)
-        
-    node_type = node_data['type']
+
+    node_type = node_data["type"]
 
     if node_type in BASIC_TYPES:
         return node_type
-    
+
     if node_type == "normal_command":
-        identifier = ast.get_data(ast.get_children_by_type(node_data, 'identifier'))['content'].upper()
+        identifier = ast.get_data(ast.get_children_by_type(node_data, "identifier"))[
+            "content"
+        ].upper()
         return node_type + ' "' + identifier + '"'
-    
+
     if node_type == "if_statement":
-        conditional_branch_count = len(ast.get_children_by_type(node_data, 'elseif_clause'))+1 # +1 because of if_clause
-        default_branch = 'a' if ast.get_children_by_type(node_data, 'else_clause') else 'no' # is there is an else_clause
-        return node_type + ' with ' + str(conditional_branch_count) + \
-                    ' conditional branche(s) and ' + \
-                        default_branch +' default branch'
-    
-    if node_type == "foreach_statement": 
-        foreach_clause_data = ast.get_data(ast.get_children_by_type(node_data, 'foreach_clause'))
-        body_data = ast.get_data(ast.get_children_by_type(foreach_clause_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        conditional_branch_count = (
+            len(ast.get_children_by_type(node_data, "elseif_clause")) + 1
+        )  # +1 becuase of if_clause
+        default_branch = (
+            "a" if ast.get_children_by_type(node_data, "else_clause") else "no"
+        )  # is there is an else_clause
+        return (
+            node_type
+            + " with "
+            + str(conditional_branch_count)
+            + " conditional branche(s) and "
+            + default_branch
+            + " default branch"
+        )
+
+    if node_type == "foreach_statement":
+        foreach_clause_data = ast.get_data(
+            ast.get_children_by_type(node_data, "foreach_clause")
+        )
+        body_data = ast.get_data(ast.get_children_by_type(foreach_clause_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' with empty body'
-    
+            return node_type + " with empty body"
+
     if node_type == "while_statement":
-        while_clause_data = ast.get_data(ast.get_children_by_type(node_data, 'while_clause'))
-        body_data = ast.get_data(ast.get_children_by_type(while_clause_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        while_clause_data = ast.get_data(
+            ast.get_children_by_type(node_data, "while_clause")
+        )
+        body_data = ast.get_data(ast.get_children_by_type(while_clause_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' with empty body'
-    
+            return node_type + " with empty body"
+
     if node_type == "function_definition":
-        function_header_data = ast.get_data(ast.get_children_by_type(node_data, 'function_header'))
-        identifier = ast.get_data(ast.get_children_by_type(function_header_data, 'identifier'))['content'].upper()
-        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        function_header_data = ast.get_data(
+            ast.get_children_by_type(node_data, "function_header")
+        )
+        identifier = ast.get_data(
+            ast.get_children_by_type(function_header_data, "identifier")
+        )["content"].upper()
+        body_data = ast.get_data(ast.get_children_by_type(node_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " "
+                + identifier
+                + " with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' with empty body'
+            return node_type + " with empty body"
 
     if node_type == "macro_definition":
-        macro_header_data = ast.get_data(ast.get_children_by_type(node_data, 'macro_header'))
-        identifier = ast.get_data(ast.get_children_by_type(macro_header_data, 'identifier'))['content'].upper()
-        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' ' + identifier + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        macro_header_data = ast.get_data(
+            ast.get_children_by_type(node_data, "macro_header")
+        )
+        identifier = ast.get_data(
+            ast.get_children_by_type(macro_header_data, "identifier")
+        )["content"].upper()
+        body_data = ast.get_data(ast.get_children_by_type(node_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " "
+                + identifier
+                + " with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' with empty body'
+            return node_type + " with empty body"
 
     if node_type == "block_definition":
-        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body')) # does not have and identifier
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' with ' + str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        body_data = ast.get_data(
+            ast.get_children_by_type(node_data, "body")
+        )  # does not have and identifier
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' with empty body'
+            return node_type + " with empty body"
 
     if node_type == "arguments":
-        parent_data = ast.get_data(ast.get_parent(node_data)) # can be function/macro_header or normal_command
-        identifier = ast.get_data(ast.get_children_by_type(parent_data, 'identifier'))['content'].upper()
-        if "header" in parent_data['type']: # parent is function/macro_header 
+        parent_data = ast.get_data(
+            ast.get_parent(node_data)
+        )  # can be function/macro_header or normal_command
+        identifier = ast.get_data(ast.get_children_by_type(parent_data, "identifier"))[
+            "content"
+        ].upper()
+        if "header" in parent_data["type"]:  # parent is function/macro_header
             parent_data = ast.get_data(ast.get_parent(parent_data))
-        else: # parent is normal_command
+        else:  # parent is normal_command
             pass
-        return node_type + ' of ' + parent_data['type'] + ' "' + identifier + '"'
-    
+        return node_type + " of " + parent_data["type"] + ' "' + identifier + '"'
+
     if node_type == "identifier":
-        parent_data = ast.get_data(ast.get_parent(node_data)) # can be function/macro_header or normal_command
-        if "header" in parent_data['type']: # parent is function/macro_header
-            parent_data = ast.get_data(ast.get_parent(parent_data)) # grab grandparent instead of parent for clarity
-        return node_type + f' "{node_data["content"].upper()}" of ' + parent_data['type']
+        parent_data = ast.get_data(
+            ast.get_parent(node_data)
+        )  # can be function/macro_header or normal_command
+        if "header" in parent_data["type"]:  # parent is function/macro_header
+            parent_data = ast.get_data(
+                ast.get_parent(parent_data)
+            )  # grab grandparent instead of parent for clarity
+        return (
+            node_type + f' "{node_data["content"].upper()}" of ' + parent_data["type"]
+        )
 
     if node_type == "elseif_clause":
-        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' conditional branch with ' + \
-                str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        body_data = ast.get_data(ast.get_children_by_type(node_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " conditional branch with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' conditional branch with empty body'
-    
+            return node_type + " conditional branch with empty body"
+
     if node_type == "else_clause":
-        body_data = ast.get_data(ast.get_children_by_type(node_data, 'body'))
-        if body_data: # body is an optional node ased on the grammar
-            return node_type + ' default branch with ' + \
-                str(len(list(ast.get_children(body_data)))) + ' statement(s) in its body'
+        body_data = ast.get_data(ast.get_children_by_type(node_data, "body"))
+        if body_data:  # body is an optional node ased on the grammar
+            return (
+                node_type
+                + " default branch with "
+                + str(len(list(ast.get_children(body_data))))
+                + " statement(s) in its body"
+            )
         else:
-            return node_type + ' conditional branch with empty body'
+            return node_type + " conditional branch with empty body"
 
     if node_type == "condition":
-        parent_data = ast.get_data(ast.get_parent(node_data)) # can be if/elseif/else/while/foreach_clause (and their end equivalent)
-        return node_type + ' of ' + parent_data['type']
+        parent_data = ast.get_data(
+            ast.get_parent(node_data)
+        )  # can be if/elseif/else/while/foreach_clause (and their end equivalent)
+        return node_type + " of " + parent_data["type"]
 
     if node_type == "body":
         # parent can be if/elseif/else/while/foreach_clasue or function/macro/block_definition
         parent_data = ast.get_data(ast.get_parent(node_data))
-        if parent_data['type'] in ['function_definition', 'macro_definition']: # function/macro_definition have identifiers
-            parent_header_data = ast.get_data(ast.get_children_by_type(parent_data, 
-                                                                     'function_header' if parent_data['type']=='function_definition' else 'macro_header'))
-            parent_identifier = ast.get_data(ast.get_children_by_type(parent_header_data, 'identifier'))['content'].upper()
-            return node_type + ' of ' + parent_data['type'] + f' "{parent_identifier}"'
+        if parent_data["type"] in [
+            "function_definition",
+            "macro_definition",
+        ]:  # function/macro_definition have identifiers
+            parent_header_data = ast.get_data(
+                ast.get_children_by_type(
+                    parent_data,
+                    "function_header"
+                    if parent_data["type"] == "function_definition"
+                    else "macro_header",
+                )
+            )
+            parent_identifier = ast.get_data(
+                ast.get_children_by_type(parent_header_data, "identifier")
+            )["content"].upper()
+            return node_type + " of " + parent_data["type"] + f' "{parent_identifier}"'
         else:
-            return node_type + ' of ' + parent_data['type']
+            return node_type + " of " + parent_data["type"]
 
     arguments = ["bracket_argument", "quoted_argument", "unquoted_argument"]
-    if node_type in arguments: # RECURSIVE for parent node
-        parsed_argument =  ast.unparse_subtree(node_data)
+    if node_type in arguments:  # RECURSIVE for parent node
+        parsed_argument = ast.unparse_subtree(node_data)
         parent_data = node_data
-        while parent_data['type'] not in ["arguments", "condition"]: # must be condition or arguments
+        while parent_data["type"] not in [
+            "arguments",
+            "condition",
+        ]:  # must be condition or arguments
             parent_data = ast.get_data(ast.get_parent(parent_data))
-        return node_type + f' {parsed_argument} in ' + stringify(ast, parent_data)
+        return node_type + f" {parsed_argument} in " + stringify(ast, parent_data)
 
-    variables = ["variable_ref", "variable", "normal_var", "env_var", "cache_var", "quoted_element", "gen_exp", "escape_sequence"]
+    variables = [
+        "variable_ref",
+        "variable",
+        "normal_var",
+        "env_var",
+        "cache_var",
+        "quoted_element",
+        "gen_exp",
+        "escape_sequence",
+    ]
     if node_type in variables:
         parsed_node = ast.unparse_subtree(node_data)
         parent_data = node_data
-        while parent_data['type'] not in ["arguments", "condition"]: # must be condition or arguments
+        while parent_data["type"] not in [
+            "arguments",
+            "condition",
+        ]:  # must be condition or arguments
             parent_data = ast.get_data(ast.get_parent(parent_data))
-        return node_type + f' {parsed_node} in ' + stringify(ast, parent_data)
-    
-    return f'****{node_type}****'
+        return node_type + f" {parsed_node} in " + stringify(ast, parent_data)
+
+    return f"****{node_type}****"
+
 
 def stringify_verbose(ast, node_data, *args, **kwargs):
     pass
