@@ -100,7 +100,7 @@ def stringify(ast, node_data, verbose=False, *args, **kwargs):
         return node_type + ' "' + identifier + '"'
     
     if node_type == "if_statement":
-        conditional_branch_count = len(ast.get_children_by_type(node_data, 'elseif_clause'))+1 # +1 becuase of if_clause
+        conditional_branch_count = len(ast.get_children_by_type(node_data, 'elseif_clause'))+1 # +1 because of if_clause
         default_branch = 'a' if ast.get_children_by_type(node_data, 'else_clause') else 'no' # is there is an else_clause
         return node_type + ' with ' + str(conditional_branch_count) + \
                     ' conditional branche(s) and ' + \

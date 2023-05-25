@@ -5,28 +5,30 @@ from functools import reduce
 from copy import deepcopy
 import importlib
 from utils.helpers import parse_label
-from utils.configurations import LANGUAGE
+from utils.configurations import LANGUAGES
 
-ls = importlib.import_module(f'languages.{LANGUAGE}.supporters')
 
 class AST(nx.DiGraph):
     """
     Represents a build specification file state (version).
     """
-    def __init__(self, *args, file_name=None, commit_hash=None, **kwargs):
+    def __init__(self, *args, file_name=None, commit_hash=None, language_support_tools=None,**kwargs):
         super(AST, self).__init__(*args, **kwargs)
-
+        
+        # SET language support tools
+        self.language_support_tools = language_support_tools
+        
         # Set file and commit_hash
         self.file_name = file_name
         self.commit_hash = commit_hash
-
+        
         # Remove extra nodes
         none_nodes = list(filter(lambda node: node[-1].get('label') is None, self.nodes.items()))
         for node in none_nodes:
             self.remove_node(node[0])
 
         # Set node attributes
-        # The head of the AST (ls.ROOT_TYPE) has level=0.
+        # The head of the AST (self.language_support_tools.ROOT_TYPE) has level=0.
         self.set_node_attributes()
         self.set_nodes_levels()
 
@@ -41,7 +43,7 @@ class AST(nx.DiGraph):
         self.slice = self.get_slice()
 
         # Set up the NameGetter for language support
-        self.NameGetter = ls.NameGetter(self)
+        self.NameGetter = self.language_support_tools.NameGetter(self)
 
     def export_dot(self, path, *args, **kwargs):
         """
@@ -62,10 +64,10 @@ class AST(nx.DiGraph):
     def set_nodes_levels(self, *args, **kwargs):
         """
         Sets the attribute "level" for nodes and self.depth for AST pair.
-        The head of the AST (ls.ROOT_TYPE) has level=0.
+        The head of the AST (self.language_support_tools.ROOT_TYPE) has level=0.
         """
         depth = 0 
-        current_level_nodes = dict(filter(lambda node: node[-1]['type']==ls.ROOT_TYPE, self.nodes.items()))
+        current_level_nodes = dict(filter(lambda node: node[-1]['type']==self.language_support_tools.ROOT_TYPE, self.nodes.items()))
         while current_level_nodes.keys():
             next_level_nodes = dict()
             for node_id, node_data in current_level_nodes.items():
@@ -132,7 +134,7 @@ class AST(nx.DiGraph):
         """
         Returns the root node of the cluster as a dict of {'node_id': dict(nod_data)}
         """
-        return dict(filter(lambda node: node[-1]['type']==ls.ROOT_TYPE,
+        return dict(filter(lambda node: node[-1]['type']==self.language_support_tools.ROOT_TYPE,
                            self.nodes.items()))
                 
     def get_parent(self, node_data, *args, **kwargs):
@@ -147,7 +149,7 @@ class AST(nx.DiGraph):
         Returns the ancestors tree of the node (all nodes from root to node_data)
         as a dict of {'node_id': dict(nod_data)} sorted by level.
         """
-        if node_data["type"] != ls.ROOT_TYPE:
+        if node_data["type"] != self.language_support_tools.ROOT_TYPE:
             parent_data = self.get_data(self.get_parent(node_data))
             ancestors = {parent_data["id"]:parent_data, **self.get_ancestors(parent_data)}
         else:
@@ -204,7 +206,7 @@ class AST(nx.DiGraph):
         """
         affected_nodes =  dict(filter(lambda node: node[-1]['operation']!='no-op',
                                       self.nodes.items()))
-        ignored_nodes = filter(lambda node_data: node_data['type'] in ls.IGNORED_TYPES, affected_nodes.values())
+        ignored_nodes = filter(lambda node_data: node_data['type'] in self.language_support_tools.IGNORED_TYPES, affected_nodes.values())
         for ignored_node_data in ignored_nodes: # TODO: Convert to non-loop
             ignored_subtree_nodes = self.get_subtree_nodes(ignored_node_data)
             affected_nodes = dict(filter(lambda node: node[-1]['id'] not in ignored_subtree_nodes,
@@ -252,7 +254,7 @@ class AST(nx.DiGraph):
         slice_edges = list(filter(lambda edge: edge[0] in slice_nodes and edge[1] in slice_nodes, self.edges.data()))
         
         # Create slice
-        return ASTSlice(self.name, slice_nodes, slice_edges)
+        return ASTSlice(self.name, slice_nodes, slice_edges, language_support_tools=self.language_support_tools)
     
     def get_subtree_nodes(self, head_data, *args, **kwargs):
         """
@@ -288,6 +290,7 @@ class AST(nx.DiGraph):
         the node_data of a the nodes in the subtree with head_data as the head (method=="SUBTREE")
         to the self.summarized_nodes[method] (a dictionary)
         """
+        
         if method == "SUBTREE":
             subtree = self.get_subtree_nodes(head_data)
             summarized = dict(filter(lambda node: node[-1]['operation']==head_data['operation'] or node[-1]['operation']=='no-op',
@@ -310,7 +313,10 @@ class ASTSlice(AST):
     Represents the slice of the AST that contains only the contaminated
     nodes in the change.
     """
-    def __init__(self, cluster=None, nodes={}, edges=[], *args, **kwargs):
+    def __init__(self, cluster=None, nodes={}, edges=[], language_support_tools=None, *args, **kwargs):
+        
+        self.language_support_tools = language_support_tools
+        
         if edges:
             super(AST, self).__init__(edges)
             nx.set_node_attributes(self, nodes)
@@ -318,7 +324,7 @@ class ASTSlice(AST):
             super(AST, self).__init__()
             self.add_nodes_from(nodes)
             nx.set_node_attributes(self, nodes)
-
+            
         self.cluster = cluster
         self.root = self.get_root()
         self.depth = max([0]+list(map(lambda node: node[1].get('level')+1, self.nodes.items())))
@@ -335,11 +341,12 @@ class ASTDiff(object):
     the source and destination nx.DiGraph objects
     and the dictionary {source_node: destination_node} of matched nodes.
     """
-    def __init__(self, source, destination, matches, file_name, commit_hash, *args, **kwargs):
+    def __init__(self, source, destination, matches, file_name, commit_hash, LANGUAGE, *args, **kwargs):
+        self.language_support_tools = importlib.import_module(f'languages.{LANGUAGE}.supporters')
         self.file_name = file_name
         self.commit_hash = commit_hash
-        self.source = AST(source, file_name=file_name, commit_hash=commit_hash)
-        self.destination = AST(destination, file_name=file_name, commit_hash=commit_hash)
+        self.source = AST(source, file_name=file_name, commit_hash=commit_hash, language_support_tools=self.language_support_tools)
+        self.destination = AST(destination, file_name=file_name, commit_hash=commit_hash, language_support_tools=self.language_support_tools)
         self.source_match = matches
         self.destination_match = dict(map(lambda pair: (pair[1], pair[0]), self.source_match.items()))
 
@@ -382,28 +389,28 @@ class ASTDiff(object):
         for level in range(depth):
             # DELETIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='deleted' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in self.language_support_tools.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_deletion(node_data, method)
 
             # ADDITIONS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='added' and\
-                                                    not self.destination.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
+                                                    not self.destination.get_summarization_status(node_data, method) and node_data['type'] not in self.language_support_tools.IGNORED_TYPES,
                                 self.destination.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_addition(node_data, method)
             
             # MOVEMENTS
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='moved' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in self.language_support_tools.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_movement(node_data, method)
 
             # UPDATES
             in_process = filter(lambda node_data: node_data['level']==level and node_data['operation']=='updated' and\
-                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in ls.IGNORED_TYPES,
+                                                    not self.source.get_summarization_status(node_data, method) and node_data['type'] not in self.language_support_tools.IGNORED_TYPES,
                                 self.source.affected_nodes.values())
             for node_data in in_process:
                 self.summarize_update(node_data, method)
@@ -420,7 +427,7 @@ class ASTDiff(object):
         """
         self.summary[method].append({'operation': 'deleted',
                                      'source_node': node_data['type'],
-                                     'source_node_summary': ls.stringify(self.source, node_data),
+                                     'source_node_summary': self.language_support_tools.stringify(self.source, node_data),
                                      'source_position': f'{node_data["s_pos"]}-{node_data["e_pos"]}',
                                      'destination_node': None,
                                      'destination_node_summary': None,
@@ -441,7 +448,7 @@ class ASTDiff(object):
                                      'source_node_summary': None,
                                      'source_position': None,
                                      'destination_node': node_data['type'],
-                                     'destination_node_summary': ls.stringify(self.destination, node_data),
+                                     'destination_node_summary': self.language_support_tools.stringify(self.destination, node_data),
                                      'destination_postion': f'{node_data["s_pos"]}-{node_data["e_pos"]}'})
         
         self.destination.update_summarization_status(node_data, method)
@@ -465,10 +472,10 @@ class ASTDiff(object):
             movement_type = 'moved_changed_parent'
         self.summary[method].append({'operation': movement_type,
                                      'source_node': source_node['type'],
-                                     'source_node_summary': ls.stringify(self.source, source_node),
+                                     'source_node_summary': self.language_support_tools.stringify(self.source, source_node),
                                      'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
                                      'destination_node': destination_node['type'],
-                                     'destination_node_summary': ls.stringify(self.destination, destination_node),
+                                     'destination_node_summary': self.language_support_tools.stringify(self.destination, destination_node),
                                      'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
         self.source.update_summarization_status(source_node, method)
@@ -486,10 +493,10 @@ class ASTDiff(object):
         destination_node = self.destination.get_data(self.get_match(source_node))
         self.summary[method].append({'operation': 'updated',
                                      'source_node': source_node['type'],
-                                     'source_node_summary': ls.stringify(self.source, source_node),
+                                     'source_node_summary': self.language_support_tools.stringify(self.source, source_node),
                                      'source_position': f'{source_node["s_pos"]}-{source_node["e_pos"]}',
                                      'destination_node': destination_node['type'],
-                                     'destination_node_summary': ls.stringify(self.destination, destination_node),
+                                     'destination_node_summary': self.language_support_tools.stringify(self.destination, destination_node),
                                      'destination_postion': f'{destination_node["s_pos"]}-{destination_node["e_pos"]}'})
         
         self.source.update_summarization_status(source_node, method)
