@@ -3,24 +3,43 @@ from pydriller import Repository
 import pandas as pd
 import subprocess
 from datetime import datetime
-from utils.helpers import (write_source_code, file_is_build,
-                   get_processed_path, read_dotdiff)
-from utils.configurations import (COMMITS, REPOSITORY, SUMMARIZATION_METHODS,
-                                  BUILD_SYSTEM, PATTERN_SETS, ROOT_PATH, SAVE_PATH,
-                                  LANGUAGES)
+from utils.helpers import (
+    write_source_code,
+    file_is_build,
+    get_processed_path,
+    read_dotdiff,
+)
+from utils.configurations import (
+    COMMITS,
+    REPOSITORY,
+    SUMMARIZATION_METHODS,
+    BUILD_SYSTEM,
+    PATTERN_SETS,
+    ROOT_PATH,
+    SAVE_PATH,
+    LANGUAGES,
+)
 from ast_model import ASTDiff
 
 if COMMITS == "ALL":
-    repo = Repository(REPOSITORY, 
-                      only_modifications_with_file_types=sum(PATTERN_SETS, []), # This currently throws an error
-                      only_in_branch='main', 
-                      order='reverse')
+    repo = Repository(
+        REPOSITORY,
+        only_modifications_with_file_types=sum(
+            PATTERN_SETS, []
+        ),  # This currently throws an error
+        only_in_branch="main",
+        order="reverse",
+    )
 elif type(COMMITS) is list:
-    repo = Repository(REPOSITORY, 
-                      only_modifications_with_file_types=sum(PATTERN_SETS, []), # This currently throws an error
-                      only_commits=COMMITS,
-                      only_in_branch='main', 
-                      order='reverse') 
+    repo = Repository(
+        REPOSITORY,
+        only_modifications_with_file_types=sum(
+            PATTERN_SETS, []
+        ),  # This currently throws an error
+        only_commits=COMMITS,
+        only_in_branch="main",
+        order="reverse",
+    )
 
 # Initialize
 modified_build_files = []
@@ -61,16 +80,15 @@ for commit in repo.traverse_commits():
             }
         )
         continue
-    
+
     # Iterate over the languages and file naming conventions
     # supported by the build system
-    for index in range(len(LANGUAGES)):
-        LANGUAGE = LANGUAGES[index]
-        PATTERNS = PATTERN_SETS[index]
-        
+    for LANGUAGE in LANGUAGES:
+        PATTERNS = PATTERN_SETS[LANGUAGE]
+
         # If the commit is not missing and modified files are available,
         # iterate over the modified files to find modified build files.
-        for modified_file in commit.modified_files: # yarn.lock
+        for modified_file in commit.modified_files:  # yarn.lock
             # Identify if the file is a build specification file
             if file_is_build(modified_file.filename, PATTERNS):
                 # Commit-level attribute to show that the commit has affected build files.
@@ -78,81 +96,107 @@ for commit in repo.traverse_commits():
 
                 # Start analysis of the build file
                 file_start = datetime.now()
-                file_modification_data = {'commit_hash': commit.hash,
-                                            'commit_parents': commit.parents,
-                                            'file_name': modified_file.filename,
-                                            'build_language': LANGUAGE,
-                                            'file_action': modified_file.change_type,
-                                            'before_path': modified_file.old_path,
-                                            'after_path': modified_file.new_path,
-                                            'saved_as': get_processed_path(modified_file),
-                                            'has_gumtree_error': False}
+                file_modification_data = {
+                    "commit_hash": commit.hash,
+                    "commit_parents": commit.parents,
+                    "file_name": modified_file.filename,
+                    "build_language": LANGUAGE,
+                    "file_action": modified_file.change_type,
+                    "before_path": modified_file.old_path,
+                    "after_path": modified_file.new_path,
+                    "saved_as": get_processed_path(modified_file),
+                    "has_gumtree_error": False,
+                }
                 modified_build_files.append(file_modification_data)
-                
+
                 # Setup commit directory
-                commit_dir = Path(SAVE_PATH/commit.hash)
-                
+                commit_dir = Path(SAVE_PATH / commit.hash)
+
                 # build files before change
-                before_dir = commit_dir/'before'
+                before_dir = commit_dir / "before"
                 before_dir.mkdir(parents=True, exist_ok=True)
-                write_source_code(before_dir/file_modification_data['saved_as'],
-                                    modified_file.source_code_before)
-                
+                write_source_code(
+                    before_dir / file_modification_data["saved_as"],
+                    modified_file.source_code_before,
+                )
+
                 # build files after change
-                after_dir = commit_dir/'after'
+                after_dir = commit_dir / "after"
                 after_dir.mkdir(parents=True, exist_ok=True)
-                write_source_code(after_dir/file_modification_data['saved_as'],
-                                    modified_file.source_code)
+                write_source_code(
+                    after_dir / file_modification_data["saved_as"],
+                    modified_file.source_code,
+                )
 
                 # GumTree output setup
-                gumtree_output_dir = commit_dir/'gumtree_output'
+                gumtree_output_dir = commit_dir / "gumtree_output"
                 gumtree_output_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 # run GumTree
-                command = f'{ROOT_PATH/"process.sh"} '+\
-                            f'{LANGUAGE} {commit_dir} '+\
-                                f'{file_modification_data["saved_as"]} '+\
-                                    f'{gumtree_output_dir} '
+                command = (
+                    f'{ROOT_PATH/"process.sh"} '
+                    + f"{LANGUAGE} {commit_dir} "
+                    + f'{file_modification_data["saved_as"]} '
+                    + f"{gumtree_output_dir} "
+                )
                 process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
                 output, error = process.communicate()
-                with open(f'{gumtree_output_dir}/get_webdiff.txt', 'a') as f:
-                    f.write(f'gumtree webdiff -g {LANGUAGE}-treesitter ' + \
-                            f'{commit_dir}/before/{file_modification_data["saved_as"]} ' + \
-                                f'{commit_dir}/after/{file_modification_data["saved_as"]}\n')
-                
+                with open(f"{gumtree_output_dir}/get_webdiff.txt", "a") as f:
+                    f.write(
+                        f"gumtree webdiff -g {LANGUAGE}-treesitter "
+                        + f'{commit_dir}/before/{file_modification_data["saved_as"]} '
+                        + f'{commit_dir}/after/{file_modification_data["saved_as"]}\n'
+                    )
+
                 # Summarizer output setup
-                summary_dir = commit_dir/'summaries'
+                summary_dir = commit_dir / "summaries"
                 summary_dir.mkdir(parents=True, exist_ok=True)
 
                 # Check if the output of the GumTree is valid.
                 try:
-                    dotdiff_content = read_dotdiff(f'{gumtree_output_dir}/{file_modification_data["saved_as"]}_dotdiff.dot')
+                    dotdiff_content = read_dotdiff(
+                        f'{gumtree_output_dir}/{file_modification_data["saved_as"]}_dotdiff.dot'
+                    )
                 except:
-                    file_modification_data['has_gumtree_error'] = True
+                    file_modification_data["has_gumtree_error"] = True
                 # Do not apply method if GumTree output throws an error
-                if not file_modification_data['has_gumtree_error']:
+                if not file_modification_data["has_gumtree_error"]:
                     # Load GumTree output and slice
-                    diff = ASTDiff(*dotdiff_content, file_modification_data["file_name"], commit.hash, LANGUAGE)
-                    diff.source.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_source.dot')
-                    diff.destination.slice.export_dot(f'{summary_dir}/{file_modification_data["saved_as"]}_slice_destination.dot')
+                    diff = ASTDiff(
+                        *dotdiff_content,
+                        file_modification_data["file_name"],
+                        commit.hash,
+                        LANGUAGE,
+                    )
+                    diff.source.slice.export_dot(
+                        f'{summary_dir}/{file_modification_data["saved_as"]}_slice_source.dot'
+                    )
+                    diff.destination.slice.export_dot(
+                        f'{summary_dir}/{file_modification_data["saved_as"]}_slice_destination.dot'
+                    )
 
                     # Convert slices to svg
-                    command = f'{ROOT_PATH/"convert.sh"} '+\
-                                f'{summary_dir}'
+                    command = f'{ROOT_PATH/"convert.sh"} ' + f"{summary_dir}"
                     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
                     output, error = process.communicate()
 
                     # Summarize and log
                     for sm in SUMMARIZATION_METHODS:
                         summary = diff.summarize(method=sm)
-                        summaries[sm] += list(map(lambda entry: {'commit': commit.hash,
-                                                                'subject_file': file_modification_data['saved_as'],
-                                                                **entry},
-                                                    summary))
+                        summaries[sm] += list(
+                            map(
+                                lambda entry: {
+                                    "commit": commit.hash,
+                                    "subject_file": file_modification_data["saved_as"],
+                                    **entry,
+                                },
+                                summary,
+                            )
+                        )
 
                 # End of file analysis
-                file_modification_data['elapsed_time'] = datetime.now()-file_start
-            
+                file_modification_data["elapsed_time"] = datetime.now() - file_start
+
             # If at least one file is non-build, log it
             else:
                 # Commit-level attribute to show that the commit has affected non-build files.
