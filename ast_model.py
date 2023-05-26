@@ -44,7 +44,7 @@ class AST(nx.DiGraph):
 
         # Set AST attributes
         # Also sets self.depth = max(levels)+1
-        self.root = self.get_root()
+        self.set_root()
         self.depth = max(
             [0] + list(map(lambda node: node["level"] + 1, self.nodes.values()))
         )
@@ -154,16 +154,22 @@ class AST(nx.DiGraph):
             file_name = "<UNKNOWN_FILE>"
         return f' at {file_name}:{node_data["s_pos"]}-{node_data["e_pos"]}'
 
-    def get_root(self, *args, **kwargs):
+    def set_root(self, *args, **kwargs):
         """
         Returns the root node of the cluster as a dict of {'node_id': dict(nod_data)}
         """
-        return dict(
+        root = dict(
             filter(
                 lambda node: node[-1]["type"] == self.language_support_tools.ROOT_TYPE,
                 self.nodes.items(),
             )
         )
+        if root:
+            self.root = root
+        else:
+            raise Exception(
+                f"Root node of type {self.language_support_tools.ROOT_TYPE} not found. Please make sure your language support configurations are correct."
+            )
 
     def get_parent(self, node_data, *args, **kwargs):
         """
@@ -461,7 +467,7 @@ class ASTSlice(AST):
             nx.set_node_attributes(self, nodes)
 
         self.cluster = cluster
-        self.root = self.get_root()
+        self.set_root()
         self.depth = max(
             [0] + list(map(lambda node: node[1].get("level") + 1, self.nodes.items()))
         )
