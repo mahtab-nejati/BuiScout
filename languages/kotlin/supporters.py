@@ -14,8 +14,10 @@ BUILTIN_COMMANDS = []
 class NameGetter(NodeVisitor):
     pass
 
+
 class DefUseChains(cm.DefUseChains):
     pass
-    
+
+
 def stringify(ast, node_data, verbose=False, *args, **kwargs):
     pass

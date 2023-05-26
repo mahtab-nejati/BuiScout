@@ -2,7 +2,7 @@ from utils.visitors import NodeVisitor
 import data_flow_analysis.chain_model as cm
 
 
-ROOT_TYPE = "source_file"
+ROOT_TYPE = "module"
 # Nodes of type listed in IGNORED_TYPES
 # and their entire subtree are ignored
 IGNORED_TYPES = []

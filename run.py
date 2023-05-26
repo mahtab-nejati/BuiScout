@@ -14,7 +14,6 @@ from utils.configurations import (
     COMMITS,
     REPOSITORY,
     SUMMARIZATION_METHODS,
-    BUILD_SYSTEM,
     PATTERN_SETS,
     ROOT_PATH,
     SAVE_PATH,
@@ -22,19 +21,19 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
-PATTERNS_FLATTED = reduce(lambda acc, x: acc + x, PATTERN_SETS.values())
+PATTERNS_FLATTENED = reduce(lambda acc, x: acc + x, PATTERN_SETS.values())
 
 if COMMITS == "ALL":
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=PATTERNS_FLATTED,  # This currently throws an error for CMake
+        only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for CMake
         only_in_branch="main",
         order="reverse",
     )
 elif type(COMMITS) is list:
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=PATTERNS_FLATTED,  # This currently throws an error for CMake
+        only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for CMake
         only_commits=COMMITS,
         only_in_branch="main",
         order="reverse",
