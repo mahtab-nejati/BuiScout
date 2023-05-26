@@ -2,7 +2,6 @@ from pathlib import Path
 from pydriller import Repository
 import pandas as pd
 import subprocess
-from functools import reduce
 from datetime import datetime
 from utils.helpers import (
     write_source_code,
@@ -22,19 +21,21 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
-flattened_patterns = reduce(lambda a, b: a + b, [[]] + list(PATTERN_SETS.values()))
-
 if COMMITS == "ALL":
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=flattened_patterns,  # This currently throws an error for CMake
+        only_modifications_with_file_types=sum(
+            PATTERN_SETS, []
+        ),  # This currently throws an error
         only_in_branch="main",
         order="reverse",
     )
 elif type(COMMITS) is list:
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=flattened_patterns,  # This currently throws an error for CMake
+        only_modifications_with_file_types=sum(
+            PATTERN_SETS, []
+        ),  # This currently throws an error
         only_commits=COMMITS,
         only_in_branch="main",
         order="reverse",
