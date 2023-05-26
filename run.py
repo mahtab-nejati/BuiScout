@@ -1,3 +1,4 @@
+from functools import reduce
 from pathlib import Path
 from pydriller import Repository
 import pandas as pd
@@ -21,21 +22,19 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
+PATTERNS_FLATTED = reduce(lambda acc, x: acc + x, PATTERN_SETS.values())
+
 if COMMITS == "ALL":
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=sum(
-            PATTERN_SETS, []
-        ),  # This currently throws an error
+        only_modifications_with_file_types=PATTERNS_FLATTED,  # This currently throws an error for CMake
         only_in_branch="main",
         order="reverse",
     )
 elif type(COMMITS) is list:
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=sum(
-            PATTERN_SETS, []
-        ),  # This currently throws an error
+        only_modifications_with_file_types=PATTERNS_FLATTED,  # This currently throws an error for CMake
         only_commits=COMMITS,
         only_in_branch="main",
         order="reverse",
