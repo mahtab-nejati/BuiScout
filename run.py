@@ -13,6 +13,7 @@ from utils.helpers import (
 from utils.configurations import (
     COMMITS,
     REPOSITORY,
+    BRANCH,
     SUMMARIZATION_METHODS,
     PATTERN_SETS,
     ROOT_PATH,
@@ -21,21 +22,23 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
-PATTERNS_FLATTENED = reduce(lambda acc, x: acc + x, PATTERN_SETS.values())
+# PATTERNS_FLATTENED = reduce(
+#     lambda acc, x: acc + x, PATTERN_SETS.values()
+# )  # Only needed if using `only_modifications_with_file_types`
 
 if COMMITS == "ALL":
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for CMake
-        only_in_branch="main",
+        # only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for et-legacy project
+        only_in_branch=BRANCH,
         order="reverse",
     )
 elif type(COMMITS) is list:
     repo = Repository(
         REPOSITORY,
-        only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for CMake
+        # only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for et-legacy project
         only_commits=COMMITS,
-        only_in_branch="main",
+        only_in_branch=BRANCH,
         order="reverse",
     )
 
@@ -131,13 +134,14 @@ for commit in repo.traverse_commits():
                 gumtree_output_dir.mkdir(parents=True, exist_ok=True)
 
                 # run GumTree
-                command = (
-                    f'{ROOT_PATH/"process.sh"} '
-                    + f"{LANGUAGE} {commit_dir} "
-                    + f'{file_modification_data["saved_as"]} '
-                    + f"{gumtree_output_dir} "
-                )
-                process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+                command = [
+                    str(ROOT_PATH / "process.sh"),
+                    str(LANGUAGE),
+                    str(commit_dir),
+                    str(file_modification_data["saved_as"]),
+                    str(gumtree_output_dir),
+                ]
+                process = subprocess.Popen(command, stdout=subprocess.PIPE)
                 output, error = process.communicate()
                 with open(f"{gumtree_output_dir}/get_webdiff.txt", "a") as f:
                     f.write(
@@ -174,8 +178,8 @@ for commit in repo.traverse_commits():
                     )
 
                     # Convert slices to svg
-                    command = f'{ROOT_PATH/"convert.sh"} ' + f"{summary_dir}"
-                    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+                    command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
+                    process = subprocess.Popen(command, stdout=subprocess.PIPE)
                     output, error = process.communicate()
 
                     # Summarize and log

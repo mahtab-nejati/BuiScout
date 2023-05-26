@@ -9,6 +9,10 @@ with open(ROOT_PATH / "config.json", "r") as f:
 DATA_PATH = Path(config["DATA_PATH"])
 PROJECT = config["PROJECT"]
 REPOSITORY = config["REPOSITORY"]
+if config["BRANCH"] == "ALL":
+    BRANCH = None
+else:
+    BRANCH = config["BRANCH"]
 BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
 SUMMARIZATION_METHODS = config["SUMMARIZATION_METHODS"]
 COMMITS = config["COMMITS"]
