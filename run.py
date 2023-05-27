@@ -1,4 +1,3 @@
-from functools import reduce
 from pathlib import Path
 from pydriller import Repository
 import pandas as pd
@@ -14,6 +13,7 @@ from utils.configurations import (
     COMMITS,
     REPOSITORY,
     BRANCH,
+    PATTERNS_FLATTENED,
     SUMMARIZATION_METHODS,
     PATTERN_SETS,
     ROOT_PATH,
@@ -22,25 +22,13 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
-# PATTERNS_FLATTENED = reduce(
-#     lambda acc, x: acc + x, PATTERN_SETS.values()
-# )  # Only needed if using `only_modifications_with_file_types`
-
-if COMMITS == "ALL":
-    repo = Repository(
-        REPOSITORY,
-        # only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for et-legacy project
-        only_in_branch=BRANCH,
-        order="reverse",
-    )
-elif type(COMMITS) is list:
-    repo = Repository(
-        REPOSITORY,
-        # only_modifications_with_file_types=PATTERNS_FLATTENED,  # This currently throws an error for et-legacy project
-        only_commits=COMMITS,
-        only_in_branch=BRANCH,
-        order="reverse",
-    )
+repo = Repository(
+    REPOSITORY,
+    only_modifications_with_file_types=PATTERNS_FLATTENED,
+    only_commits=COMMITS,
+    only_in_branch=BRANCH,
+    order="reverse",
+)
 
 # Initialize
 modified_build_files = []
