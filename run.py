@@ -27,7 +27,7 @@ repo = Repository(
     only_modifications_with_file_types=PATTERNS_FLATTENED,
     only_commits=COMMITS,
     only_in_branch=BRANCH,
-    order="reverse",
+    # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)
 )
 
 # Initialize
@@ -40,8 +40,10 @@ for sm in SUMMARIZATION_METHODS:
 all_commits_start = datetime.now()
 
 # Run tool on commits
+chronological_commit_order = 0
 for commit in repo.traverse_commits():
     print(f"Commit in process: {commit.hash}")
+    chronological_commit_order += 1
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
     has_build = False
@@ -61,6 +63,7 @@ for commit in repo.traverse_commits():
         all_commits.append(
             {
                 "commit_hash": commit.hash,
+                "chronological_commit_order": chronological_commit_order,
                 "commit_parents": commit.parents,
                 "has_build": None,
                 "has_nonbuild": None,
