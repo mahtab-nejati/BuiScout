@@ -48,7 +48,7 @@ class AST(nx.DiGraph):
         self.depth = max(
             [0] + list(map(lambda node: node["level"] + 1, self.nodes.values()))
         )
-        self.affected_nodes = self.get_affected_nodes()
+        self.set_affected_nodes()
         self.summarized_nodes = dict()
 
         # Slice up changes
@@ -106,7 +106,6 @@ class AST(nx.DiGraph):
         color = node_data["color"]
 
         del node_data["label"]
-        # del node[-1]['color'] # TODO: kept for visualization purposes
 
         if color == "red":
             operation = "deleted"
@@ -194,7 +193,7 @@ class AST(nx.DiGraph):
                 **self.get_ancestors(parent_data),
             }
         else:
-            return {node_data["id"]: node_data}
+            return {}
         return dict(sorted(ancestors.items(), key=lambda node: node[1]["level"]))
 
     def get_children(self, node_data, *args, **kwargs):
@@ -267,7 +266,7 @@ class AST(nx.DiGraph):
         )[child_order]
         return {child["id"]: {child}}
 
-    def get_affected_nodes(self, *args, **kwargs):
+    def set_affected_nodes(self, *args, **kwargs):
         """
         Returns the affected nodes in the change from the AST
         as a dict of {'node_id': dict(nod_data)}.
@@ -277,95 +276,65 @@ class AST(nx.DiGraph):
         affected_nodes = dict(
             filter(lambda node: node[-1]["operation"] != "no-op", self.nodes.items())
         )
-        ignored_nodes = filter(
-            lambda node_data: node_data["type"]
-            in self.language_support_tools.IGNORED_TYPES,
-            affected_nodes.values(),
+        ignored_nodes = list(
+            filter(
+                lambda node_data: node_data["type"]
+                in self.language_support_tools.IGNORED_TYPES,
+                affected_nodes.values(),
+            )
         )
-        for ignored_node_data in ignored_nodes:  # TODO: Convert to non-loop
-            ignored_subtree_nodes = self.get_subtree_nodes(ignored_node_data)
+        if ignored_nodes:
+            ignored_subtree_nodes = reduce(
+                lambda a, b: {**a, **b},
+                map(
+                    lambda ignored_node_data: self.get_subtree_nodes(ignored_node_data),
+                    ignored_nodes,
+                ),
+            )
             affected_nodes = dict(
                 filter(
                     lambda node: node[-1]["id"] not in ignored_subtree_nodes,
                     affected_nodes.items(),
                 )
             )
-        return affected_nodes
+        self.affected_nodes = affected_nodes
 
     def get_slice(self, *args, **kwargs):
         """
         Returns contaminated slice from the cluster as a SlicedAST() object.
-        TODO: Redo (recursive)
         """
-        # Initialize slice data
-        affected_nodes = self.affected_nodes
-        impact_depth = max(
-            [0]
-            + list(map(lambda node_data: node_data["level"], affected_nodes.values()))
-        )
-        current_slice = dict(zip(list(range(self.depth)), [None] * self.depth))
-        current_slice[0] = self.root
-
-        # Slice upwards
-        for l in range(impact_depth, 0, -1):
-            if current_slice[l] is None:
-                current_slice[l] = dict().copy()
-            current_slice[l].update(
-                dict(
-                    filter(lambda node: node[-1]["level"] == l, affected_nodes.items())
-                )
-            )
-
-            for pl in range(l - 1, 0, -1):
-                if current_slice[pl] is None:
-                    current_slice[pl] = dict().copy()
-                current_slice[pl].update(
-                    reduce(
-                        lambda a, b: {**a, **b},
-                        [{}]
-                        + list(
-                            map(
-                                lambda node_data: self.get_parent(node_data),
-                                current_slice[pl + 1].values(),
-                            )
-                        ),
-                    )
-                )
-
-        # Slice downwards
-        for l in range(1, self.depth - 1):
-            if current_slice[l] is None:
-                current_slice[l] = dict().copy()
-            if current_slice[l + 1] is None:
-                current_slice[l + 1] = dict().copy()
-            current_slice[l + 1].update(
+        if not self.affected_nodes.keys():
+            slice_nodes = self.root
+            slice_edges = []
+        else:
+            slice_nodes = deepcopy(self.affected_nodes)
+            slice_nodes.update(
                 reduce(
                     lambda a, b: {**a, **b},
-                    [{}]
-                    + list(
-                        map(
-                            lambda node_data: self.get_children(node_data),
-                            current_slice[l].values(),
-                        )
+                    map(
+                        lambda node_data: self.get_ancestors(node_data),
+                        slice_nodes.values(),
                     ),
                 )
             )
-
-        # Clean slice data
-        current_slice = dict(
-            filter(
-                lambda level_nodes: level_nodes[1] is not None, current_slice.items()
+            slice_nodes.update(
+                reduce(
+                    lambda a, b: {**a, **b},
+                    map(
+                        lambda node_data: self.get_subtree_nodes(node_data),
+                        filter(  # TODO: Can provide better pruning with options...
+                            lambda node_data: node_data["level"] == 1,
+                            slice_nodes.values(),
+                        ),
+                    ),
+                )
             )
-        )
-        slice_nodes = reduce(
-            lambda a, b: {**a, **b}, [{}] + list(current_slice.values())
-        )
-        slice_edges = list(
-            filter(
-                lambda edge: edge[0] in slice_nodes and edge[1] in slice_nodes,
-                self.edges.data(),
+            slice_edges = list(
+                filter(
+                    lambda edge: edge[0] in slice_nodes and edge[1] in slice_nodes,
+                    self.edges.data(),
+                )
             )
-        )
 
         # Create slice
         return ASTSlice(
@@ -379,16 +348,24 @@ class AST(nx.DiGraph):
         """
         Returns the subtree with head_data as the head of the subtree
         as a dictionary of {'node_id':{node_data}}
-        TODO: Redo (recursive)
         """
         subtree_nodes = {head_data["id"]: head_data}
-        current_level_nodes = deepcopy(subtree_nodes)
-        while current_level_nodes.keys():
-            next_level_nodes = dict()
-            for node_data in current_level_nodes.values():
-                next_level_nodes.update(self.get_children(node_data))
-            subtree_nodes.update(deepcopy(current_level_nodes))
-            current_level_nodes = dict(next_level_nodes)
+        next_level_nodes = reduce(
+            lambda a, b: {**a, **b},
+            map(
+                lambda node_data: self.get_children(node_data),
+                subtree_nodes.values(),
+            ),
+        )
+        if next_level_nodes.keys():
+            next_level_jungle = reduce(
+                lambda a, b: {**a, **b},
+                map(
+                    lambda node_data: self.get_subtree_nodes(node_data),
+                    next_level_nodes.values(),
+                ),
+            )
+            subtree_nodes.update(next_level_jungle)
         return subtree_nodes
 
     def unparse_subtree(self, head_data, *args, **kwargs):
