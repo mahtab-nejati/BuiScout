@@ -2,7 +2,7 @@ from utils.visitors import NodeVisitor
 import data_flow_analysis.chain_model as cm
 
 
-ROOT_TYPE = "module"
+ROOT_TYPE = "source_file"
 # Nodes of type listed in IGNORED_TYPES
 # and their entire subtree are ignored
 IGNORED_TYPES = [
@@ -51,7 +51,7 @@ class NameGetter(NodeVisitor):
             self.ast.get_children_by_type(node_data, "identifier")
         )["content"].upper()
         method = f"visit_{command_identifier}"
-        visitor = getattr(self, method, self.visit_defined_normal_command)
+        visitor = getattr(self, method, self.visit_user_defined_normal_command)
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
