@@ -11,21 +11,24 @@ from utils.helpers import (
     read_dotdiff,
 )
 from utils.configurations import (
-    COMMITS,
-    REPOSITORY,
-    BRANCH,
-    PATTERNS_FLATTENED,
-    SUMMARIZATION_METHODS,
-    PATTERN_SETS,
     ROOT_PATH,
     SAVE_PATH,
+    REPOSITORY,
+    BRANCH,
+    COMMITS,
     LANGUAGES,
+    PATTERN_SETS,
+    PATTERNS_FLATTENED,
+    FILTERING,
+    SUMMARIZATION_METHODS,
 )
 from ast_model import ASTDiff
 
 repo = Repository(
     REPOSITORY,
-    only_modifications_with_file_types=PATTERNS_FLATTENED,  # See EXCEPTION_HANDLING_GitPython in comments within code
+    only_modifications_with_file_types=PATTERNS_FLATTENED
+    if FILTERING
+    else None,  # See EXCEPTION_HANDLING_GitPython in comments within code
     only_commits=COMMITS,
     only_in_branch=BRANCH,
     # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)

@@ -55,8 +55,8 @@ elif BUILD_SYSTEM == "gradle":
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
 
-
+PATTERNS_FLATTENED = reduce(lambda a, b: a + b, PATTERN_SETS.values())
 if config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES":
-    PATTERNS_FLATTENED = reduce(lambda a, b: a + b, PATTERN_SETS.values())
+    FILTERING = True
 else:
-    PATTERNS_FLATTENED = None
+    FILTERING = False
