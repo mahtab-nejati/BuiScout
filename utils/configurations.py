@@ -1,8 +1,12 @@
 import json
 from pathlib import Path
 from functools import reduce
+import sys
 
 ROOT_PATH = Path(__file__).parent.parent
+# Appending root path to sys.path
+# to import from utils and ast_model
+sys.path.append(str(ROOT_PATH))
 
 with open(ROOT_PATH / "config.json", "r") as f:
     config = json.load(f)
