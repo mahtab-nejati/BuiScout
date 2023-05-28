@@ -24,7 +24,7 @@ from ast_model import ASTDiff
 
 repo = Repository(
     REPOSITORY,
-    only_modifications_with_file_types=PATTERNS_FLATTENED,
+    only_modifications_with_file_types=PATTERNS_FLATTENED,  # See EXCEPTION_HANDLING_GitPython in comments within code
     only_commits=COMMITS,
     only_in_branch=BRANCH,
     # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)
@@ -52,9 +52,23 @@ for commit in repo.traverse_commits():
     # Start analysis of the commit
     commit_start = datetime.now()
 
+    # EXCEPTION_HANDLING_GitPython
     # Error handling for missing commits
     # GitPython, and consequently PyDriller,
     # do not handle this well.
+    # Although PyDriller offers the
+    # only_modifications_with_file_types option,
+    # using such filtering throws an error if the
+    # commit is missing as GitPython attempts an access
+    # to the commit when iterating over the commits.
+    # In practice, this does not provide any
+    # performance improvements either, as the
+    # traversal takes place by iterating over
+    # all the commits and just skipping the ones
+    # filtered based on user's specifications.
+    # This is why use of
+    # "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "NO" is recommended
+    # in the configurations.
     try:
         # This will throw an error if the commit is missing
         commit.modified_files
