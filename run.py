@@ -2,7 +2,6 @@ from pathlib import Path
 from pydriller import Repository
 import pandas as pd
 import subprocess
-import gc
 from datetime import datetime
 from utils.helpers import (
     write_source_code,
@@ -46,7 +45,6 @@ all_commits_start = datetime.now()
 # Run tool on commits
 chronological_commit_order = 0
 for commit in repo.traverse_commits():
-    gc.collect()
     print(f"Commit in process: {commit.hash}")
     chronological_commit_order += 1
     # Commit-level attributes that show whether the commit
@@ -218,6 +216,7 @@ for commit in repo.traverse_commits():
     all_commits.append(
         {
             "commit_hash": commit.hash,
+            "chronological_commit_order": chronological_commit_order,
             "commit_parents": commit.parents,
             "has_build": has_build,
             "has_nonbuild": has_nonbuild,
