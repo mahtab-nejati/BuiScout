@@ -19,7 +19,7 @@ if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:
     BRANCH = config["BRANCH"]
-if config["COMMITS"].upper() == "ALL":
+if isinstance(config["COMMITS"], str) and config["COMMITS"].upper() == "ALL":
     COMMITS = None
 else:
     COMMITS = config["COMMITS"]
