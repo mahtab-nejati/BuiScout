@@ -1,5 +1,6 @@
 from pathlib import Path
 from pydriller import Repository
+from tqdm import tqdm
 import pandas as pd
 import subprocess
 from datetime import datetime
@@ -44,8 +45,8 @@ all_commits_start = datetime.now()
 
 # Run tool on commits
 chronological_commit_order = 0
-for commit in repo.traverse_commits():
-    print(f"Commit in process: {commit.hash}")
+for commit in tqdm(repo.traverse_commits()):
+    # print(f"Commit in process: {commit.hash}")
     chronological_commit_order += 1
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
@@ -97,7 +98,7 @@ for commit in repo.traverse_commits():
 
         # If the commit is not missing and modified files are available,
         # iterate over the modified files to find modified build files.
-        for modified_file in commit.modified_files:  # yarn.lock
+        for modified_file in commit.modified_files:
             # Identify if the file is a build specification file
             if file_is_build(modified_file.filename, PATTERNS):
                 # Commit-level attribute to show that the commit has affected build files.

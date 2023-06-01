@@ -6,6 +6,7 @@ from copy import deepcopy
 import importlib
 from utils.helpers import parse_label
 from utils.configurations import LANGUAGES
+from utils.exceptions import MissingRootException, ConfigurationException
 
 
 class AST(nx.DiGraph):
@@ -55,7 +56,8 @@ class AST(nx.DiGraph):
         self.slice = self.get_slice()
 
         # Set up the NameGetter for language support
-        self.NameGetter = self.language_support_tools.NameGetter(self)
+        self.names = self.language_support_tools.NameGetter(self)
+        self.du_chains = self.language_support_tools.DefUseChains(self)
 
     def export_dot(self, path, *args, **kwargs):
         """
@@ -141,7 +143,7 @@ class AST(nx.DiGraph):
         Returns the proper name of the node based on language-specific rules
         for data flow analysis
         """
-        return self.NameGetter.visit(node_data)
+        return self.names.visit(node_data)
 
     def get_location(self, node_data, *args, **kwargs):
         """
@@ -166,8 +168,8 @@ class AST(nx.DiGraph):
         if root:
             self.root = root
         else:
-            raise Exception(
-                f"Root node of type {self.language_support_tools.ROOT_TYPE} not found. Please make sure your language support configurations are correct."
+            raise MissingRootException(
+                self.language_support_tools.ROOT_TYPE, self.file_name
             )
 
     def get_parent(self, node_data, *args, **kwargs):
@@ -194,7 +196,7 @@ class AST(nx.DiGraph):
             }
         else:
             return {}
-        return dict(sorted(ancestors.items(), key=lambda node: node[1]["level"]))
+        return dict(sorted(ancestors.items(), key=lambda node: int(node[1]["level"])))
 
     def get_children(self, node_data, *args, **kwargs):
         """
@@ -262,9 +264,9 @@ class AST(nx.DiGraph):
         """
         child = sorted(
             list(self.get_children(node_data).values()),
-            key=lambda node_data: node_data["s_pos"],
+            key=lambda node_data: int(node_data["s_pos"]),
         )[child_order]
-        return {child["id"]: {child}}
+        return {child["id"]: child}
 
     def set_affected_nodes(self, *args, **kwargs):
         """
@@ -379,7 +381,10 @@ class AST(nx.DiGraph):
                 lambda cp: cp[0],
                 sorted(
                     map(
-                        lambda node_data: (node_data["content"], node_data["s_pos"]),
+                        lambda node_data: (
+                            node_data["content"],
+                            int(node_data["s_pos"]),
+                        ),
                         subtree_nodes.values(),
                     ),
                     key=lambda cp: cp[-1],
@@ -407,7 +412,9 @@ class AST(nx.DiGraph):
         elif method == "NODE":
             summarized = {head_data["id"]: head_data}
         else:
-            raise KeyError('SUMMARIZATION_METHOD can be "SUBTREE" or "NODE"')
+            raise ConfigurationException(
+                'SUMMARIZATION_METHOD can be "SUBTREE" or "NODE"'
+            )
         self.summarized_nodes[method].update(summarized)
 
     def get_summarization_status(self, node_data, method, *args, **kwargs):
@@ -416,6 +423,9 @@ class AST(nx.DiGraph):
         Returns True if node is already summarized the the specified method.
         """
         return node_data["id"] in self.summarized_nodes[method]
+
+    def analyze_data_flow(self):
+        self.du_chains.analyze()
 
 
 class ASTSlice(AST):

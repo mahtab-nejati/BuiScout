@@ -1,3 +1,5 @@
+from .exceptions import DebugException
+
 #################################
 ######## Helpers for AST ########
 #################################
@@ -88,7 +90,7 @@ def parse_label(label):
 # Check if the modified file a build specification
 def file_is_build(file_name, patterns=[]):
     if file_name is None:
-        print("WEIRD PYDRILLER FILENAME")
+        raise DebugException("WEIRD PYDRILLER FILENAME")
     return file_name.endswith(tuple(patterns))
 
 
