@@ -19,12 +19,11 @@ def parse_label(label):
     start_content, end_content = find_word_indexes(label, "GumTreeContent")
     start_pos, end_pos = find_word_indexes(label, "GumTreeSPos")
     start_end, end_end = find_word_indexes(label, "GumTreeEPos")
-
     return {
         "type": label[end_type + 2 : start_content].strip(),
         "content": label[end_content + 2 : start_pos].strip(),
-        "s_pos": label[end_pos + 2 : start_end].strip(),
-        "e_pos": label[end_end + 2 :].strip(),
+        "s_pos": int(label[end_pos + 2 : start_end].strip()),
+        "e_pos": int(label[end_end + 2 :].strip()),
     }
 
 
@@ -59,29 +58,6 @@ def read_dotdiff(path):
 
     A.clear()
     return source, destination, matches
-
-
-# Word locater for parsing labels
-def find_word_indexes(text, word):
-    # Find the start index of the word in the text
-    start_index = text.find(word)
-    return (start_index, start_index + len(word) - 1)
-
-
-# GumTree node label parser
-def parse_label(label):
-    # Locate properties
-    _, end_type = find_word_indexes(label, "GumTreeType")
-    start_content, end_content = find_word_indexes(label, "GumTreeContent")
-    start_pos, end_pos = find_word_indexes(label, "GumTreeSPos")
-    start_end, end_end = find_word_indexes(label, "GumTreeEPos")
-
-    return {
-        "type": label[end_type + 2 : start_content].strip(),
-        "content": label[end_content + 2 : start_pos].strip(),
-        "s_pos": label[end_pos + 2 : start_end].strip(),
-        "e_pos": label[end_end + 2 :].strip(),
-    }
 
 
 #################################

@@ -40,7 +40,7 @@ class NodeVisitor(object):
         """
         children = sorted(
             list(self.ast.get_children(node_data).values()),
-            key=lambda child_data: int(child_data["s_pos"]),
+            key=lambda child_data: child_data["s_pos"],
         )
         for child_data in children:
             self.visit(child_data)

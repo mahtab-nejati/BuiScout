@@ -23,7 +23,6 @@ class AST(nx.DiGraph):
         **kwargs,
     ):
         super(AST, self).__init__(*args, **kwargs)
-
         # SET language support tools
         self.language_support_tools = language_support_tools
 
@@ -119,13 +118,17 @@ class AST(nx.DiGraph):
             operation = "updated"
         else:
             operation = "no-op"
+
         attrs = {node_id: {"id": node_id, "operation": operation, **label_content}}
+
         attrs[node_id][
             "label"
         ] = f'cluster: {self.name}\ntype: {attrs[node_id]["type"]}\n'
+
         attrs[node_id][
             "label"
         ] += f'content: {attrs[node_id]["content"]}\npostion: {attrs[node_id]["s_pos"]}-{attrs[node_id]["e_pos"]}'
+
         return attrs
 
     def get_data(self, node, *args, **kwargs):
@@ -196,7 +199,7 @@ class AST(nx.DiGraph):
             }
         else:
             return {}
-        return dict(sorted(ancestors.items(), key=lambda node: int(node[1]["level"])))
+        return dict(sorted(ancestors.items(), key=lambda node: node[1]["level"]))
 
     def get_children(self, node_data, *args, **kwargs):
         """
@@ -264,7 +267,7 @@ class AST(nx.DiGraph):
         """
         child = sorted(
             list(self.get_children(node_data).values()),
-            key=lambda node_data: int(node_data["s_pos"]),
+            key=lambda node_data: node_data["s_pos"],
         )[child_order]
         return {child["id"]: child}
 
@@ -383,7 +386,7 @@ class AST(nx.DiGraph):
                     map(
                         lambda node_data: (
                             node_data["content"],
-                            int(node_data["s_pos"]),
+                            node_data["s_pos"],
                         ),
                         subtree_nodes.values(),
                     ),

@@ -210,7 +210,7 @@ class DefUseChains(cm.DefUseChains):
         ]
         arguments = sorted(
             self.ast.get_children(condition_node_data).values(),
-            key=lambda data: int(data["s_pos"]),
+            key=lambda data: data["s_pos"],
         )
         for argument in arguments:
             if argument["content"].upper() not in operators:
@@ -278,7 +278,6 @@ class DefUseChains(cm.DefUseChains):
         def_node = self.ast.get_data(
             self.ast.get_child_by_order(arguments_node_data, 0)
         )
-        print(f"option defines {self.ast.get_name(def_node)}")
         self.register_new_definition(def_node)
         # TODO (Medium): Identify impact!
         return self.generic_visit(node_data)
