@@ -6,7 +6,10 @@ from copy import deepcopy
 import importlib
 from utils.helpers import parse_label
 from utils.configurations import LANGUAGES
-from utils.exceptions import MissingRootException, ConfigurationException
+from utils.exceptions import (
+    MissingRootException,
+    ConfigurationException,
+)
 
 
 class AST(nx.DiGraph):
@@ -29,6 +32,8 @@ class AST(nx.DiGraph):
         # Set file and commit_hash
         self.file_name = file_name
         self.commit_hash = commit_hash
+
+        self.set_node_universal_ids()
 
         # Remove extra nodes
         none_nodes = list(
@@ -63,6 +68,18 @@ class AST(nx.DiGraph):
         Export the AST into a .dot file (included in the path)
         """
         write_dot(self, path)
+
+    def set_node_universal_ids(self):
+        self.node_id_map = dict(
+            map(
+                lambda node_id: (
+                    node_id,
+                    f"{self.commit_hash}:{self.file_name}:{node_id}",
+                ),
+                self.nodes,
+            )
+        )
+        nx.relabel_nodes(self, self.node_id_map, copy=False)
 
     def set_node_attributes(self, *args, **kwargs):
         """
@@ -504,10 +521,19 @@ class ASTDiff(object):
             commit_hash=commit_hash,
             language_support_tools=self.language_support_tools,
         )
-        self.source_match = matches
+        self.source_match = dict(
+            map(
+                lambda pair: (
+                    self.source.node_id_map[pair[0]],
+                    self.destination.node_id_map[pair[1]],
+                ),
+                matches.items(),
+            )
+        )
         self.destination_match = dict(
             map(lambda pair: (pair[1], pair[0]), self.source_match.items())
         )
+        print(self.source_match)
 
         self.summary = dict()
 
