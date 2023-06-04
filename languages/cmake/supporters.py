@@ -331,6 +331,7 @@ class DefUseChains(cm.DefUseChains):
         return
 
 
+# TODO: Fix and address in AST model
 def stringify(ast, node_data, verbose=False, *args, **kwargs):
     if verbose:
         return stringify_verbose(ast, node_data)
