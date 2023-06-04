@@ -533,7 +533,6 @@ class ASTDiff(object):
         self.destination_match = dict(
             map(lambda pair: (pair[1], pair[0]), self.source_match.items())
         )
-        print(self.source_match)
 
         self.summary = dict()
 
