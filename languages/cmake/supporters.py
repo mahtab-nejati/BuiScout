@@ -332,10 +332,7 @@ class DefUseChains(cm.DefUseChains):
 
 
 # TODO: Fix and address in AST model
-def stringify(ast, node_data, verbose=False, *args, **kwargs):
-    if verbose:
-        return stringify_verbose(ast, node_data)
-
+def stringify(ast, node_data, *args, **kwargs):
     node_type = node_data["type"]
 
     if node_type in BASIC_TYPES:
