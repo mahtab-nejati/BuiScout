@@ -10,7 +10,12 @@ class MissingRootException(Exception):
     def __init__(self, root_type, file_name):
         self.file_name = file_name
         self.root_type = root_type
-        self.message = f"Root node of type {self.root_type} not found in file {self.file_name}. Please make sure your language support configurations are correct."
+        self.message = (
+            f"Root node of type {self.root_type} not found in file {self.file_name}."
+        )
+        self.message += (
+            " Please make sure your language support configurations are correct."
+        )
         super().__init__(self.message)
 
 
