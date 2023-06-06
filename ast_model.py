@@ -5,7 +5,6 @@ from functools import reduce
 from copy import deepcopy
 import importlib
 from utils.helpers import parse_label
-from utils.configurations import LANGUAGES
 from utils.exceptions import (
     MissingRootException,
     ConfigurationException,

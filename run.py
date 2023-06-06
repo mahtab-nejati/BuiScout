@@ -76,8 +76,8 @@ for commit in tqdm(repo.traverse_commits()):
     try:
         # This will throw an error if the commit is missing
         commit.modified_files
-    # Log missing commits and move to then next
     except ValueError:
+        # Log missing commits and move to then next
         all_commits.append(
             {
                 "commit_hash": commit.hash,
@@ -111,7 +111,7 @@ for commit in tqdm(repo.traverse_commits()):
                     "commit_parents": commit.parents,
                     "file_name": modified_file.filename,
                     "build_language": LANGUAGE,
-                    "file_action": modified_file.change_type,
+                    "file_action": str(modified_file.change_type).split(".")[-1],
                     "before_path": modified_file.old_path,
                     "after_path": modified_file.new_path,
                     "saved_as": get_processed_path(modified_file),
