@@ -42,20 +42,35 @@ SAVE_PATH.mkdir(parents=True, exist_ok=True)
 # before the else clause and specify languages and file patterns.
 if BUILD_SYSTEM == "cmake":
     LANGUAGES = ["cmake"]
-    PATTERN_SETS = {"cmake": ["CMakeLists.txt", ".cmake"]}  # cmake file name patterns
+    PATTERN_SETS = {
+        "cmake": {"include": ["CMakeLists.txt", ".cmake"], "exclude": [".h.cmake"]}
+    }  # cmake file name patterns
 elif BUILD_SYSTEM == "bazel":
     LANGUAGES = ["python"]
-    PATTERN_SETS = {"python": ["BUILD.bazel", ".bzl"]}  # python file name patterns
+    PATTERN_SETS = {
+        "python": {"include": ["BUILD.bazel", ".bzl"], "exclude": []}
+    }  # python file name patterns
 elif BUILD_SYSTEM == "gradle":
     LANGUAGES = ["kotlin", "groovy"]
     PATTERN_SETS = {
-        "kotlin": [".gradle.kts"],  # kotlin file name patterns
-        "groovy": [".gradle"],  # groovy file name patterns
+        "kotlin": {  # kotlin file name patterns
+            "include": [".gradle.kts"],
+            "exclude": [],
+        },
+        "groovy": {"include": [".gradle"], "exclude": []},  # groovy file name patterns
     }
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
 
-PATTERNS_FLATTENED = reduce(lambda a, b: a + b, PATTERN_SETS.values())
+PATTERNS_FLATTENED = {
+    "include": reduce(
+        lambda a, b: a + b, map(lambda sets: sets["include"], PATTERN_SETS.values())
+    ),
+    "exclude": reduce(
+        lambda a, b: a + b, map(lambda sets: sets["exclude"], PATTERN_SETS.values())
+    ),
+}
+
 if config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES":
     FILTERING = True
 else:

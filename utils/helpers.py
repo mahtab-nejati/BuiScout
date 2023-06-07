@@ -64,10 +64,13 @@ def read_dotdiff(path):
 ######## Helpers for run ########
 #################################
 # Check if the modified file a build specification
-def file_is_build(file_name, patterns=[]):
+def file_is_build(file_name, patterns={"inclde": [], "exclude": []}):
     if file_name is None:
         raise DebugException("WEIRD PYDRILLER FILENAME")
-    return file_name.endswith(tuple(patterns))
+
+    return (file_name.endswith(tuple(patterns["include"]))) and (
+        not file_name.endswith(tuple(patterns["exclude"]))
+    )
 
 
 # Prpcess the path to project files

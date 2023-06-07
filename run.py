@@ -26,7 +26,7 @@ from ast_model import ASTDiff
 
 repo = Repository(
     REPOSITORY,
-    only_modifications_with_file_types=PATTERNS_FLATTENED
+    only_modifications_with_file_types=PATTERNS_FLATTENED["include"]
     if FILTERING
     else None,  # See EXCEPTION_HANDLING_GitPython in comments within code
     only_commits=COMMITS,
