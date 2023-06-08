@@ -1,4 +1,5 @@
 from .exceptions import DebugException
+from utils.configurations import PROJECT_SPECIFIC_FILTERS
 
 #################################
 ######## Helpers for AST ########
@@ -71,6 +72,26 @@ def file_is_build(file_name, patterns={"inclde": [], "exclude": []}):
     return (file_name.endswith(tuple(patterns["include"]))) and (
         not file_name.endswith(tuple(patterns["exclude"]))
     )
+
+
+def file_is_filtered(file_path, filtering_patterns=PROJECT_SPECIFIC_FILTERS):
+    if file_path is None:
+        return True
+    if filtering_patterns["include"]["starts_with"]:
+        if not file_path.startswith(
+            tuple(filtering_patterns["include"]["starts_with"])
+        ):
+            return True
+    if filtering_patterns["include"]["ends_with"]:
+        if not file_path.endswith(tuple(filtering_patterns["include"]["ends_with"])):
+            return True
+    if filtering_patterns["exclude"]["starts_with"]:
+        if file_path.startswith(tuple(filtering_patterns["exclude"]["starts_with"])):
+            return True
+    if filtering_patterns["exclude"]["ends_with"]:
+        if file_path.endswith(tuple(filtering_patterns["exclude"]["ends_with"])):
+            return True
+    return False
 
 
 # Prpcess the path to project files

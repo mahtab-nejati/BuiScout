@@ -6,5 +6,23 @@
   "COMMITS": "List of commit hashes, keyword 'ALL' for all commits",
   "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
-  "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']"
+  "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']",
+  "PROJECT_SPECIFIC_FILTERS": {
+    "include": {
+      "starts_with": [
+        "List of paths (relative to project root, no / at the beginning) to include (excluding everything else) in the analysis. default is empty list and includes all path."
+      ],
+      "ends_with": [
+        "List of file patterns to include (excluding everything else) in the analysis. default is empty list and includes all build specifications for the language."
+      ]
+    },
+    "exclude": {
+      "starts_with": [
+        "List of paths (relative to project root, no / at the beginning) to exclude (within the included ones) in the analysis. default is empty list and includes all path."
+      ],
+      "ends_with": [
+        "List of file patterns to exclude (within the included ones) in the analysis. default is empty list and includes all build specifications for the language."
+      ]
+    }
+  }
 }
