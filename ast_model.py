@@ -56,7 +56,7 @@ class AST(nx.DiGraph):
         self.summarized_nodes = dict()
 
         # Slice up changes
-        self.slice = self.get_slice()
+        self.set_slice()
 
         # Set up the NameGetter for language support
         self.names = self.language_support_tools.NameGetter(self)
@@ -320,9 +320,9 @@ class AST(nx.DiGraph):
             )
         self.affected_nodes = affected_nodes
 
-    def get_slice(self, *args, **kwargs):
+    def set_slice(self, *args, **kwargs):
         """
-        Returns contaminated slice from the cluster as a SlicedAST() object.
+        Sets self.slice as the contaminated slice from the cluster as a SlicedAST() object.
         """
         if not self.affected_nodes.keys():
             slice_nodes = self.root
@@ -358,7 +358,7 @@ class AST(nx.DiGraph):
             )
 
         # Create slice
-        return ASTSlice(
+        self.slice = ASTSlice(
             self.name,
             slice_nodes,
             slice_edges,
@@ -446,6 +446,14 @@ class AST(nx.DiGraph):
     def analyze_data_flow(self):
         self.du_chains.analyze()
 
+    def clear_node_operarions(self):
+        nx.set_node_attributes(self, "no-op", "operation")
+        nx.set_node_attributes(self, "lightgrey", "color")
+
+        self.affected_nodes = dict()
+        self.summarized_nodes = dict()
+        self.set_slice()
+
 
 class ASTSlice(AST):
     """
@@ -478,7 +486,7 @@ class ASTSlice(AST):
             [0] + list(map(lambda node: node[1].get("level") + 1, self.nodes.items()))
         )
 
-    def get_slice(self, *args, **kwargs):
+    def set_slice(self, *args, **kwargs):
         pass
 
 
@@ -552,6 +560,18 @@ class ASTDiff(object):
 
         return dict()
 
+    def clear_change(self):
+        """
+        Clears all the differences between the two versions of the file
+        by setting the source and matches to None and clearing node operations
+        in the destination AST.
+        """
+        self.source = None
+        self.source_match = None
+        self.destination_match = None
+
+        self.destination.clear_node_operarions()
+
     def summarize(self, method="SUBTREE", *args, **kwargs):
         """
         Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"]
@@ -559,6 +579,8 @@ class ASTDiff(object):
         or the subtree with head_data node as the head (method=="SUBTREE")
         and returns the summary entry to the self.summary[method] (a list)
         """
+        if self.source is None:
+            return [].copy()
         if method in self.summary:
             return self.summary[method]
         else:
