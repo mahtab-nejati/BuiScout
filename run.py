@@ -3,6 +3,7 @@ from pydriller import Repository
 from tqdm import tqdm
 import pandas as pd
 import subprocess
+import gc
 from datetime import datetime
 from utils.helpers import (
     write_source_code,
@@ -24,6 +25,10 @@ from utils.configurations import (
 )
 from ast_model import ASTDiff
 
+SAVE_PATH = SAVE_PATH / "basic_run"
+COMMITS_SAVE_PATH = SAVE_PATH / "commits"
+COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
+
 repo = Repository(
     REPOSITORY,
     only_modifications_with_file_types=PATTERNS_FLATTENED["include"]
@@ -35,23 +40,69 @@ repo = Repository(
 )
 
 # Initialize
-modified_build_files = []
-all_commits = []
 summaries = {}.copy()
 for sm in SUMMARIZATION_METHODS:
     summaries[sm] = [].copy()
+
+# Initialize filees
+# Save summaries
+summaries_columns = [
+    "commit",
+    "subject_file",
+    "operation",
+    "source_node",
+    "source_node_summary",
+    "source_position",
+    "destination_node",
+    "destination_node_summary",
+    "destination_postion",
+]
+for sm in SUMMARIZATION_METHODS:
+    summaries_df = pd.DataFrame(columns=summaries_columns)
+    summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
+
+# Save metadata on build changes
+modified_build_files_columns = [
+    "commit_hash",
+    "commit_parents",
+    "file_name",
+    "build_language",
+    "file_action",
+    "before_path",
+    "after_path",
+    "saved_as",
+    "has_gumtree_error",
+    "elapsed_time",
+]
+modified_build_files_df = pd.DataFrame(columns=modified_build_files_columns)
+modified_build_files_df.to_csv(SAVE_PATH / "all_build_files.csv", index=False)
+
+# Save metadata on all changes
+all_commits_columns = [
+    "commit_hash",
+    "chronological_commit_order",
+    "commit_parents",
+    "has_build",
+    "has_nonbuild",
+    "is_missing",
+    "elapsed_time",
+]
+all_commits_df = pd.DataFrame(columns=all_commits_columns)
+all_commits_df.to_csv(SAVE_PATH / "all_commits.csv", index=False)
 
 all_commits_start = datetime.now()
 
 # Run tool on commits
 chronological_commit_order = 0
 for commit in tqdm(repo.traverse_commits()):
-    # print(f"Commit in process: {commit.hash}")
+    gc.collect()
+    print(f"Commit in process: {commit.hash}")
     chronological_commit_order += 1
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
     has_build = False
     has_nonbuild = False
+    commit_build_files = [].copy()
 
     # Start analysis of the commit
     commit_start = datetime.now()
@@ -78,16 +129,19 @@ for commit in tqdm(repo.traverse_commits()):
         commit.modified_files
     except ValueError:
         # Log missing commits and move to then next
-        all_commits.append(
+        commit_data_df = pd.DataFrame(
             {
-                "commit_hash": commit.hash,
-                "chronological_commit_order": chronological_commit_order,
-                "commit_parents": commit.parents,
-                "has_build": None,
-                "has_nonbuild": None,
-                "is_missing": True,
-                "elapsed_time": datetime.now() - commit_start,
+                "commit_hash": [commit.hash],
+                "chronological_commit_order": [chronological_commit_order],
+                "commit_parents": [commit.parents],
+                "has_build": [None],
+                "has_nonbuild": [None],
+                "is_missing": [True],
+                "elapsed_time": [datetime.now() - commit_start],
             }
+        )
+        commit_data_df.to_csv(
+            SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
         )
         continue
 
@@ -99,7 +153,7 @@ for commit in tqdm(repo.traverse_commits()):
         # If the commit is not missing and modified files are available,
         # iterate over the modified files to find modified build files.
         for modified_file in commit.modified_files:
-            # Identify if the file is a build specification file
+            # Identify if the file is a build specification file and expected to be analyzed
             if file_is_build(modified_file.filename, PATTERNS):
                 # Commit-level attribute to show that the commit has affected build files.
                 has_build = True
@@ -116,11 +170,14 @@ for commit in tqdm(repo.traverse_commits()):
                     "after_path": modified_file.new_path,
                     "saved_as": get_processed_path(modified_file),
                     "has_gumtree_error": False,
+                    "elapsed_time": None,
                 }
-                modified_build_files.append(file_modification_data)
+                commit_build_files.append(file_modification_data)
+
+                print(f'Processing file {file_modification_data["saved_as"]}')
 
                 # Setup commit directory
-                commit_dir = Path(SAVE_PATH / commit.hash)
+                commit_dir = Path(COMMITS_SAVE_PATH / commit.hash)
 
                 # build files before change
                 before_dir = commit_dir / "before"
@@ -175,7 +232,7 @@ for commit in tqdm(repo.traverse_commits()):
                     # Load GumTree output and slice
                     diff = ASTDiff(
                         *dotdiff_content,
-                        file_modification_data["file_name"],
+                        file_modification_data["saved_as"],
                         commit.hash,
                         LANGUAGE,
                     )
@@ -213,30 +270,31 @@ for commit in tqdm(repo.traverse_commits()):
                 # Commit-level attribute to show that the commit has affected non-build files.
                 has_nonbuild = True
 
-    # Log all changes
-    all_commits.append(
-        {
-            "commit_hash": commit.hash,
-            "chronological_commit_order": chronological_commit_order,
-            "commit_parents": commit.parents,
-            "has_build": has_build,
-            "has_nonbuild": has_nonbuild,
-            "is_missing": False,
-            "elapsed_time": datetime.now() - commit_start,
-        }
+    # Save summaries
+    for sm in SUMMARIZATION_METHODS:
+        summaries_df = pd.DataFrame(summaries[sm])
+        summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
+
+    # Save metadata on build files
+    commit_build_files_df = pd.DataFrame(commit_build_files)
+    commit_build_files_df.to_csv(
+        SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
     )
 
-# Save summaries
-for sm in SUMMARIZATION_METHODS:
-    summaries_df = pd.DataFrame(summaries[sm])
-    summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
-
-# Save metadata on build changes
-modified_build_files_df = pd.DataFrame(modified_build_files)
-modified_build_files_df.to_csv(SAVE_PATH / "modified_build_files.csv", index=False)
-
-# Save metadata on all changes
-all_commits_df = pd.DataFrame(all_commits)
-all_commits_df.to_csv(SAVE_PATH / "all_commits.csv", index=False)
+    # Log all changes
+    commit_data_df = pd.DataFrame(
+        {
+            "commit_hash": [commit.hash],
+            "chronological_commit_order": [chronological_commit_order],
+            "commit_parents": [commit.parents],
+            "has_build": [has_build],
+            "has_nonbuild": [has_nonbuild],
+            "is_missing": [False],
+            "elapsed_time": [datetime.now() - commit_start],
+        }
+    )
+    commit_data_df.to_csv(
+        SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
+    )
 
 print(f"Finished processing in {datetime.now()-all_commits_start}")
