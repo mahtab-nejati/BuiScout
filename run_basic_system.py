@@ -25,7 +25,7 @@ from utils.configurations import (
     FILTERING,
     SUMMARIZATION_METHODS,
 )
-from ast_model import ASTDiff
+from diff_model import ASTDiff
 
 SAVE_PATH = SAVE_PATH / "run_basic_system"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"

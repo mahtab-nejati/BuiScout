@@ -23,9 +23,9 @@ from utils.configurations import (
     FILTERING,
     SUMMARIZATION_METHODS,
 )
-from ast_model import ASTDiff
+from diff_model import ASTDiff
 
-SAVE_PATH = SAVE_PATH / "fun_basic_files"
+SAVE_PATH = SAVE_PATH / "run_basic_files"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
