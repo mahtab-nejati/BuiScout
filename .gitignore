@@ -13,6 +13,7 @@ venv/
 .idea/
 *.pickle
 .vscode
+.ipynb_checkpoints/
 
 venv
 .env/
