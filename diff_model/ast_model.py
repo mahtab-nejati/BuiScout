@@ -1,4 +1,3 @@
-# import pygraphviz as pgv
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
 from functools import reduce
