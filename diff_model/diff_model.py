@@ -1,4 +1,5 @@
 import importlib
+from copy import deepcopy
 from .ast_model import AST
 
 
@@ -17,6 +18,7 @@ class ASTDiff(object):
         source,
         destination,
         matches,
+        file_action,
         file_name,
         commit_hash,
         LANGUAGE,
@@ -26,32 +28,41 @@ class ASTDiff(object):
         self.language_support_tools = importlib.import_module(
             f"language_supports.{LANGUAGE}"
         )
+        self.file_action = file_action
         self.file_name = file_name
         self.commit_hash = commit_hash
-        self.source = AST(
-            source,
-            file_name=file_name,
-            commit_hash=commit_hash,
-            language_support_tools=self.language_support_tools,
-        )
+
         self.destination = AST(
             destination,
             file_name=file_name,
             commit_hash=commit_hash,
             language_support_tools=self.language_support_tools,
         )
-        self.source_match = dict(
-            map(
-                lambda pair: (
-                    self.source.node_id_map[pair[0]],
-                    self.destination.node_id_map[pair[1]],
-                ),
-                matches.items(),
+
+        if self.file_action is None:
+            self.destination.clear_node_operarions()
+            self.source = None
+            self.source_match = None
+            self.destination_match = None
+        else:
+            self.source = AST(
+                source,
+                file_name=file_name,
+                commit_hash=commit_hash,
+                language_support_tools=self.language_support_tools,
             )
-        )
-        self.destination_match = dict(
-            map(lambda pair: (pair[1], pair[0]), self.source_match.items())
-        )
+            self.source_match = dict(
+                map(
+                    lambda pair: (
+                        self.source.node_id_map[pair[0]],
+                        self.destination.node_id_map[pair[1]],
+                    ),
+                    matches.items(),
+                )
+            )
+            self.destination_match = dict(
+                map(lambda pair: (pair[1], pair[0]), self.source_match.items())
+            )
 
         self.summary = dict()
 
@@ -72,17 +83,17 @@ class ASTDiff(object):
 
         return dict()
 
-    def clear_change(self):
-        """
-        Clears all the differences between the two versions of the file
-        by setting the source and matches to None and clearing node operations
-        in the destination AST.
-        """
-        self.source = None
-        self.source_match = None
-        self.destination_match = None
+    # def clear_change(self):
+    #     """
+    #     Clears all the differences between the two versions of the file
+    #     by setting the source and matches to None and clearing node operations
+    #     in the destination AST.
+    #     """
+    #     self.source = None
+    #     self.source_match = None
+    #     self.destination_match = None
 
-        self.destination.clear_node_operarions()
+    #     self.destination.clear_node_operarions()
 
     def summarize(self, method="SUBTREE", *args, **kwargs):
         """

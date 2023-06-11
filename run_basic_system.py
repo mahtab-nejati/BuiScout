@@ -180,7 +180,7 @@ for commit in tqdm(repo.traverse_commits()):
                 }
                 commit_build_files.append(file_modification_data)
 
-                print(f'Processing file {file_modification_data["saved_as"]}')
+                print(f'Processing modified file {file_modification_data["saved_as"]}')
 
                 # Setup commit directory
                 commit_dir = Path(COMMITS_SAVE_PATH / commit.hash)
@@ -238,6 +238,7 @@ for commit in tqdm(repo.traverse_commits()):
                     # Load GumTree output and slice
                     diff = ASTDiff(
                         *dotdiff_content,
+                        file_modification_data["file_action"],
                         file_modification_data["saved_as"],
                         commit.hash,
                         LANGUAGE,
@@ -298,16 +299,16 @@ for commit in tqdm(repo.traverse_commits()):
 
             for build_file in commit_all_build_files:
                 file_path = build_file.replace(REPOSITORY, "").lstrip("/")
-                file_save_as = file_path.replace("/", "__")
+                file_save_as = file_path.replace("/", "__").strip()
 
                 # Skip modified files
                 if file_save_as in commit_modified_build_file_names:
+                    # print(f"Modified file {file_save_as} skipped")
                     continue
 
                 if file_is_filtered(file_path):
+                    # print(f"Filtered file {file_save_as} skipped")
                     continue
-
-                print(f'Processing file {file_modification_data["saved_as"]}')
 
                 # Start analysis of the build file
                 file_start = datetime.now()
@@ -325,6 +326,8 @@ for commit in tqdm(repo.traverse_commits()):
                     "elapsed_time": None,
                 }
                 commit_build_files.append(file_modification_data)
+
+                print(f'Processing untouched file {file_modification_data["saved_as"]}')
 
                 with open(build_file, "r") as bf:
                     build_code = bf.read()
@@ -373,12 +376,11 @@ for commit in tqdm(repo.traverse_commits()):
                     # Load GumTree output and slice
                     diff = ASTDiff(
                         *dotdiff_content,
+                        file_modification_data["file_action"],
                         file_modification_data["saved_as"],
                         commit.hash,
                         LANGUAGE,
                     )
-
-                    diff.clear_change()
 
                     # Convert slices to svg
                     command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
@@ -388,7 +390,6 @@ for commit in tqdm(repo.traverse_commits()):
                 # End of file analysis
                 file_modification_data["elapsed_time"] = datetime.now() - file_start
 
-            # print(f"done for commit {commit.hash}")
             git_repo.checkout(BRANCH)
             time.sleep(5)
 

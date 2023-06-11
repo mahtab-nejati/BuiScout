@@ -174,7 +174,7 @@ for commit in tqdm(repo.traverse_commits()):
                 }
                 commit_build_files.append(file_modification_data)
 
-                print(f'Processing file {file_modification_data["saved_as"]}')
+                print(f'Processing modified file {file_modification_data["saved_as"]}')
 
                 # Setup commit directory
                 commit_dir = Path(COMMITS_SAVE_PATH / commit.hash)
@@ -232,6 +232,7 @@ for commit in tqdm(repo.traverse_commits()):
                     # Load GumTree output and slice
                     diff = ASTDiff(
                         *dotdiff_content,
+                        file_modification_data["file_action"],
                         file_modification_data["saved_as"],
                         commit.hash,
                         LANGUAGE,
