@@ -47,7 +47,7 @@ summaries = {}.copy()
 for sm in SUMMARIZATION_METHODS:
     summaries[sm] = [].copy()
 
-# Initialize filees
+# Initialize files
 # Save summaries
 summaries_columns = [
     "commit",
