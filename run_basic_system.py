@@ -7,6 +7,7 @@ import subprocess
 import time, gc
 from datetime import datetime
 from utils.helpers import (
+    create_csv_files,
     write_source_code,
     file_is_build,
     file_is_filtered,
@@ -42,56 +43,7 @@ repo = Repository(
 )
 git_repo = Git(REPOSITORY)
 
-# Initialize
-summaries = {}.copy()
-for sm in SUMMARIZATION_METHODS:
-    summaries[sm] = [].copy()
-
-# Initialize files
-# Save summaries
-summaries_columns = [
-    "commit",
-    "subject_file",
-    "operation",
-    "source_node",
-    "source_node_summary",
-    "source_position",
-    "destination_node",
-    "destination_node_summary",
-    "destination_postion",
-]
-for sm in SUMMARIZATION_METHODS:
-    summaries_df = pd.DataFrame(columns=summaries_columns)
-    summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
-
-# Save metadata on build changes
-modified_build_files_columns = [
-    "commit_hash",
-    "commit_parents",
-    "file_name",
-    "build_language",
-    "file_action",
-    "before_path",
-    "after_path",
-    "saved_as",
-    "has_gumtree_error",
-    "elapsed_time",
-]
-modified_build_files_df = pd.DataFrame(columns=modified_build_files_columns)
-modified_build_files_df.to_csv(SAVE_PATH / "all_build_files.csv", index=False)
-
-# Save metadata on all changes
-all_commits_columns = [
-    "commit_hash",
-    "chronological_commit_order",
-    "commit_parents",
-    "has_build",
-    "has_nonbuild",
-    "is_missing",
-    "elapsed_time",
-]
-all_commits_df = pd.DataFrame(columns=all_commits_columns)
-all_commits_df.to_csv(SAVE_PATH / "all_commits.csv", index=False)
+create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
 
 all_commits_start = datetime.now()
 
@@ -147,6 +99,11 @@ for commit in tqdm(repo.traverse_commits()):
             SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
         )
         continue
+
+    # Initialize summaries
+    summaries = {}.copy()
+    for sm in SUMMARIZATION_METHODS:
+        summaries[sm] = [].copy()
 
     # Iterate over the languages and file naming conventions
     # supported by the build system
@@ -205,7 +162,7 @@ for commit in tqdm(repo.traverse_commits()):
                 gumtree_output_dir = commit_dir / "gumtree_output"
                 gumtree_output_dir.mkdir(parents=True, exist_ok=True)
 
-                # run GumTree
+                # Run GumTree
                 command = [
                     str(ROOT_PATH / "process.sh"),
                     str(LANGUAGE),
@@ -343,7 +300,7 @@ for commit in tqdm(repo.traverse_commits()):
                     "",
                 )
 
-                # run GumTree
+                # Run GumTree
                 command = [
                     str(ROOT_PATH / "process.sh"),
                     str(LANGUAGE),
@@ -359,10 +316,6 @@ for commit in tqdm(repo.traverse_commits()):
                         + f'{commit_dir}/before/{file_modification_data["saved_as"]} '
                         + f'{commit_dir}/after/{file_modification_data["saved_as"]}\n'
                     )
-
-                # Summarizer output setup
-                summary_dir = commit_dir / "summaries"
-                summary_dir.mkdir(parents=True, exist_ok=True)
 
                 # Check if the output of the GumTree is valid.
                 try:
@@ -396,7 +349,12 @@ for commit in tqdm(repo.traverse_commits()):
     # Save summaries
     for sm in SUMMARIZATION_METHODS:
         summaries_df = pd.DataFrame(summaries[sm])
-        summaries_df.to_csv(SAVE_PATH / f"summaries_{sm.lower()}.csv", index=False)
+        summaries_df.to_csv(
+            SAVE_PATH / f"summaries_{sm.lower()}.csv",
+            mode="a",
+            header=False,
+            index=False,
+        )
 
     # Save metadata on build files
     commit_build_files_df = pd.DataFrame(commit_build_files)
