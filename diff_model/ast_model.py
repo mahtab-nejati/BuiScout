@@ -1,6 +1,7 @@
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
 from functools import reduce
+import importlib
 from copy import deepcopy
 from utils.helpers import parse_label
 from utils.exceptions import (
@@ -19,12 +20,17 @@ class AST(nx.DiGraph):
         *args,
         file_name=None,
         commit_hash=None,
-        language_support_tools=None,
+        LANGUAGE=None,
         **kwargs,
     ):
         super(AST, self).__init__(*args, **kwargs)
         # SET language support tools
-        self.language_support_tools = language_support_tools
+        language_support_tools = importlib.import_module(
+            f"language_supports.{LANGUAGE}"
+        )
+        self.LANGUAGE = LANGUAGE
+        self.ROOT_TYPE = language_support_tools.ROOT_TYPE
+        self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
 
         # Set file and commit_hash
         self.file_name = file_name
@@ -40,7 +46,7 @@ class AST(nx.DiGraph):
             self.remove_node(node[0])
 
         # Set node attributes
-        # The head of the AST (self.language_support_tools.ROOT_TYPE) has level=0.
+        # The head of the AST (self.ROOT_TYPE) has level=0.
         self.set_node_attributes()
         self.set_nodes_levels()
 
@@ -56,10 +62,10 @@ class AST(nx.DiGraph):
         # Slice up changes
         self.set_slice()
 
-        # Set up the NameGetter for language support
-        self.names = self.language_support_tools.NameGetter(self)
-        self.du_chains = self.language_support_tools.DefUseChains(self)
-        self.stringifier = self.language_support_tools.Stringifier(self)
+        # Set up language support tools
+        self.node_names = language_support_tools.NameGetter(self)
+        self.du_chains = language_support_tools.DefUseChains(self)
+        self.stringifier = language_support_tools.Stringifier(self)
 
     def export_dot(self, path, *args, **kwargs):
         """
@@ -96,12 +102,12 @@ class AST(nx.DiGraph):
     def set_nodes_levels(self, *args, **kwargs):
         """
         Sets the attribute "level" for nodes and self.depth for AST pair.
-        The head of the AST (self.language_support_tools.ROOT_TYPE) has level=0.
+        The head of the AST (self.ROOT_TYPE) has level=0.
         """
         depth = 0
         current_level_nodes = dict(
             filter(
-                lambda node: node[-1]["type"] == self.language_support_tools.ROOT_TYPE,
+                lambda node: node[-1]["type"] == self.ROOT_TYPE,
                 self.nodes.items(),
             )
         )
@@ -161,7 +167,7 @@ class AST(nx.DiGraph):
         Returns the proper name of the node based on language-specific rules
         for data flow analysis
         """
-        return self.names.visit(node_data)
+        return self.node_names.visit(node_data)
 
     def get_location(self, node_data, *args, **kwargs):
         """
@@ -179,16 +185,14 @@ class AST(nx.DiGraph):
         """
         root = dict(
             filter(
-                lambda node: node[-1]["type"] == self.language_support_tools.ROOT_TYPE,
+                lambda node: node[-1]["type"] == self.ROOT_TYPE,
                 self.nodes.items(),
             )
         )
         if root:
             self.root = root
         else:
-            raise MissingRootException(
-                self.language_support_tools.ROOT_TYPE, self.file_name
-            )
+            raise MissingRootException(self.ROOT_TYPE, self.file_name)
 
     def get_parent(self, node_data, *args, **kwargs):
         """
@@ -206,7 +210,7 @@ class AST(nx.DiGraph):
         Returns the ancestors tree of the node (all nodes from root to node_data)
         as a dict of {'node_id': dict(nod_data)} sorted by level.
         """
-        if node_data["type"] != self.language_support_tools.ROOT_TYPE:
+        if node_data["type"] != self.ROOT_TYPE:
             parent_data = self.get_data(self.get_parent(node_data))
             ancestors = {
                 parent_data["id"]: parent_data,
@@ -298,8 +302,7 @@ class AST(nx.DiGraph):
         )
         ignored_nodes = list(
             filter(
-                lambda node_data: node_data["type"]
-                in self.language_support_tools.IGNORED_TYPES,
+                lambda node_data: node_data["type"] in self.IGNORED_TYPES,
                 affected_nodes.values(),
             )
         )
@@ -361,7 +364,7 @@ class AST(nx.DiGraph):
             self.name,
             slice_nodes,
             slice_edges,
-            language_support_tools=self.language_support_tools,
+            LANGUAGE=self.LANGUAGE,
         )
 
     def get_subtree_nodes(self, head_data, *args, **kwargs):
@@ -462,14 +465,20 @@ class ASTSlice(AST):
 
     def __init__(
         self,
-        cluster=None,
+        name=None,
         nodes={},
         edges=[],
-        language_support_tools=None,
+        LANGUAGE=None,
         *args,
         **kwargs,
     ):
-        self.language_support_tools = language_support_tools
+        # SET language support tools
+        language_support_tools = importlib.import_module(
+            f"language_supports.{LANGUAGE}"
+        )
+        self.LANGUAGE = LANGUAGE
+        self.ROOT_TYPE = language_support_tools.ROOT_TYPE
+        self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
 
         if edges:
             super(AST, self).__init__(edges)
@@ -479,11 +488,16 @@ class ASTSlice(AST):
             self.add_nodes_from(nodes)
             nx.set_node_attributes(self, nodes)
 
-        self.cluster = cluster
+        self.name = name
         self.set_root()
         self.depth = max(
             [0] + list(map(lambda node: node[1].get("level") + 1, self.nodes.items()))
         )
+
+        # Set up language support tools
+        self.node_names = language_support_tools.NameGetter(self)
+        self.du_chains = language_support_tools.DefUseChains(self)
+        self.stringifier = language_support_tools.Stringifier(self)
 
     def set_slice(self, *args, **kwargs):
         pass

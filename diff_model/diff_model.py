@@ -1,3 +1,4 @@
+import networkx as nx
 import importlib
 from copy import deepcopy
 from .ast_model import AST
@@ -25,31 +26,80 @@ class ASTDiff(object):
         *args,
         **kwargs,
     ):
-        self.language_support_tools = importlib.import_module(
+        language_support_tools = importlib.import_module(
             f"language_supports.{LANGUAGE}"
         )
+        self.LANGUAGE = LANGUAGE
+        self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
+
         self.file_action = file_action
         self.file_name = file_name
         self.commit_hash = commit_hash
 
-        self.destination = AST(
-            destination,
-            file_name=file_name,
-            commit_hash=commit_hash,
-            language_support_tools=self.language_support_tools,
-        )
-
+        # If change does not affect the file:
         if self.file_action is None:
+            # Replace the empty source with a deepcopy of destination
+            # and prep for initialization
+            source = deepcopy(destination)
+            source.name = "source"
+            # Fix source AST node IDs (_dst_ to _src_)
+            nx.relabel_nodes(
+                source,
+                dict(
+                    map(
+                        lambda node_id: (node_id, node_id.replace("_dst_", "_src_")),
+                        source.nodes,
+                    )
+                ),
+                copy=False,
+            )
+
+            # Create ASTs and clearing changes in ASTs
+            self.source = AST(
+                source,
+                file_name=file_name,
+                commit_hash=commit_hash,
+                LANGUAGE=self.LANGUAGE,
+            )
+            # Clear all changes
+            self.source.clear_node_operarions()
+
+            self.destination = AST(
+                destination,
+                file_name=file_name,
+                commit_hash=commit_hash,
+                LANGUAGE=self.LANGUAGE,
+            )
+            # Clear all changes
             self.destination.clear_node_operarions()
-            self.source = None
-            self.source_match = None
-            self.destination_match = None
+
+            # Set up matches (all nodes in source and destination match)
+            self.source_match = dict(
+                map(
+                    lambda node_id: (
+                        f"{self.commit_hash}:{self.file_name}:{node_id}",
+                        f'{self.commit_hash}:{self.file_name}:{node_id.replace("_src_", "_dst_")}',
+                    ),
+                    source.nodes,
+                )
+            )
+            self.destination_match = dict(
+                map(lambda pair: (pair[1], pair[0]), self.source_match.items())
+            )
+
+        # If change affects the file:
         else:
             self.source = AST(
                 source,
                 file_name=file_name,
                 commit_hash=commit_hash,
-                language_support_tools=self.language_support_tools,
+                LANGUAGE=LANGUAGE,
+            )
+            self.destination = AST(
+                destination,
+                file_name=file_name,
+                commit_hash=commit_hash,
+                LANGUAGE=self.LANGUAGE,
             )
             self.source_match = dict(
                 map(
@@ -83,18 +133,6 @@ class ASTDiff(object):
 
         return dict()
 
-    # def clear_change(self):
-    #     """
-    #     Clears all the differences between the two versions of the file
-    #     by setting the source and matches to None and clearing node operations
-    #     in the destination AST.
-    #     """
-    #     self.source = None
-    #     self.source_match = None
-    #     self.destination_match = None
-
-    #     self.destination.clear_node_operarions()
-
     def summarize(self, method="SUBTREE", *args, **kwargs):
         """
         Input method represents the summarization method and can be one of ["NODE" or "SUBTREE"]
@@ -102,7 +140,7 @@ class ASTDiff(object):
         or the subtree with head_data node as the head (method=="SUBTREE")
         and returns the summary entry to the self.summary[method] (a list)
         """
-        if self.source is None:
+        if self.file_action is None:
             return [].copy()
         if method in self.summary:
             return self.summary[method]
@@ -120,7 +158,7 @@ class ASTDiff(object):
                 lambda node_data: node_data["level"] == level
                 and node_data["operation"] == "deleted"
                 and not self.source.get_summarization_status(node_data, method)
-                and node_data["type"] not in self.language_support_tools.IGNORED_TYPES,
+                and node_data["type"] not in self.IGNORED_TYPES,
                 self.source.affected_nodes.values(),
             )
             for node_data in in_process:
@@ -131,7 +169,7 @@ class ASTDiff(object):
                 lambda node_data: node_data["level"] == level
                 and node_data["operation"] == "added"
                 and not self.destination.get_summarization_status(node_data, method)
-                and node_data["type"] not in self.language_support_tools.IGNORED_TYPES,
+                and node_data["type"] not in self.IGNORED_TYPES,
                 self.destination.affected_nodes.values(),
             )
             for node_data in in_process:
@@ -142,7 +180,7 @@ class ASTDiff(object):
                 lambda node_data: node_data["level"] == level
                 and node_data["operation"] == "moved"
                 and not self.source.get_summarization_status(node_data, method)
-                and node_data["type"] not in self.language_support_tools.IGNORED_TYPES,
+                and node_data["type"] not in self.IGNORED_TYPES,
                 self.source.affected_nodes.values(),
             )
             for node_data in in_process:
@@ -153,7 +191,7 @@ class ASTDiff(object):
                 lambda node_data: node_data["level"] == level
                 and node_data["operation"] == "updated"
                 and not self.source.get_summarization_status(node_data, method)
-                and node_data["type"] not in self.language_support_tools.IGNORED_TYPES,
+                and node_data["type"] not in self.IGNORED_TYPES,
                 self.source.affected_nodes.values(),
             )
             for node_data in in_process:
