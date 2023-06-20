@@ -1,5 +1,6 @@
 {
   "DATA_PATH": "Path to store data/results MUST NOT CONTAIN WHITESPACE",
+  "USE_EXISTING_DATA": "'YES' or 'NO'. Uses the the pre-xisting GumTree output. Crashes if the data does not exist.",
   "PROJECT": "Project name",
   "REPOSITORY": "URL or local path to repository MUST NOT CONTAIN WHITESPACE",
   "BRANCH": "The branch to consider, keyword 'ALL' for all branches, use of 'main' or 'master' branch is recommended",

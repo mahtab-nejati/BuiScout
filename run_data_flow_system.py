@@ -1,19 +1,16 @@
-from pathlib import Path
 from pydriller import Repository
 from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
 import subprocess
-import time, gc
+import gc
 from datetime import datetime
 from utils.helpers import (
     create_csv_files,
-    write_source_code,
     file_is_target,
-    get_processed_path,
-    read_dotdiff,
 )
 from utils.configurations import (
+    GUMTREE_OUTPUT_AVAILABLE,
     ROOT_PATH,
     SAVE_PATH,
     REPOSITORY,
@@ -26,7 +23,7 @@ from utils.configurations import (
     FILTERING,
     SUMMARIZATION_METHODS,
 )
-from system_commit_model import SystemDiff
+from system_commit_model import SystemDiff, SystemDiffShortcut
 
 SAVE_PATH = SAVE_PATH / "run_data_flow_system"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
@@ -116,18 +113,32 @@ for commit in tqdm(repo.traverse_commits()):
             for sm in SUMMARIZATION_METHODS:
                 summaries[sm] = [].copy()
 
-            diff = SystemDiff(
-                REPOSITORY,
-                repo,
-                git_repo,
-                BRANCH,
-                commit,
-                ROOT_FILE,
-                LANGUAGE,
-                PATTERNS,
-                ROOT_PATH,
-                SAVE_PATH,
-            )
+            if not GUMTREE_OUTPUT_AVAILABLE:
+                diff = SystemDiff(
+                    REPOSITORY,
+                    repo,
+                    git_repo,
+                    BRANCH,
+                    commit,
+                    ROOT_FILE,
+                    LANGUAGE,
+                    PATTERNS,
+                    ROOT_PATH,
+                    SAVE_PATH,
+                )
+            else:
+                diff = SystemDiffShortcut(
+                    REPOSITORY,
+                    repo,
+                    git_repo,
+                    BRANCH,
+                    commit,
+                    ROOT_FILE,
+                    LANGUAGE,
+                    PATTERNS,
+                    ROOT_PATH,
+                    SAVE_PATH,
+                )
 
             for build_file in diff.file_data.values():
                 # Skip files with GumTree error

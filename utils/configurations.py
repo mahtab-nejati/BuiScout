@@ -12,6 +12,7 @@ with open(ROOT_PATH / "config.json", "r") as f:
     config = json.load(f)
 
 DATA_PATH = Path(config["DATA_PATH"])
+GUMTREE_OUTPUT_AVAILABLE = config["USE_EXISTING_DATA"] == "YES"
 PROJECT = config["PROJECT"]
 
 REPOSITORY = config["REPOSITORY"].rstrip("/")

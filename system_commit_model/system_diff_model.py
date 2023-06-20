@@ -247,3 +247,84 @@ class SystemDiff(object):
             self.destination_chains.save_chains(
                 self.commit_dir / "data_flow_output/destination"
             )
+
+
+class SystemDiffShortcut(SystemDiff):
+    def set_file_data_modified_only(self):
+        self.file_data = dict(
+            map(
+                lambda file_data: (
+                    file_data["file_dir"] + file_data["file_name"],
+                    file_data,
+                ),
+                map(
+                    lambda modified_file: {
+                        "commit_hash": self.commit.hash,
+                        "file_dir": get_file_dir(modified_file),
+                        "file_name": modified_file.filename,
+                        "build_language": self.language,
+                        "file_action": str(modified_file.change_type).split(".")[-1],
+                        "before_path": modified_file.old_path,
+                        "after_path": modified_file.new_path,
+                        "saved_as": get_processed_path(modified_file),
+                        "has_gumtree_error": False,
+                        "elapsed_time": None,
+                    },
+                    filter(
+                        lambda modified_file: file_is_target(
+                            modified_file, self.patterns
+                        ),
+                        self.commit.modified_files,
+                    ),
+                ),
+            )
+        )
+
+    def set_file_data_non_modified_only(self):
+        # Non-modified build files at the commit checkpoint
+        other_build_files = filter(
+            lambda file_path: file_is_target(file_path, self.patterns)
+            and file_path not in self.file_data.keys(),
+            map(
+                lambda full_path: full_path.replace(self.repository_path + "/", ""),
+                self.git_repository.files(),
+            ),
+        )
+
+        self.file_data.update(
+            dict(
+                map(
+                    lambda build_file_path: (
+                        build_file_path,
+                        {
+                            "commit_hash": self.commit.hash,
+                            "file_dir": "/".join(build_file_path.split("/")[:-1]) + "/",
+                            "file_name": build_file_path.split("/")[-1],
+                            "build_language": self.language,
+                            "file_action": None,
+                            "before_path": build_file_path,
+                            "after_path": build_file_path,
+                            "saved_as": build_file_path.replace("/", "__").strip(),
+                            "has_gumtree_error": False,
+                            "elapsed_time": None,
+                        },
+                    ),
+                    other_build_files,
+                )
+            )
+        )
+
+    def get_file_diff(self, file_path):
+        gumtree_success, dotdiff_content = self.read_gumtree_output(file_path)
+
+        if gumtree_success:
+            return ASTDiff(
+                *dotdiff_content,
+                self.file_data[file_path]["file_action"],
+                self.file_data[file_path]["saved_as"],
+                self.commit.hash,
+                self.language,
+            )
+
+        else:
+            return None
