@@ -9,6 +9,7 @@ from utils.helpers import (
     create_csv_files,
     write_source_code,
     file_is_build,
+    get_file_dir,
     get_processed_path,
     read_dotdiff,
 )
@@ -119,7 +120,7 @@ for commit in tqdm(repo.traverse_commits()):
                 file_start = datetime.now()
                 file_modification_data = {
                     "commit_hash": commit.hash,
-                    "commit_parents": commit.parents,
+                    "file_dir": get_file_dir(modified_file),
                     "file_name": modified_file.filename,
                     "build_language": LANGUAGE,
                     "file_action": str(modified_file.change_type).split(".")[-1],

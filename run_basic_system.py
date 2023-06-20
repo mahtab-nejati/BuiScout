@@ -11,6 +11,7 @@ from utils.helpers import (
     write_source_code,
     file_is_build,
     file_is_filtered,
+    get_file_dir,
     get_processed_path,
     read_dotdiff,
 )
@@ -125,7 +126,7 @@ for commit in tqdm(repo.traverse_commits()):
                 file_start = datetime.now()
                 file_modification_data = {
                     "commit_hash": commit.hash,
-                    "commit_parents": commit.parents,
+                    "file_dir": get_file_dir(modified_file),
                     "file_name": modified_file.filename,
                     "build_language": LANGUAGE,
                     "file_action": str(modified_file.change_type).split(".")[-1],
@@ -272,7 +273,7 @@ for commit in tqdm(repo.traverse_commits()):
 
                 file_modification_data = {
                     "commit_hash": commit.hash,
-                    "commit_parents": commit.parents,
+                    "file_dir": "/".join(file_path.split("/")[:-1]) + "/",
                     "file_name": build_file.split("/")[-1],
                     "build_language": LANGUAGE,
                     "file_action": None,
@@ -334,11 +335,6 @@ for commit in tqdm(repo.traverse_commits()):
                         commit.hash,
                         LANGUAGE,
                     )
-
-                    # Convert slices to svg
-                    command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
-                    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-                    output, error = process.communicate()
 
                 # End of file analysis
                 file_modification_data["elapsed_time"] = datetime.now() - file_start

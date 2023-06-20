@@ -26,6 +26,8 @@ class ASTDiff(object):
         *args,
         **kwargs,
     ):
+        # Import language support tools but not saved as an attribute
+        # for pickling reasons
         language_support_tools = importlib.import_module(
             f"language_supports.{LANGUAGE}"
         )
@@ -310,7 +312,3 @@ class ASTDiff(object):
 
         self.source.update_summarization_status(source_node, method)
         self.destination.update_summarization_status(destination_node, method)
-
-
-class SystemDiff(ASTDiff):
-    pass

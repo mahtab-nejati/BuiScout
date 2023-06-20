@@ -95,6 +95,28 @@ def file_is_filtered(file_path, filtering_patterns=PROJECT_SPECIFIC_FILTERS):
     return False
 
 
+def file_is_target(modified_file, patterns):
+    if isinstance(modified_file, str):
+        return file_is_build(modified_file, patterns) and not file_is_filtered(
+            modified_file
+        )
+    return file_is_build(modified_file.filename, patterns) and not (
+        file_is_filtered(modified_file.new_path)
+        and file_is_filtered(modified_file.old_path)
+    )
+
+
+def get_file_dir(modified_file):
+    if modified_file.new_path is not None:
+        return modified_file.new_path.replace(modified_file.filename, "")
+    elif modified_file.old_path is not None:
+        return modified_file.old_path.replace(modified_file.filename, "")
+    elif modified_file.filename is not None:
+        return ""
+    else:
+        return None
+
+
 # Prpcess the path to project files
 def get_processed_path(modified_file):
     if modified_file.new_path is not None:
@@ -137,7 +159,7 @@ def create_csv_files(summarization_methods, save_path):
     # Save metadata on build changes
     modified_build_files_columns = [
         "commit_hash",
-        "commit_parents",
+        "file_dir",
         "file_name",
         "build_language",
         "file_action",

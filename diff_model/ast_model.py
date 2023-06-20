@@ -472,7 +472,8 @@ class ASTSlice(AST):
         *args,
         **kwargs,
     ):
-        # SET language support tools
+        # Import language support tools but not saved as an attribute
+        # for pickling reasons
         language_support_tools = importlib.import_module(
             f"language_supports.{LANGUAGE}"
         )

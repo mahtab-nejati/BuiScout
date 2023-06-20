@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from utils.visitors import NodeVisitor
 from utils.exceptions import DebugException
@@ -12,19 +13,24 @@ class DefUseChains(NodeVisitor):
         - chains: {'node_id': Def}, a mapping between def nodes and their chains.
     """
 
-    def __init__(self, ast):
+    def __init__(self, ast, sysdiff=None):
         """
         ast: ast_model.AST
         """
         self.ast = ast
 
+        self.ast_stack = []
+
+        self.sysdiff = sysdiff
+
         # Stores a mapping between a node and the list of
         # variables defined in the subtree under the node
         # in the form of {'node_id': List[Def]}
+        # TODO: FIX for system level (does not update beyond include node)
         self.local_chains = defaultdict(list)
         # Stores a mapping between def nodes and their chain object (Def)
         # in the form of {'node_id': Def}
-        self.chains = defaultdict(list)
+        self.def_points = defaultdict(list)
         # Stores a mapping of the name to its definition points {'name': [Def]}
         self.defined_names = defaultdict(list)
         # Stores a mapping of the name to undefined users {'name': [use_node]}
@@ -44,7 +50,7 @@ class DefUseChains(NodeVisitor):
         # TODO (Low): Is there any method to get rid of the for loop?
         if name in self.defined_names:
             for definition in self.defined_names[name]:
-                definition.add_use_node(use_node)
+                definition.add_use_node(use_node, self.ast)
         else:
             self.trace_undefined_name(use_node)
 
@@ -91,7 +97,7 @@ class DefUseChains(NodeVisitor):
         # )
 
     def update_chains(self, definition):
-        self.chains[definition.def_node["id"]] = definition
+        self.def_points[definition.def_node["id"]] = definition
 
     def update_defined_names(self, definition):
         self.defined_names[definition.name].append(definition)
@@ -102,5 +108,38 @@ class DefUseChains(NodeVisitor):
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
 
+    def to_json(self):
+        chains = {
+            "commit_hash": self.ast.commit_hash,
+            "local_chains": dict(
+                map(
+                    lambda local_chain: (
+                        local_chain[0],
+                        list(map(lambda def_obj: def_obj.to_json(), local_chain[1])),
+                    ),
+                    self.local_chains.items(),
+                )
+            ),
+            "def_points": dict(
+                map(
+                    lambda chain: (chain[0], chain[1].to_json()),
+                    self.def_points.items(),
+                )
+            ),
+            "defined_names": dict(
+                map(
+                    lambda defined_name: (
+                        defined_name[0],
+                        list(map(lambda def_obj: def_obj.to_json(), defined_name[1])),
+                    ),
+                    self.defined_names.items(),
+                )
+            ),
+            "undefined_names": self.undefined_names,
+        }
+        return chains
+
     def save_chains(self, save_path):
-        pass
+        save_path.mkdir(parents=True, exist_ok=True)
+        with open(save_path / "du_output.json", "w") as f:
+            json.dump(self.to_json(), f)

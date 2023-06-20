@@ -14,7 +14,7 @@ with open(ROOT_PATH / "config.json", "r") as f:
 DATA_PATH = Path(config["DATA_PATH"])
 PROJECT = config["PROJECT"]
 
-REPOSITORY = config["REPOSITORY"]
+REPOSITORY = config["REPOSITORY"].rstrip("/")
 if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:
@@ -61,6 +61,8 @@ elif BUILD_SYSTEM == "gradle":
     }
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
+
+ROOT_FILE = config["ROOT_FILE"]
 
 PATTERNS_FLATTENED = {
     "include": reduce(
