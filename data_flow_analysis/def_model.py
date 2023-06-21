@@ -1,3 +1,6 @@
+from utils.exceptions import DebugException
+
+
 class Def(object):
     """
     Model a Def point and its users (chain).
