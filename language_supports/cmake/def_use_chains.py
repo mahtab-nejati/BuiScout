@@ -39,14 +39,14 @@ class DefUseChains(cm.DefUseChains):
     def visit_else_clause(self, node_data):
         return self.visit_conditional_expression(node_data)
 
-    def visit_endif_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+    # def visit_endif_clause(self, node_data):
+    #     return self.visit_conditional_expression(node_data)
 
     def visit_while_clause(self, node_data):
         return self.visit_conditional_expression(node_data)
 
-    def visit_endwhile_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+    # def visit_endwhile_clause(self, node_data):
+    #     return self.visit_conditional_expression(node_data)
 
     def visit_conditional_expression(self, node_data):
         # TODO (High): Update this and all users of this
@@ -88,6 +88,27 @@ class DefUseChains(cm.DefUseChains):
             if argument["content"].upper() not in operators:
                 self.add_user(argument)
         return self.generic_visit(node_data)
+
+    def visit_foreach_clause(self, node_data):
+        """
+        # TODO (High): Look into the scoping.
+        """
+        condition_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "condition")
+        )
+        arguments = sorted(
+            filter(
+                lambda argument_data: argument_data["type"] not in ["(", ")"],
+                self.ast.get_children(condition_node_data).values(),
+            ),
+            key=lambda data: data["s_pos"],
+        )
+        def_node = arguments.pop(0)
+        self.register_new_definition(def_node)
+        return self.generic_visit(node_data)
+
+    # def visit_endforeach_clause(self, node_data):
+    #     pass
 
     def visit_normal_command(self, node_data):
         command_identifier = self.ast.get_data(
@@ -245,7 +266,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_bracket_argument(self, node_data):
         # TODO
         # when it's def point
-        #  when it's use point
+        # when it's use point
         # # NOTE: No generic_visit required
         # # as the inner scape sequnces, regex,
         # # and variable refs are not evaluated.
@@ -255,16 +276,17 @@ class DefUseChains(cm.DefUseChains):
     def visit_quoted_argument(self, node_data):
         # TODO
         # when it's def point
-        #  when it's use point
+        # when it's use point
         return self.generic_visit(node_data)
 
     def visit_unquoted_argument(self, node_data):
         # TODO
         # when it's def point
-        #  when it's use point
+        # when it's use point
         return self.generic_visit(node_data)
 
     def visit_variable_ref(self, node_data):
         # TODO (High)
         self.add_user(node_data)
-        return
+        # For nested variable references
+        return self.generic_visit(node_data)

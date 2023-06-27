@@ -25,27 +25,7 @@ class NameGetter(NodeVisitor):
         return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
-        name = self.ast.unparse_subtree(node_data)
-        clauses = filter(
-            lambda node_data: node_data["type"] in self.types_with_body_child,
-            self.ast.get_children(node_data).values(),
-        )
-        bodies = map(
-            lambda body_data: self.ast.unparse_subtree(body_data),
-            reduce(
-                lambda a, b: {**a, **b},
-                map(
-                    lambda clause_data: self.ast.get_children_by_type(
-                        clause_data, "body"
-                    ),
-                    clauses,
-                ),
-                {},
-            ).values(),
-        )
-        for body in bodies:
-            name = name.replace(body, " ... ")
-        return name
+        return self.ast.unparse_subtree(node_data, masked_types=["body"])
 
     def visit_function_definition(self, node_data):
         header = self.ast.get_data(

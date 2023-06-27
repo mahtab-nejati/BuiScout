@@ -115,6 +115,7 @@ class DefUseChains(NodeVisitor):
     def to_json(self):
         chains = {
             "commit_hash": self.ast.commit_hash,
+            "cluster": self.ast.name,
             "local_chains": dict(
                 map(
                     lambda local_chain: (
