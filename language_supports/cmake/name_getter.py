@@ -9,6 +9,7 @@ class NameGetter(NodeVisitor):
         "elseif_clause",
         "else_clause",
         "while_clause",
+        "foreach_clause",
     ]
 
     def generic_visit(self, node_data):
@@ -19,6 +20,9 @@ class NameGetter(NodeVisitor):
 
     def visit_while_statement(self, node_data):
         return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
+
+    def visit_foreach_statement(self, node_data):
+        return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
         name = self.ast.unparse_subtree(node_data)

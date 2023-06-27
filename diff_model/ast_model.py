@@ -405,7 +405,7 @@ class AST(nx.DiGraph):
         and returns a naive stringification of the parsed subtree.
         """
         subtree_nodes = self.get_subtree_nodes(head_data)
-        return "".join(
+        return " ".join(
             map(
                 lambda cp: cp[0],
                 sorted(
