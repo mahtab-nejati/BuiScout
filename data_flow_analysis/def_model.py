@@ -12,32 +12,32 @@ class Def(object):
         self.name = self.ast.get_name(self.def_node)
         if self.name is None:
             raise DebugException(f"{self.def_node['type']} requires NameGetter revisit")
-        self.use_nodes = []
+        self.actor_node = self.ast.get_actor(self.def_node)
+        self.actor_name = self.ast.get_name(self.actor_node)
+        self.users = []
 
-    def add_use_node(self, use_node, use_ast):
+    def add_user(self, user):
         """
         Add use_node to the list of users if it is a user of the self.def_node
-        In a system-level analysis, used nodes can be in other files, hence passing in the use_ast.
         """
-        if self.is_user(use_node, use_ast):
-            self.use_nodes.append(use_node)
+        if self.is_user(user):
+            self.users.append(user)
 
-    def is_user(self, use_node, use_ast):
+    def is_user(self, user):
         """
-        A wrapper for method uses_{self.def_node["type"]}
-        Methods must be implemented at a language support level.
-        In a system-level analysis, used nodes can be in other files, hence passing in the use_ast.
+        Checks if both the user and self (definition) refer to the
+        same name and returns True if they do.
         """
-        if use_ast.get_name(use_node) == self.name:
-            return True
-        return False
+        return user.is_user_of(self.name)
 
-    def is_listed_user(self, use_node, *args, **kwargs):
-        return use_node in self.use_nodes
+    def is_listed_user(self, user, *args, **kwargs):
+        return user.use_node["id"] in set(lambda user: user.use_node["id"], self.users)
 
     def to_json(self):
         return {
             "def_name": self.name,
             "def_node": self.def_node,
-            "use_nodes": self.use_nodes,
+            "actor_name": self.actor_name,
+            "actor_node": self.actor_node,
+            "users": list(map(lambda user: user.to_json(), self.users)),
         }

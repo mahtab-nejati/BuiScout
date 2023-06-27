@@ -1,8 +1,8 @@
 import json
 from collections import defaultdict
 from utils.visitors import NodeVisitor
-from utils.exceptions import DebugException
 from .def_model import Def
+from .use_model import Use
 
 
 class DefUseChains(NodeVisitor):
@@ -46,16 +46,16 @@ class DefUseChains(NodeVisitor):
         return self.defined_names[name]
 
     def add_user(self, use_node):
-        name = self.ast.get_name(use_node)
+        user = self.create_and_get_user(use_node)
         # TODO (Low): Is there any method to get rid of the for loop?
-        if name in self.defined_names:
-            for definition in self.defined_names[name]:
-                definition.add_use_node(use_node, self.ast)
+        if user.name in self.defined_names:
+            for definition in self.defined_names[user.name]:
+                definition.add_user(user)
         else:
-            self.trace_undefined_name(use_node)
+            self.trace_undefined_name(user)
 
-    def trace_undefined_name(self, use_node):
-        self.undefined_names[self.ast.get_name(use_node)].append(use_node)
+    def trace_undefined_name(self, user):
+        self.undefined_names[user.name].append(user)
 
     # def process_undefineds(self):
     #     """
@@ -78,6 +78,9 @@ class DefUseChains(NodeVisitor):
     def create_and_get_definition(self, def_node):
         return Def(def_node, self.ast)
 
+    def create_and_get_user(self, use_node):
+        return Use(use_node, self.ast)
+
     def _add_to_local_chains(self, definition, local_node_data=None):
         if local_node_data is None:
             self.local_chains[definition.def_node["id"]].append(definition)
@@ -89,6 +92,7 @@ class DefUseChains(NodeVisitor):
         ancestors = self.ast.get_ancestors(definition.def_node)
         # TODO (low): Get rid of the for loop.
         # Use something like the map function commented out below
+        # TODO (low): Fix for included files... It should happen in system_diff_model.SystemDiff
         for node_data in ancestors.values():
             self._add_to_local_chains(definition, node_data)
         # map(
@@ -102,8 +106,8 @@ class DefUseChains(NodeVisitor):
     def update_defined_names(self, definition):
         self.defined_names[definition.name].append(definition)
 
-    def update_undefined_names(self, name, use_node):
-        self.undefined_names[name].append(use_node)
+    def update_undefined_names(self, name, user):
+        self.undefined_names[name].append(user)
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
@@ -135,7 +139,15 @@ class DefUseChains(NodeVisitor):
                     self.defined_names.items(),
                 )
             ),
-            "undefined_names": self.undefined_names,
+            "undefined_names": dict(
+                map(
+                    lambda undef: (
+                        undef[0],
+                        list(map(lambda user: user.to_json(), undef[1])),
+                    ),
+                    self.undefined_names.items(),
+                )
+            ),
         }
         return chains
 

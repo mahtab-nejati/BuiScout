@@ -6,11 +6,11 @@ class DefUseChains(cm.DefUseChains):
     def visit_function_definition(self, node_data):
         self.register_new_definition(node_data)
 
-        header_data = self.ast.get_data(
-            self.ast.get_children_by_type(node_data, "function_header")
-        )
+        # header_data = self.ast.get_data(
+        #     self.ast.get_children_by_type(node_data, "function_header")
+        # )
 
-        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
+        # body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
 
         return self.generic_visit(node_data)
 
@@ -18,12 +18,13 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_macro_definition(self, node_data):
-        definition = self.register_new_definition(node_data)
+        self.register_new_definition(node_data)
 
-        header_data = self.ast.get_data(
-            self.ast.get_children_by_type(node_data, "macro_header")
-        )
-        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
+        # header_data = self.ast.get_data(
+        #     self.ast.get_children_by_type(node_data, "macro_header")
+        # )
+        # body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
+
         return self.generic_visit(node_data)
 
     def visit_macro_header(self, node_data):

@@ -64,6 +64,7 @@ class AST(nx.DiGraph):
 
         # Set up language support tools
         self.node_names = language_support_tools.NameGetter(self)
+        self.node_actors = language_support_tools.ActorGetter(self)
         self.du_chains = language_support_tools.DefUseChains(self)
         self.stringifier = language_support_tools.Stringifier(self)
 
@@ -168,6 +169,13 @@ class AST(nx.DiGraph):
         for data flow analysis
         """
         return self.node_names.visit(node_data)
+
+    def get_actor(self, node_data, *args, **kwaargs):
+        """
+        Returns the proper actor that consumes the node based on language-specific rules
+        for data flow analysis
+        """
+        return self.node_actors.visit(node_data)
 
     def get_location(self, node_data, *args, **kwargs):
         """
