@@ -1,5 +1,6 @@
 import networkx as nx
-import importlib
+import importlib, json
+from pathlib import Path
 from copy import deepcopy
 from .ast_model import AST
 
@@ -312,3 +313,15 @@ class ASTDiff(object):
 
         self.source.update_summarization_status(source_node, method)
         self.destination.update_summarization_status(destination_node, method)
+
+    def export_json(self, save_path):
+        save_path = Path(save_path)
+        save_path.mkdir(parents=True, exist_ok=True)
+        self.source.export_json(save_path)
+        self.destination.export_json(save_path)
+        with open(
+            save_path / f"{self.commit_hash}:{self.file_name}:matches.json", "w"
+        ) as f:
+            json.dump(
+                {"src_match": self.source_match, "dst_match": self.destination_match}, f
+            )

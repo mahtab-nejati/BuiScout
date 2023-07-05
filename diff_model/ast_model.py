@@ -1,5 +1,8 @@
+import json
 import networkx as nx
+from pathlib import Path
 from networkx.drawing.nx_agraph import write_dot
+from networkx.readwrite import json_graph
 from functools import reduce
 import importlib, re
 from copy import deepcopy
@@ -502,6 +505,14 @@ class AST(nx.DiGraph):
         self.affected_nodes = dict()
         self.summarized_nodes = dict()
         self.set_slice()
+
+    def export_json(self, save_path):
+        save_path = Path(save_path)
+        save_path.mkdir(parents=True, exist_ok=True)
+        with open(
+            save_path / f"{self.commit_hash}:{self.file_name}:{self.name}_ast.json", "w"
+        ) as f:
+            json.dump(json_graph.node_link_data(self), f)
 
 
 class ASTSlice(AST):

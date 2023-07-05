@@ -3,17 +3,24 @@ from utils.exceptions import DebugException
 
 class Use(object):
     """
-    Model a Def point and its users (chain).
+    Model a Use point.
+    Objects are called use_point
     """
 
-    def __init__(self, use_node, ast):
+    def __init__(self, node_data, actor_point, ast):
         self.ast = ast
-        self.use_node = use_node
-        self.name = self.ast.get_name(self.use_node)
+
+        # Storing the node_data
+        self.node_data = node_data
+
+        self.name = self.ast.get_name(self.node_data)
         if self.name is None:
-            raise DebugException(f"{self.def_node['type']} requires NameGetter revisit")
-        self.actor_node = self.ast.get_actor(self.use_node)
-        self.actor_name = self.ast.get_name(self.actor_node)
+            raise DebugException(
+                f"{self.node_data['type']} requires NameGetter revisit"
+            )
+
+        # Storing actor_point
+        self.actor_point = actor_point
 
     def is_user_of(self, def_name):
         """
@@ -25,7 +32,6 @@ class Use(object):
     def to_json(self):
         return {
             "use_name": self.name,
-            "use_node": self.use_node,
-            "actor_name": self.actor_name,
-            "actor_node": self.actor_node,
+            "use_node_id": self.node_data["id"],
+            "actor_node_id": self.actor_point.node_data["id"],
         }

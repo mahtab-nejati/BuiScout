@@ -1,8 +1,10 @@
 import json
+from functools import reduce
 from collections import defaultdict
 from utils.visitors import NodeVisitor
 from .def_model import Def
 from .use_model import Use
+from .actor_model import Actor
 
 
 class DefUseChains(NodeVisitor):
@@ -23,39 +25,30 @@ class DefUseChains(NodeVisitor):
 
         self.sysdiff = sysdiff
 
+        # Stores a mapping between def nodes and their object (Def)
+        # in the form of {'node_id': Def}
+        self.def_points = defaultdict(list)
+        # Stores a mapping between use nodes and their object (Use)
+        # in the form of {'node_id': Use}
+        self.use_points = defaultdict(list)
+        # Stores a mapping between actor nodes and their object (Actor)
+        # in the form of {'node_id': Actor}
+        self.actor_points = defaultdict(list)
+
         # Stores a mapping between a node and the list of
         # variables defined in the subtree under the node
         # in the form of {'node_id': List[Def]}
-        # TODO: FIX for system level (does not update beyond include node)
+        # NOTE: Usefull for scoping and name spaces
+        # TODO (Low): FIX for system level
+        # (does not update beyond include node in CMake)
         self.local_chains = defaultdict(list)
-        # Stores a mapping between def nodes and their chain object (Def)
-        # in the form of {'node_id': Def}
-        self.def_points = defaultdict(list)
+
         # Stores a mapping of the name to its definition points {'name': [Def]}
         self.defined_names = defaultdict(list)
-        # Stores a mapping of the name to undefined users {'name': [use_node]}
+        # Stores a mapping of the name to its use points {'name': [Use]}
+        self.used_names = defaultdict(list)
+        # Stores a mapping of the name to undefined users {'name': [Use]}
         self.undefined_names = defaultdict(list)
-
-    def get_definitions_by_name(self, node_data):
-        """
-        Looks up use (node_data) in current context
-        Returns the list of defs linked to the node_data
-        """
-        # TODO: Implement the ast.get_name(node_data)
-        name = self.ast.get_name(node_data)
-        return self.defined_names[name]
-
-    def add_user(self, use_node):
-        user = self.create_and_get_user(use_node)
-        # TODO (Low): Is there any method to get rid of the for loop?
-        if user.name in self.defined_names:
-            for definition in self.defined_names[user.name]:
-                definition.add_user(user)
-        else:
-            self.trace_undefined_name(user)
-
-    def trace_undefined_name(self, user):
-        self.undefined_names[user.name].append(user)
 
     # def process_undefineds(self):
     #     """
@@ -68,91 +61,134 @@ class DefUseChains(NodeVisitor):
     #                     newdef.add_use_node(user)
     #         del self.undefined_names[undefined_name]
 
-    def register_new_definition(self, def_node):
-        definition = self.create_and_get_definition(def_node)
-        self.update_local_chains(definition)
-        self.update_chains(definition)
-        self.update_defined_names(definition)
-        return definition
+    def get_definitions_by_name(self, node_data):
+        """
+        Looks up use (node_data) in current context
+        Returns the list of defs linked to the node_data
+        """
+        name = self.ast.get_name(node_data)
+        return self.defined_names[name]
 
-    def create_and_get_definition(self, def_node):
-        return Def(def_node, self.ast)
-
-    def create_and_get_user(self, use_node):
-        return Use(use_node, self.ast)
-
-    def _add_to_local_chains(self, definition, local_node_data=None):
-        if local_node_data is None:
-            self.local_chains[definition.def_node["id"]].append(definition)
+    def register_new_use_point(self, use_node_data):
+        use_point = self.create_and_get_use_point(use_node_data)
+        self.use_points[use_point.node_data["id"]] = use_point
+        self.used_names[use_point.name].append(use_point)
+        if use_point.name in self.defined_names:
+            list(
+                map(
+                    lambda def_point: def_point.add_use_point(use_point),
+                    self.defined_names[use_point.name],
+                )
+            )
         else:
-            self.local_chains[local_node_data["id"]].append(definition)
+            self.undefined_names[use_point.name].append(use_point)
+        return use_point
 
-    def update_local_chains(self, definition):
-        self._add_to_local_chains(definition)
-        ancestors = self.ast.get_ancestors(definition.def_node)
+    def register_new_def_point(self, def_node_data):
+        def_point = self.create_and_get_def_point(def_node_data)
+        self.def_points[def_point.node_data["id"]] = def_point
+        self.defined_names[def_point.name].append(def_point)
+        self.update_local_chains(def_point)
+        return def_point
+
+    def create_and_get_def_point(self, def_node):
+        actor_point = self.get_or_create_actor_point(def_node)
+        actor_point.add_def_point_id(def_node["id"])
+        return Def(def_node, actor_point, self.ast)
+
+    def create_and_get_use_point(self, use_node):
+        actor_point = self.get_or_create_actor_point(use_node)
+        actor_point.add_use_point_id(use_node["id"])
+        return Use(use_node, actor_point, self.ast)
+
+    def get_or_create_actor_point(self, node_data):
+        actor_node_data = self.ast.get_actor(node_data)
+        if actor_node_data["id"] in self.actor_points:
+            actor_point = self.actor_points[actor_node_data["id"]]
+        else:
+            actor_point = Actor(actor_node_data, self.ast)
+            self.actor_points[actor_node_data["id"]] = actor_point
+        return actor_point
+
+    def _add_to_local_chains(self, def_point, local_node_data=None):
+        if local_node_data is None:
+            self.local_chains[def_point.node_data["id"]].append(def_point)
+        else:
+            self.local_chains[local_node_data["id"]].append(def_point)
+
+    def update_local_chains(self, def_point):
+        self._add_to_local_chains(def_point)
+        ancestors = self.ast.get_ancestors(def_point.node_data)
         # TODO (low): Get rid of the for loop.
         # Use something like the map function commented out below
         # TODO (low): Fix for included files... It should happen in system_diff_model.SystemDiff
         for node_data in ancestors.values():
-            self._add_to_local_chains(definition, node_data)
+            self._add_to_local_chains(def_point, node_data)
         # map(
-        #     lambda node_data: self.add_to_local_chains(definition, node_data),
+        #     lambda node_data: self.add_to_local_chains(def_point, node_data),
         #     ancestors.values(),
         # )
-
-    def update_chains(self, definition):
-        self.def_points[definition.def_node["id"]] = definition
-
-    def update_defined_names(self, definition):
-        self.defined_names[definition.name].append(definition)
-
-    def update_undefined_names(self, name, user):
-        self.undefined_names[name].append(user)
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
 
     def to_json(self):
-        chains = {
+        du_chains_output = {
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
-            "local_chains": dict(
+            # "local_chains": dict(
+            #     map(
+            #         lambda local_chain: (
+            #             local_chain[0],
+            #             list(map(lambda def_obj: def_obj.to_json(), local_chain[1])),
+            #         ),
+            #         self.local_chains.items(),
+            #     )
+            # ),
+            "def_points": list(
                 map(
-                    lambda local_chain: (
-                        local_chain[0],
-                        list(map(lambda def_obj: def_obj.to_json(), local_chain[1])),
-                    ),
-                    self.local_chains.items(),
+                    lambda def_point: def_point.to_json(),
+                    self.def_points.values(),
                 )
             ),
-            "def_points": dict(
+            "use_points": list(
                 map(
-                    lambda chain: (chain[0], chain[1].to_json()),
-                    self.def_points.items(),
+                    lambda use_point: use_point.to_json(),
+                    self.use_points.values(),
                 )
             ),
-            "defined_names": dict(
+            "actor_points": list(
                 map(
-                    lambda defined_name: (
-                        defined_name[0],
-                        list(map(lambda def_obj: def_obj.to_json(), defined_name[1])),
-                    ),
-                    self.defined_names.items(),
+                    lambda actor_point: actor_point.to_json(),
+                    self.actor_points.values(),
                 )
-            ),
-            "undefined_names": dict(
-                map(
-                    lambda undef: (
-                        undef[0],
-                        list(map(lambda user: user.to_json(), undef[1])),
+            ),  # TODO CONTINUE HERE
+            "undefined_names": reduce(
+                lambda a, b: [*a, *b],
+                reduce(
+                    lambda a, b: [*a, *b],
+                    map(
+                        lambda use_point_list: (
+                            list(
+                                map(
+                                    lambda use_point: use_point.to_json(),
+                                    use_point_list,
+                                )
+                            ),
+                        ),
+                        self.undefined_names.values(),
                     ),
-                    self.undefined_names.items(),
-                )
+                    [],
+                ),
+                [],
             ),
         }
-        return chains
 
-    def save_chains(self, save_path):
+        return du_chains_output
+
+    def export_json(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
+        if self.sysdiff is None:
+            self.ast.export_json(save_path)
         with open(save_path / "du_output.json", "w") as f:
             json.dump(self.to_json(), f)

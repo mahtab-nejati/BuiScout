@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 import subprocess, time, importlib
@@ -223,30 +224,45 @@ class SystemDiff(object):
             self.file_data[file_path]["elapsed_time"] = datetime.now() - file_start
 
     def perform_data_flow_analysis(self):
-        # Bypass if the self.root_file has GumTree error
+        # Skip if the self.root_file has GumTree error
         if self.file_data[self.root_file]["diff"] is None:
-            self.source_chains = None
-            self.destination_chains = None
+            self.source_du_chains = None
+            self.destination_du_chains = None
             return
 
-        self.source_chains = self.DefUseChains(
+        self.source_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].source, sysdiff=self
         )
-        self.source_chains.analyze()
+        self.source_du_chains.analyze()
 
-        self.destination_chains = self.DefUseChains(
+        self.destination_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].destination, sysdiff=self
         )
-        self.destination_chains.analyze()
+        self.destination_du_chains.analyze()
 
-    def save_chains(self):
-        if self.source_chains is not None:
-            self.source_chains.save_chains(self.commit_dir / "data_flow_output/source")
+    def export_json(self):
+        save_path = self.commit_dir / "data_flow_output"
+        Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        if self.destination_chains is not None:
-            self.destination_chains.save_chains(
-                self.commit_dir / "data_flow_output/destination"
+        if self.source_du_chains is not None:
+            with open(save_path / "src_du_output.json", "w") as f:
+                json.dump(self.source_du_chains.to_json(), f)
+
+        if self.destination_du_chains is not None:
+            with open(save_path / "dst_du_output.json", "w") as f:
+                json.dump(self.destination_du_chains.to_json(), f)
+
+        list(
+            map(
+                lambda file_data: file_data["diff"].export_json(
+                    Path(save_path) / "diffs"
+                ),
+                filter(
+                    lambda file_data: (file_data["diff"] is not None),
+                    self.file_data.values(),
+                ),
             )
+        )
 
 
 class SystemDiffShortcut(SystemDiff):

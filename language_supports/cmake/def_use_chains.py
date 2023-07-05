@@ -4,7 +4,7 @@ from utils.exceptions import MissingArgumentsException
 
 class DefUseChains(cm.DefUseChains):
     def visit_function_definition(self, node_data):
-        self.register_new_definition(node_data)
+        self.register_new_def_point(node_data)
 
         # header_data = self.ast.get_data(
         #     self.ast.get_children_by_type(node_data, "function_header")
@@ -18,7 +18,7 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_macro_definition(self, node_data):
-        self.register_new_definition(node_data)
+        self.register_new_def_point(node_data)
 
         # header_data = self.ast.get_data(
         #     self.ast.get_children_by_type(node_data, "macro_header")
@@ -86,7 +86,7 @@ class DefUseChains(cm.DefUseChains):
         )
         for argument in arguments:
             if argument["content"].upper() not in operators:
-                self.add_user(argument)
+                self.register_new_use_point(argument)
         return self.generic_visit(node_data)
 
     def visit_foreach_clause(self, node_data):
@@ -104,7 +104,7 @@ class DefUseChains(cm.DefUseChains):
             key=lambda data: data["s_pos"],
         )
         def_node = arguments.pop(0)
-        self.register_new_definition(def_node)
+        self.register_new_def_point(def_node)
         return self.generic_visit(node_data)
 
     # def visit_endforeach_clause(self, node_data):
@@ -119,7 +119,7 @@ class DefUseChains(cm.DefUseChains):
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
-        self.add_user(node_data)
+        self.register_new_use_point(node_data)
         return self.generic_visit(node_data)
 
     ############################
@@ -147,7 +147,7 @@ class DefUseChains(cm.DefUseChains):
             def_node = self.ast.get_data(
                 self.ast.get_child_by_order(arguments_node_data, -1)
             )
-            self.register_new_definition(def_node)
+            self.register_new_def_point(def_node)
             return self.generic_visit(node_data)
 
         # The following operations affect the list and define zero or more variables as the ast arguments
@@ -161,7 +161,7 @@ class DefUseChains(cm.DefUseChains):
                 self.ast.get_children(arguments_node_data).values(),
             )
             for def_node in def_nodes:
-                self.register_new_definition(def_node)
+                self.register_new_def_point(def_node)
             return self.generic_visit(node_data)
 
         # # TODO (Decision): The following commented operations modify the list
@@ -184,7 +184,7 @@ class DefUseChains(cm.DefUseChains):
             def_node = self.ast.get_data(
                 self.ast.get_child_by_order(arguments_node_data, 1)
             )
-            self.register_new_definition(def_node)
+            self.register_new_def_point(def_node)
             return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
@@ -202,7 +202,7 @@ class DefUseChains(cm.DefUseChains):
         def_node = self.ast.get_data(
             self.ast.get_child_by_order(arguments_node_data, 0)
         )
-        self.register_new_definition(def_node)
+        self.register_new_def_point(def_node)
         # TODO (Medium): Identify impact!
         return self.generic_visit(node_data)
 
@@ -219,7 +219,7 @@ class DefUseChains(cm.DefUseChains):
         def_node = self.ast.get_data(
             self.ast.get_child_by_order(arguments_node_data, 0)
         )
-        self.register_new_definition(def_node)
+        self.register_new_def_point(def_node)
         # TODO (Medium): Identify impact!
         return self.generic_visit(node_data)
 
@@ -287,6 +287,6 @@ class DefUseChains(cm.DefUseChains):
 
     def visit_variable_ref(self, node_data):
         # TODO (High)
-        self.add_user(node_data)
+        self.register_new_use_point(node_data)
         # For nested variable references
         return self.generic_visit(node_data)
