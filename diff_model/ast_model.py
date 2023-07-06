@@ -509,9 +509,7 @@ class AST(nx.DiGraph):
     def export_json(self, save_path):
         save_path = Path(save_path)
         save_path.mkdir(parents=True, exist_ok=True)
-        with open(
-            save_path / f"{self.commit_hash}:{self.file_name}:{self.name}_ast.json", "w"
-        ) as f:
+        with open(save_path / f"{self.name}_ast.json", "w") as f:
             json.dump(json_graph.node_link_data(self), f)
 
 
