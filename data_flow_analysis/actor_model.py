@@ -7,7 +7,7 @@ class Actor(object):
     Objects are called actor_point
     """
 
-    def __init__(self, node_data, ast):
+    def __init__(self, node_data, reachability, ast):
         self.ast = ast
 
         # Storing the node_data
@@ -18,6 +18,9 @@ class Actor(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+
+        # Storing reachability condition
+        self.reachability = reachability.copy()
 
         # Storing the id of all def_node defined by this actor
         self.def_point_ids = []
@@ -48,6 +51,7 @@ class Actor(object):
         return {
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
+            "reachability": " ^ ".join(self.reachability),
             "def_node_ids": self.def_point_ids,
             "use_node_ids": self.use_point_ids,
         }

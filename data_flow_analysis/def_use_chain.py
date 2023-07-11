@@ -25,6 +25,9 @@ class DefUseChains(NodeVisitor):
 
         self.sysdiff = sysdiff
 
+        # Store current reachability conditions based on conditional statements
+        self.reachability_stack = []
+
         # Stores a mapping between def nodes and their object (Def)
         # in the form of {'node_id': Def}
         self.def_points = defaultdict(list)
@@ -106,7 +109,7 @@ class DefUseChains(NodeVisitor):
         if actor_node_data["id"] in self.actor_points:
             actor_point = self.actor_points[actor_node_data["id"]]
         else:
-            actor_point = Actor(actor_node_data, self.ast)
+            actor_point = Actor(actor_node_data, self.reachability_stack, self.ast)
             self.actor_points[actor_node_data["id"]] = actor_point
         return actor_point
 
@@ -128,6 +131,20 @@ class DefUseChains(NodeVisitor):
         #     lambda node_data: self.add_to_local_chains(def_point, node_data),
         #     ancestors.values(),
         # )
+
+    def add_condition_to_reachability_stack(self, condition_node_data):
+        self.reachability_stack.append(
+            self.ast.unparse_subtree(condition_node_data).strip("(").strip(")")
+        )
+
+    def remove_condition_from_reachability_stack(self, last_n=1):
+        del self.reachability_stack[-last_n:]
+
+    def negate_last_condition_in_reachability_stack(self, negation_symbol="NOT"):
+        # Usefull for else_if structure
+        self.reachability_stack[
+            -1
+        ] = f"{negation_symbol} ({self.reachability_stack[-1]})"
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))

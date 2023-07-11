@@ -30,30 +30,82 @@ class DefUseChains(cm.DefUseChains):
     def visit_macro_header(self, node_data):
         return self.generic_visit(node_data)
 
+    def visit_if_statement(self, node_data):
+        stacked_condition_count = (
+            len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
+            + 1  # For the if_clause
+        )
+        self.generic_visit(node_data)
+
+        self.remove_condition_from_reachability_stack(last_n=stacked_condition_count)
+        return
+
     def visit_if_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+        condition_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "condition")
+        )
+        self.visit_conditional_expression(condition_node_data)
+        self.add_condition_to_reachability_stack(condition_node_data)
+
+        body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "body")
+        )
+        return self.generic_visit(body_node_data)
 
     def visit_elseif_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+        condition_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "condition")
+        )
+        self.visit_conditional_expression(
+            condition_node_data, negate_last_condition=True
+        )
+        self.add_condition_to_reachability_stack(condition_node_data)
+
+        body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "body")
+        )
+        return self.generic_visit(body_node_data)
 
     def visit_else_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+        condition_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "condition")
+        )
+        self.visit_conditional_expression(
+            condition_node_data, negate_last_condition=True
+        )
+
+        body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "body")
+        )
+        return self.generic_visit(body_node_data)
 
     # def visit_endif_clause(self, node_data):
     #     return self.visit_conditional_expression(node_data)
 
+    def visit_while_statement(self, node_data):
+        self.generic_visit(node_data)
+        self.remove_condition_from_reachability_stack(last_n=1)
+        return
+
     def visit_while_clause(self, node_data):
-        return self.visit_conditional_expression(node_data)
+        condition_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "condition")
+        )
+        self.visit_conditional_expression(condition_node_data)
+        self.add_condition_to_reachability_stack(condition_node_data)
+
+        body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "body")
+        )
+        return self.generic_visit(body_node_data)
 
     # def visit_endwhile_clause(self, node_data):
     #     return self.visit_conditional_expression(node_data)
 
-    def visit_conditional_expression(self, node_data):
-        # TODO (High): Update this and all users of this
-        # after updating the grammar.js in tree-sitter-cmake
-        condition_node_data = self.ast.get_data(
-            self.ast.get_children_by_type(node_data, "condition")
-        )
+    def visit_conditional_expression(self, node_data, negate_last_condition=False):
+        if negate_last_condition:
+            self.negate_last_condition_in_reachability_stack(negation_symbol="NOT")
+
         operators = [
             "NOT",
             "AND",
@@ -80,13 +132,15 @@ class DefUseChains(cm.DefUseChains):
             "(",
             ")",
         ]
+
         arguments = sorted(
-            self.ast.get_children(condition_node_data).values(),
+            self.ast.get_children_by_type(node_data, "unquoted_argument").values(),
             key=lambda data: data["s_pos"],
         )
         for argument in arguments:
             if argument["content"].upper() not in operators:
                 self.register_new_use_point(argument)
+
         return self.generic_visit(node_data)
 
     def visit_foreach_clause(self, node_data):

@@ -4,9 +4,11 @@ from utils.visitors import NodeVisitor
 class ActorGetter(NodeVisitor):
     argument_actor_types = [
         "normal_command",
-        "if_statement",
-        "while_statement",
-        "foreach_statement",
+        "if_clause",
+        "elseif_clause",
+        "else_clause",
+        "while_clause",
+        "foreach_clause",
     ]
 
     def generic_visit(self, node_data):

@@ -18,7 +18,19 @@ class NameGetter(NodeVisitor):
     def visit_if_statement(self, node_data):
         return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
 
+    def visit_if_clause(self, node_data):
+        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+
+    def visit_elseif_clause(self, node_data):
+        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+
+    def visit_else_clause(self, node_data):
+        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+
     def visit_while_statement(self, node_data):
+        return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
+
+    def visit_while_clause(self, node_data):
         return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_foreach_statement(self, node_data):
