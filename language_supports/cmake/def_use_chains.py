@@ -50,7 +50,8 @@ class DefUseChains(cm.DefUseChains):
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
         )
-        return self.generic_visit(body_node_data)
+        if body_node_data:
+            return self.generic_visit(body_node_data)
 
     def visit_elseif_clause(self, node_data):
         condition_node_data = self.ast.get_data(
@@ -64,7 +65,8 @@ class DefUseChains(cm.DefUseChains):
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
         )
-        return self.generic_visit(body_node_data)
+        if body_node_data:
+            return self.generic_visit(body_node_data)
 
     def visit_else_clause(self, node_data):
         condition_node_data = self.ast.get_data(
@@ -77,7 +79,8 @@ class DefUseChains(cm.DefUseChains):
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
         )
-        return self.generic_visit(body_node_data)
+        if body_node_data:
+            return self.generic_visit(body_node_data)
 
     # def visit_endif_clause(self, node_data):
     #     return self.visit_conditional_expression(node_data)
@@ -97,7 +100,8 @@ class DefUseChains(cm.DefUseChains):
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
         )
-        return self.generic_visit(body_node_data)
+        if body_node_data:
+            return self.generic_visit(body_node_data)
 
     # def visit_endwhile_clause(self, node_data):
     #     return self.visit_conditional_expression(node_data)
