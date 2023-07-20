@@ -1,5 +1,4 @@
 from utils.visitors import NodeVisitor
-from functools import reduce
 
 
 class NameGetter(NodeVisitor):
