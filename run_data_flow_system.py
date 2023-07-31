@@ -188,7 +188,7 @@ for commit in tqdm(repo.traverse_commits()):
             )
 
             diff.perform_data_flow_analysis()
-            diff.export_json()
+            diff.export_csv()
 
     # Log all changes
     commit_data_df = pd.DataFrame(

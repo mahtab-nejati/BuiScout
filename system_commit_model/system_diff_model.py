@@ -245,16 +245,36 @@ class SystemDiff(object):
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
         if self.source_du_chains is not None:
-            with open(save_path / "src_du_output.json", "w") as f:
-                json.dump(self.source_du_chains.to_json(), f)
+            self.source_du_chains.export_json()
 
         if self.destination_du_chains is not None:
-            with open(save_path / "dst_du_output.json", "w") as f:
-                json.dump(self.destination_du_chains.to_json(), f)
+            self.destination_du_chains.export_json()
 
         list(
             map(
                 lambda file_data: file_data["diff"].export_json(
+                    Path(save_path) / "diffs"
+                ),
+                filter(
+                    lambda file_data: (file_data["diff"] is not None),
+                    self.file_data.values(),
+                ),
+            )
+        )
+
+    def export_csv(self):
+        save_path = self.commit_dir / "data_flow_output"
+        Path(save_path).mkdir(parents=True, exist_ok=True)
+
+        if self.source_du_chains is not None:
+            self.source_du_chains.export_csv()
+
+        if self.destination_du_chains is not None:
+            self.destination_du_chains.export_csv()
+
+        list(
+            map(
+                lambda file_data: file_data["diff"].export_csv(
                     Path(save_path) / "diffs"
                 ),
                 filter(

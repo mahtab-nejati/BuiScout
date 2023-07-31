@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from functools import reduce
 from collections import defaultdict
 from utils.visitors import NodeVisitor
@@ -153,15 +154,6 @@ class DefUseChains(NodeVisitor):
         du_chains_output = {
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
-            # "local_chains": dict(
-            #     map(
-            #         lambda local_chain: (
-            #             local_chain[0],
-            #             list(map(lambda def_obj: def_obj.to_json(), local_chain[1])),
-            #         ),
-            #         self.local_chains.items(),
-            #     )
-            # ),
             "def_points": list(
                 map(
                     lambda def_point: def_point.to_json(),
@@ -206,6 +198,24 @@ class DefUseChains(NodeVisitor):
     def export_json(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
         if self.sysdiff is None:
-            self.ast.export_json(save_path)
-        with open(save_path / "du_output.json", "w") as f:
+            self.ast.export_json(save_path / "diffs")
+        with open(save_path / f"{self.ast.name}_du_output.json", "w") as f:
             json.dump(self.to_json(), f)
+
+    def export_csv(self, save_path):
+        save_path.mkdir(parents=True, exist_ok=True)
+        if self.sysdiff is None:
+            self.ast.export_csv(save_path)
+        data = self.to_json()
+        def_points_df = pd.DataFrame(data["def_points"])
+        def_points_df.to_csv(save_path / f"{self.ast.name}_def_points.csv", index=False)
+        use_points_df = pd.DataFrame(data["use_points"])
+        use_points_df.to_csv(save_path / f"{self.ast.name}_use_points.csv", index=False)
+        actor_points_df = pd.DataFrame(data["actor_points"])
+        actor_points_df.to_csv(
+            save_path / f"{self.ast.name}_actor_points.csv", index=False
+        )
+        undefined_names_df = pd.DataFrame(data["undefined_names"])
+        undefined_names_df.to_csv(
+            save_path / f"{self.ast.name}_undefined_names.csv", index=False
+        )

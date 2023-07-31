@@ -1,4 +1,5 @@
 import networkx as nx
+import pandas as pd
 import importlib, json
 from pathlib import Path
 from copy import deepcopy
@@ -323,3 +324,18 @@ class ASTDiff(object):
             json.dump(
                 {"src_match": self.source_match, "dst_match": self.destination_match}, f
             )
+
+    def export_csv(self, save_path):
+        save_path = Path(save_path) / self.file_name
+        save_path.mkdir(parents=True, exist_ok=True)
+        self.source.export_csv(save_path)
+        self.destination.export_csv(save_path)
+        matches_df = pd.DataFrame(
+            list(
+                map(
+                    lambda pair: {"source": pair[0], "destination": pair[1]},
+                    self.source_match.items(),
+                )
+            )
+        )
+        matches_df.to_csv(save_path / f"matches.csv", index=False)

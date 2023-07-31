@@ -1,5 +1,6 @@
 import json
 import networkx as nx
+import pandas as pd
 from pathlib import Path
 from networkx.drawing.nx_agraph import write_dot
 from networkx.readwrite import json_graph
@@ -511,6 +512,15 @@ class AST(nx.DiGraph):
         save_path.mkdir(parents=True, exist_ok=True)
         with open(save_path / f"{self.name}_ast.json", "w") as f:
             json.dump(json_graph.node_link_data(self), f)
+
+    def export_csv(self, save_path):
+        save_path = Path(save_path)
+        save_path.mkdir(parents=True, exist_ok=True)
+        data = json_graph.node_link_data(self)
+        nodes = pd.DataFrame(data["nodes"])
+        nodes.to_csv(save_path / f"{self.name}_ast_nodes.csv", index=False)
+        links = pd.DataFrame(data["links"])
+        links.to_csv(save_path / f"{self.name}_ast_links.csv", index=False)
 
 
 class ASTSlice(AST):
