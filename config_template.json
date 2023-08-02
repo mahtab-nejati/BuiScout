@@ -7,6 +7,7 @@
   "COMMITS": "List of commit hashes, keyword 'ALL' for all commits",
   "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
+  "ROOT_FILE": "The file that's the entry point to the build specifications, e.g. 'CMakeLists.txt'",
   "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']",
   "PROJECT_SPECIFIC_FILTERS": {
     "include": {
