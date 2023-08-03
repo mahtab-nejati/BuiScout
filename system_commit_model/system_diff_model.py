@@ -245,10 +245,10 @@ class SystemDiff(object):
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
         if self.source_du_chains is not None:
-            self.source_du_chains.export_json()
+            self.source_du_chains.export_json(save_path)
 
         if self.destination_du_chains is not None:
-            self.destination_du_chains.export_json()
+            self.destination_du_chains.export_json(save_path)
 
         list(
             map(
