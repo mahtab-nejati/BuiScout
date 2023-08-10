@@ -2,8 +2,7 @@ from pydriller import Repository
 from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
-import subprocess
-import gc
+import subprocess, gc
 from datetime import datetime
 from utils.helpers import (
     create_csv_files,
