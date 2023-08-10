@@ -32,6 +32,83 @@ class DefUseChains(cm.DefUseChains):
             key=lambda argument_node_data: argument_node_data["s_pos"],
         )
 
+    def resolve_included_file_path_best_effort(self, file_path):
+        candidate_path = file_path.replace(" ", "")
+        candidate_path = candidate_path.split("}")[-1]
+        if not candidate_path:
+            return None
+
+        if candidate_path in self.sysdiff.file_data:
+            return candidate_path
+
+        if candidate_path + ".cmake" in self.sysdiff.file_data:
+            return candidate_path + ".cmake"
+
+        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
+            return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        file_keys = list(self.sysdiff.file_data.keys())
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            raise Exception(
+                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
+            )
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    "/" + candidate_path.lstrip("/") + ".cmake"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            raise Exception(
+                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
+            )
+
+        return None
+
+    def resolve_add_subdirectory_file_path_best_effort(self, file_path):
+        candidate_path = file_path.replace(" ", "")
+        candidate_path = candidate_path.split("}")[-1]
+        if not candidate_path:
+            return None
+
+        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
+            return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        file_keys = list(self.sysdiff.file_data.keys())
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            raise Exception(
+                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
+            )
+
+        return None
+
     def visit_function_definition(self, node_data):
         self.register_new_def_point(node_data)
 
@@ -241,7 +318,7 @@ class DefUseChains(cm.DefUseChains):
         for i, arg in enumerate(arguments):
             if self.ast.unparse_subtree(arg).upper() == "CALL":
                 raise DebugException(
-                    "Inspect and implement the cmake_language command with CALL keyword"
+                    f"Inspect and implement the cmake_language command with CALL keyword  {self.ast.unparse_subtree(node_data)}"
                 )
 
         return self.generic_visit(node_data)
@@ -291,7 +368,7 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             for i, argument in enumerate(arguments):
-                if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
+                if self.ast.unparse_subtree(argument).upper() == "OUTPUT_VARIABLE":
                     self.register_new_def_point(arguments[i + 1])
                     break
             return self.generic_visit(node_data)
@@ -311,7 +388,18 @@ class DefUseChains(cm.DefUseChains):
     def visit_EXECUTE_PROCESS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "EXECUTE_PROCESS")
 
-        raise DebugException("IMPLEMENT EXECUTE_PROCESS")
+        current_target_keywords = [
+            "RESULT_VARIABLE",
+            "RESULTS_VARIABLE",
+            "OUTPUT_VARIABLE",
+            "ERROR_VARIABLE",
+        ]
+
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse_subtree(argument).upper() in current_target_keywords:
+                self.register_new_def_point(arguments[i + 1])
+
+        return self.generic_visit(node_data)
 
     def visit_FILE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
@@ -438,7 +526,7 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse_subtree(argument).upper() == "DEFINITION":
-                raise DebugException("Fix GET_DIRECTORY_PROPERTY")
+                raise DebugException(f"Fix {self.ast.unparse_subtree(node_data)}")
 
         return self.generic_visit(node_data)
 
@@ -483,7 +571,7 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "INCLUDE")
 
         for i, argument in enumerate(arguments[1:]):
-            if self.ast.unparse(argument).upper() == "RESULT_VARIABLE":
+            if self.ast.unparse_subtree(argument).upper() == "RESULT_VARIABLE":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -491,26 +579,23 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff is None:
             return self.generic_visit(node_data)
 
-        # The included path
-        # TODO: Fix for including Moduels
         included_file_path = self.ast.unparse_subtree(arguments[0])
+        included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
         # or importing modules instead of files (CAVEAT)
-        if included_file_path not in self.sysdiff.file_data:
-            if not included_file_path.endswith(("CMakeLists.txt", ".cmake")):
-                raise DebugException("Implement module imports in INCLUDE.")
+        if included_file is None:
+            print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         # For files with GumTree error
-        if self.sysdiff.file_data[included_file_path]["diff"] is None:
+        if self.sysdiff.file_data[included_file]["diff"] is None:
+            print(f"PARSER FAILED FOR {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
-        self.ast = getattr(
-            self.sysdiff.file_data[included_file_path]["diff"], self.ast.name
-        )
+        self.ast = getattr(self.sysdiff.file_data[included_file]["diff"], self.ast.name)
 
         # Working on included file
         self.generic_visit(self.ast.get_data(self.ast.root))
@@ -590,9 +675,14 @@ class DefUseChains(cm.DefUseChains):
         try:
             arguments = self.get_sorted_arguments_data_list(node_data, "RETURN")
         except MissingArgumentsException:
-            pass
+            return self.generic_visit(node_data)
 
-        raise DebugException("Implement RETURN")
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse_subtree(argument).upper() == "PROPAGATE":
+                for arg in argument[i + 1 :]:
+                    self.register_new_use_point(arg)
+
+        self.generic_visit(node_data)
 
     def visit_SEPARATE_ARGUMENTS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
@@ -616,7 +706,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
 
-        raise DebugException("Implement SET_DIRECTORY_PROPERTIES")
+        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
 
     def visit_SET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
@@ -741,7 +831,7 @@ class DefUseChains(cm.DefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        raise DebugException("Implement ADD_COMPILE_DEFINITIONS")
+        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
@@ -759,10 +849,9 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_ADD_DEFINITIONS(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEFINITIONS")
+        print(f"Unsupported command observed: {self.ast.unparse_subtree(node_data)}")
 
-        # NOTE from documentations: Definitions are specified using the syntax -VAR or -VAR=value
-        raise DebugException("Implement ADD_DEFINITIONS")
+        return self.generic_visit(node_data)
 
     def visit_ADD_DEPENDENCIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
@@ -772,7 +861,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_use_point(arguments[0])
 
-        raise DebugException("IMPLEMENT ADD_DEPENDENCIES")
+        return self.generic_visit(node_data)
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -828,13 +917,42 @@ class DefUseChains(cm.DefUseChains):
         """
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
 
-        raise DebugException("IMPLEMENT ADD_SUBDIRECTORY")
+        # For file-level analysis (No system provided)
+        if self.sysdiff is None:
+            return self.generic_visit(node_data)
+
+        added_directory_path = self.ast.unparse_subtree(arguments[0])
+        added_file = self.resolve_add_subdirectory_file_path_best_effort(
+            added_directory_path
+        )
+
+        # For files that do not exist in the project
+        # or files that are refered to using a variable
+        # or importing modules instead of files (CAVEAT)
+        if added_file is None:
+            print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
+            return self.generic_visit(node_data)
+
+        # For files with GumTree error
+        if self.sysdiff.file_data[added_file]["diff"] is None:
+            print(f"PARSER FAILED FOR {self.ast.unparse_subtree(node_data)}")
+            return self.generic_visit(node_data)
+
+        self.ast_stack.append(self.ast)
+        self.ast = getattr(self.sysdiff.file_data[added_file]["diff"], self.ast.name)
+
+        # Working on added file
+        self.generic_visit(self.ast.get_data(self.ast.root))
+        # Finished working on added file
+
+        self.ast = self.ast_stack.pop()
+        return self.generic_visit(node_data)
 
     def visit_ADD_TEST(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         # NOTE: There is an old signature at the end of documentation page.
-        raise DebugException("Implement ADD_TEST")
+        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -862,7 +980,9 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        raise DebugException("Implement CREATE_TEST_SOURCELIST")
+        raise DebugException(
+            f"Implement CREATE_TEST_SOURCELIST {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_DEFINE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
@@ -943,13 +1063,6 @@ class DefUseChains(cm.DefUseChains):
 
         return self.generic_visit(node_data)
 
-    def visit_INCLUDE_DIRECTORIES(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(
-            node_data, "INCLUDE_DIRECTORIES"
-        )
-
-        raise DebugException("Implement INCLUDE_DIRECTORIES")
-
     def visit_INCLUDE_EXTERNAL_MSPROJECT(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "INCLUDE_EXTERNAL_MSPROJECT"
@@ -962,19 +1075,72 @@ class DefUseChains(cm.DefUseChains):
     def visit_INSTALL(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
 
-        raise DebugException("Implement INSTALL")
+        operation = self.ast.unparse_subtree(arguments[0]).upper()
+
+        current_target_keywords = [
+            "EXPORT",
+            "RUNTIME_DEPENDENCIES",
+            "RUNTIME_DEPENDENCY_SET",
+            "LIBRARY",
+            "RUNTIME",
+            "OBJECTS",
+            "FRAMEWORK",
+            "BUNDLE",
+            "PRIVATE_HEADER",
+            "PUBLIC_HEADER",
+            "RESOURCE",
+            "FILE_SET",
+            "CXX_MODULES_BMI",
+            "DESTINATION",
+            "PERMISSIONS",
+            "CONFIGURATIONS",
+            "COMPONENT",
+            "NAMELINK_COMPONENT",
+            "OPTIONAL",
+            "EXCLUDE_FROM_ALL",
+            "NAMELINK_ONLY",
+            "NAMELINK_SKIP",
+            "INCLUDES",
+            "DESTINATION",
+        ]
+
+        current_target_operations = ["TARGETS", "IMPORTED_RUNTIME_ARTIFACTS"]
+        if operation in current_target_operations:
+            for argument in arguments[1:]:
+                if (
+                    self.ast.unparse_subtree(argument).upper()
+                    in current_target_keywords
+                ):
+                    break
+                self.register_new_use_point(argument)
+
+        print(f"CHECK FOR PARTIAL IMPLEMENTATION {self.ast.unparse_subtree(node_data)}")
+
+        return self.generic_visit(node_data)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
-        raise DebugException("Implement REMOVE_DEFINITIONS")
+        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_SOURCE_FILES_PROPERTIES")
+        print(f"Unsupported command observed: {self.ast.unparse_subtree(node_data)}")
+
+        return self.generic_visit(node_data)
 
     def visit_SET_TARGET_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_TARGET_PROPERTIES")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_TARGET_PROPERTIES"
+        )
+
+        for argument in arguments:
+            if self.ast.unparse_subtree(argument).upper() == "PROPERTIES":
+                break
+            self.register_new_use_point(argument)
+            self.register_new_def_point(argument)
+
+        return self.generic_visit(node_data)
 
     def visit_SET_TESTS_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_TESTS_PROPERTIES")
+        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1010,7 +1176,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_use_point(arguments[0])
 
-        raise DebugException("Implement TARGET_INCLUDE_DIRECTORIES")
+        return self.generic_visit(node_data)
 
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
