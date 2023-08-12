@@ -25,6 +25,7 @@ class AST(nx.DiGraph):
         file_name=None,
         commit_hash=None,
         LANGUAGE=None,
+        diff=None,
         **kwargs,
     ):
         super(AST, self).__init__(*args, **kwargs)
@@ -35,6 +36,8 @@ class AST(nx.DiGraph):
         self.LANGUAGE = LANGUAGE
         self.ROOT_TYPE = language_support_tools.ROOT_TYPE
         self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
+
+        self.diff = diff
 
         # Set file and commit_hash
         self.file_name = file_name
@@ -156,6 +159,28 @@ class AST(nx.DiGraph):
         ] += f'content: {attrs[node_id]["content"]}\npostion: {attrs[node_id]["s_pos"]}-{attrs[node_id]["e_pos"]}'
 
         return attrs
+
+    def update_node_operation(self, node_data, operation, *args, **kwargs):
+        if node_data["operation"] != operation:
+            self.nodes[node_data["id"]]["operation"] = operation
+
+            if operation == "deleted":
+                self.nodes[node_data["id"]]["color"] = "red"
+            elif operation == "added":
+                self.nodes[node_data["id"]]["color"] = "green"
+            elif operation == "moved":
+                self.nodes[node_data["id"]]["color"] = "blue"
+            elif operation == "updated":
+                self.nodes[node_data["id"]]["color"] = "orange"
+            else:
+                self.nodes[node_data["id"]]["color"] = "lightgrey"
+
+            if not self.diff is None:
+                match_AST, match_node_data = self.diff.reveal_match(node_data)
+                if match_node_data:
+                    match_AST.update_node_operation(match_node_data, operation)
+
+        return
 
     def get_data(self, node, *args, **kwargs):
         """
@@ -377,6 +402,7 @@ class AST(nx.DiGraph):
             slice_nodes,
             slice_edges,
             LANGUAGE=self.LANGUAGE,
+            diff=self.diff,
         )
 
     def get_subtree_nodes(self, head_data, *args, **kwargs):
@@ -535,6 +561,7 @@ class ASTSlice(AST):
         nodes={},
         edges=[],
         LANGUAGE=None,
+        diff=None,
         *args,
         **kwargs,
     ):
@@ -546,6 +573,8 @@ class ASTSlice(AST):
         self.LANGUAGE = LANGUAGE
         self.ROOT_TYPE = language_support_tools.ROOT_TYPE
         self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
+
+        self.diff = diff
 
         if edges:
             super(AST, self).__init__(edges)

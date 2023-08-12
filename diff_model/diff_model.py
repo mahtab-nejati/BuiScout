@@ -64,6 +64,7 @@ class ASTDiff(object):
                 file_name=file_name,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             # Clear all changes
             self.source.clear_node_operarions()
@@ -73,6 +74,7 @@ class ASTDiff(object):
                 file_name=file_name,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             # Clear all changes
             self.destination.clear_node_operarions()
@@ -98,12 +100,14 @@ class ASTDiff(object):
                 file_name=file_name,
                 commit_hash=commit_hash,
                 LANGUAGE=LANGUAGE,
+                diff=self,
             )
             self.destination = AST(
                 destination,
                 file_name=file_name,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             self.source_match = dict(
                 map(
@@ -314,6 +318,23 @@ class ASTDiff(object):
 
         self.source.update_summarization_status(source_node, method)
         self.destination.update_summarization_status(destination_node, method)
+
+    def reveal_match(self, node_data, *args, **kwargs):
+        """
+        Returns the match of the AST and node for external purposes
+        as a pair of AST, dict(nod_data).
+        Returns None, dict() if no match exists.
+        """
+
+        if node_data["id"] in self.source_match:
+            match_id = self.source_match[node_data["id"]]
+            return self.destination, self.destination.nodes[match_id]
+
+        if node_data["id"] in self.destination_match:
+            match_id = self.destination_match[node_data["id"]]
+            return self.source, self.source.nodes[match_id]
+
+        return None, dict()
 
     def export_json(self, save_path):
         save_path = Path(save_path) / self.file_name
