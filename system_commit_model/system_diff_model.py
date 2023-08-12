@@ -144,7 +144,7 @@ class SystemDiff(object):
                             "after_path": build_file_path,
                             "code_after": Path(
                                 Path(self.repository_path) / build_file_path
-                            ).read_text(),
+                            ).read_text(encoding="cp1252"),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
                             "elapsed_time": None,
