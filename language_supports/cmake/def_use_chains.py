@@ -1,8 +1,11 @@
 import data_flow_analysis as cm
+from utils.configurations import PATH_RESOLUTIONS
 from utils.exceptions import MissingArgumentsException, DebugException
 
 
 class DefUseChains(cm.DefUseChains):
+    manual_resolution = PATH_RESOLUTIONS
+
     def get_expected_arguments_node_data(self, command_node_data, command_id):
         """
         Retruns the "arguments" node's node_data (the parent of the list of arguments).
@@ -32,11 +35,31 @@ class DefUseChains(cm.DefUseChains):
             key=lambda argument_node_data: argument_node_data["s_pos"],
         )
 
+    def get_manually_resolved_path(self, file_path):
+        resolved_path_item = list(
+            filter(
+                lambda item: (item["caller_file_path"] == self.ast.file_path)
+                and (item["callee_file_path"] == file_path),
+                self.manual_resolution,
+            )
+        )
+        if len(resolved_path_item) == 1:
+            return resolved_path_item[0]["callee_resolved_path"]
+        if len(resolved_path_item) > 1:
+            raise DebugException(f"Multiple manual resolutions:\n{resolved_path_item}")
+        return None
+
     def resolve_included_file_path_best_effort(self, file_path):
+        resolution = self.get_manually_resolved_path(file_path)
+        if resolution:
+            return resolution
+
         candidate_path = file_path.replace(" ", "")
         candidate_path = candidate_path.split("}")[-1]
         if not candidate_path:
             return None
+
+        current_directory = self.sysdiff.get_file_directory(self.ast)
 
         if candidate_path in self.sysdiff.file_data:
             return candidate_path
@@ -46,6 +69,18 @@ class DefUseChains(cm.DefUseChains):
 
         if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
             return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        if (
+            current_directory + candidate_path.lstrip("/") + ".cmake"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.lstrip("/") + ".cmake"
+
+        if (
+            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
 
         file_keys = list(self.sysdiff.file_data.keys())
 
@@ -60,9 +95,7 @@ class DefUseChains(cm.DefUseChains):
         if len(desparate_list) == 1:
             return desparate_list[0]
         elif len(desparate_list) > 1:
-            raise Exception(
-                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
-            )
+            return desparate_list
 
         desparate_list = list(
             filter(
@@ -75,13 +108,15 @@ class DefUseChains(cm.DefUseChains):
         if len(desparate_list) == 1:
             return desparate_list[0]
         elif len(desparate_list) > 1:
-            raise Exception(
-                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
-            )
+            return desparate_list
 
         return None
 
     def resolve_add_subdirectory_file_path_best_effort(self, file_path):
+        resolution = self.get_manually_resolved_path(file_path)
+        if resolution:
+            return resolution
+
         candidate_path = file_path.replace(" ", "")
         candidate_path = candidate_path.split("}")[-1]
         if not candidate_path:
@@ -103,9 +138,7 @@ class DefUseChains(cm.DefUseChains):
         if len(desparate_list) == 1:
             return desparate_list[0]
         elif len(desparate_list) > 1:
-            raise Exception(
-                f"Multiple path found for {file_path}:\n{' , '.join(desparate_list)}"
-            )
+            return desparate_list
 
         return None
 
@@ -582,16 +615,21 @@ class DefUseChains(cm.DefUseChains):
         included_file_path = self.ast.unparse_subtree(arguments[0])
         included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
+        # For manual file path resolution setup
+        if isinstance(included_file, list):
+            raise Exception(
+                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(included_file)}\nCalled from {self.ast.file_path}"
+            )
+
         # For files that do not exist in the project
         # or files that are refered to using a variable
-        # or importing modules instead of files (CAVEAT)
         if included_file is None:
             print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[included_file]["diff"] is None:
-            print(f"PARSER FAILED FOR {self.ast.unparse_subtree(node_data)}")
+            print(f"PARSER ERROR FOR {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
@@ -926,9 +964,14 @@ class DefUseChains(cm.DefUseChains):
             added_directory_path
         )
 
+        # For manual file path resolution setup
+        if isinstance(added_file, list):
+            raise Exception(
+                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(added_file)}"
+            )
+
         # For files that do not exist in the project
         # or files that are refered to using a variable
-        # or importing modules instead of files (CAVEAT)
         if added_file is None:
             print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
