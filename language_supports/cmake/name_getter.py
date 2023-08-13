@@ -2,7 +2,6 @@ from utils.visitors import NodeVisitor
 
 
 class NameGetter(NodeVisitor):
-    builtin_commands = ["LIST", "OPTION", "SET", "INCLUDE"]
     types_with_body_child = [
         "if_clause",
         "elseif_clause",
@@ -64,10 +63,7 @@ class NameGetter(NodeVisitor):
         command_identifier = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "identifier")
         )["content"].upper()
-        if command_identifier in self.builtin_commands:
-            return f"<BUILTIN_CMD>{command_identifier}"
-        else:
-            return f"<CMD>{command_identifier}"
+        return f"<CMD>{command_identifier}"
 
     def visit_bracket_argument(self, node_data):
         """
