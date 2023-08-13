@@ -331,6 +331,12 @@ class DefUseChains(cm.DefUseChains):
 
     ########## Scripting Commands:
 
+    def visit_A(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_BREAK(self, node_data):
+        return
+
     def visit_CMAKE_HOST_SYSTEM_INFORMATION(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
@@ -348,12 +354,27 @@ class DefUseChains(cm.DefUseChains):
         if operation == "GET_MESSAGE_LOG_LEVEL":
             self.register_new_def_point(arguments[1])
 
-        for i, arg in enumerate(arguments):
-            if self.ast.unparse_subtree(arg).upper() == "CALL":
-                raise DebugException(
-                    f"Inspect and implement the cmake_language command with CALL keyword  {self.ast.unparse_subtree(node_data)}"
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse_subtree(argument).upper() in [
+                "ID_VAR",
+                "GET_CALL_IDS",
+                "GET_CALL",
+            ]:
+                self.register_new_def_point(arguments[i + 1])
+                continue
+            if self.ast.unparse_subtree(argument).upper() == "CALL":
+                # Inspect and implement the cmake_language command with CALL keyword
+                print(
+                    f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
                 )
+                continue
 
+        return self.generic_visit(node_data)
+
+    def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_CMAKE_PATH(self, node_data):
@@ -404,7 +425,6 @@ class DefUseChains(cm.DefUseChains):
                 if self.ast.unparse_subtree(argument).upper() == "OUTPUT_VARIABLE":
                     self.register_new_def_point(arguments[i + 1])
                     break
-            return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
 
@@ -416,6 +436,9 @@ class DefUseChains(cm.DefUseChains):
         if operation == "GET":
             self.register_new_def_point(arguments[-1])
 
+        return self.generic_visit(node_data)
+
+    def visit_CONFIGURE_FILE(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_EXECUTE_PROCESS(self, node_data):
@@ -559,7 +582,9 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse_subtree(argument).upper() == "DEFINITION":
-                raise DebugException(f"Fix {self.ast.unparse_subtree(node_data)}")
+                print(
+                    f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
+                )
 
         return self.generic_visit(node_data)
 
@@ -758,7 +783,9 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
 
-        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_SET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
@@ -883,7 +910,9 @@ class DefUseChains(cm.DefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
@@ -901,7 +930,11 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_ADD_DEFINITIONS(self, node_data):
-        print(f"Unsupported command observed: {self.ast.unparse_subtree(node_data)}")
+        arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEFINITIONS")
+
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1023,7 +1056,9 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         # NOTE: There is an old signature at the end of documentation page.
-        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1051,8 +1086,8 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        raise DebugException(
-            f"Implement CREATE_TEST_SOURCELIST {self.ast.unparse_subtree(node_data)}"
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
         )
 
     def visit_DEFINE_PROPERTY(self, node_data):
@@ -1185,15 +1220,27 @@ class DefUseChains(cm.DefUseChains):
                     break
                 self.register_new_use_point(argument)
 
-        print(f"CHECK FOR PARTIAL IMPLEMENTATION {self.ast.unparse_subtree(node_data)}")
+        print(
+            f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
+        )
 
         return self.generic_visit(node_data)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
-        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
+        arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
+
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
-        print(f"Unsupported command observed: {self.ast.unparse_subtree(node_data)}")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_SOURCE_FILES_PROPERTIES"
+        )
+
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1211,7 +1258,13 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_SET_TESTS_PROPERTIES(self, node_data):
-        raise DebugException(f"IMPLEMENT {self.ast.unparse_subtree(node_data)}")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_TESTS_PROPERTIES"
+        )
+
+        print(
+            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
+        )
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1293,7 +1346,7 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_TRY_COMPILE(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(node_data)
+        arguments = self.get_sorted_arguments_data_list(node_data, "TRY_COMPILE")
 
         self.register_new_def_point(arguments[0])
 
