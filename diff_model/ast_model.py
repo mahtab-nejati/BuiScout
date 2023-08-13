@@ -22,7 +22,8 @@ class AST(nx.DiGraph):
     def __init__(
         self,
         *args,
-        file_name=None,
+        file_path=None,
+        file_saved_as=None,
         commit_hash=None,
         LANGUAGE=None,
         diff=None,
@@ -40,7 +41,8 @@ class AST(nx.DiGraph):
         self.diff = diff
 
         # Set file and commit_hash
-        self.file_name = file_name
+        self.file_path = file_path
+        self.file_saved_as = file_saved_as
         self.commit_hash = commit_hash
 
         self.set_node_universal_ids()
@@ -86,7 +88,7 @@ class AST(nx.DiGraph):
             map(
                 lambda node_id: (
                     node_id,
-                    f"{self.commit_hash}:{self.file_name}:{node_id}",
+                    f"{self.commit_hash}:{self.file_saved_as}:{node_id}",
                 ),
                 self.nodes,
             )
@@ -210,11 +212,11 @@ class AST(nx.DiGraph):
         """
         Returns the location of the node_data
         """
-        if self.file_name:
-            file_name = self.file_name
+        if self.file_saved_as:
+            file_saved_as = self.file_saved_as
         else:
-            file_name = "<UNKNOWN_FILE>"
-        return f' at {file_name}:{node_data["s_pos"]}-{node_data["e_pos"]}'
+            file_saved_as = "<UNKNOWN_FILE>"
+        return f' at {file_saved_as}:{node_data["s_pos"]}-{node_data["e_pos"]}'
 
     def set_root(self, *args, **kwargs):
         """
@@ -229,7 +231,7 @@ class AST(nx.DiGraph):
         if root:
             self.root = root
         else:
-            raise MissingRootException(self.ROOT_TYPE, self.file_name)
+            raise MissingRootException(self.ROOT_TYPE, self.file_saved_as)
 
     def get_parent(self, node_data, *args, **kwargs):
         """

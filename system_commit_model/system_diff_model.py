@@ -208,6 +208,7 @@ class SystemDiff(object):
             return ASTDiff(
                 *dotdiff_content,
                 self.file_data[file_path]["file_action"],
+                file_path,
                 self.file_data[file_path]["saved_as"],
                 self.commit.hash,
                 self.language,
@@ -238,6 +239,9 @@ class SystemDiff(object):
             self.file_data[self.root_file]["diff"].destination, sysdiff=self
         )
         self.destination_du_chains.analyze()
+
+    def get_file_directory(self, ast):
+        return self.file_data[ast.file_path]["file_dir"]
 
     def export_json(self):
         save_path = self.commit_dir / "data_flow_output"
@@ -356,6 +360,7 @@ class SystemDiffShortcut(SystemDiff):
             return ASTDiff(
                 *dotdiff_content,
                 self.file_data[file_path]["file_action"],
+                file_path,
                 self.file_data[file_path]["saved_as"],
                 self.commit.hash,
                 self.language,
