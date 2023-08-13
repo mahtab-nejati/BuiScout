@@ -88,7 +88,7 @@ class AST(nx.DiGraph):
             map(
                 lambda node_id: (
                     node_id,
-                    f"{self.commit_hash}:{self.file_saved_as}:{node_id}",
+                    f"{self.file_saved_as}:{node_id}",
                 ),
                 self.nodes,
             )
