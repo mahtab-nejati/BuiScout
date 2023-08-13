@@ -615,9 +615,15 @@ class DefUseChains(cm.DefUseChains):
         included_file_path = self.ast.unparse_subtree(arguments[0])
         included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
+        if included_file == self.ast.file_path:
+            print(
+                f"Recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path} (SKIPPING)"
+            )
+            return self.generic_visit(node_data)
+
         # For manual file path resolution setup
         if isinstance(included_file, list):
-            raise Exception(
+            raise DebugException(
                 f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(included_file)}\nCalled from {self.ast.file_path}"
             )
 
@@ -964,9 +970,15 @@ class DefUseChains(cm.DefUseChains):
             added_directory_path
         )
 
+        if added_file == self.ast.file_path:
+            print(
+                f"Recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path} (SKIPPING)"
+            )
+            return self.generic_visit(node_data)
+
         # For manual file path resolution setup
         if isinstance(added_file, list):
-            raise Exception(
+            raise DebugException(
                 f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(added_file)}"
             )
 
