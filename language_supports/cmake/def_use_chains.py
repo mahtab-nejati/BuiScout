@@ -617,9 +617,15 @@ class DefUseChains(cm.DefUseChains):
 
         if included_file == self.ast.file_path:
             print(
-                f"Recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path} (SKIPPING)"
+                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if included_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
 
         # For manual file path resolution setup
         if isinstance(included_file, list):
@@ -630,12 +636,14 @@ class DefUseChains(cm.DefUseChains):
         # For files that do not exist in the project
         # or files that are refered to using a variable
         if included_file is None:
-            print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
+            print(
+                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
             return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[included_file]["diff"] is None:
-            print(f"PARSER ERROR FOR {self.ast.unparse_subtree(node_data)}")
+            print(f"Parser error for {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
@@ -972,25 +980,33 @@ class DefUseChains(cm.DefUseChains):
 
         if added_file == self.ast.file_path:
             print(
-                f"Recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path} (SKIPPING)"
+                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if added_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
 
         # For manual file path resolution setup
         if isinstance(added_file, list):
             raise DebugException(
-                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(added_file)}"
+                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(added_file)}\nCalled from {self.ast.file_path}"
             )
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
         if added_file is None:
-            print(f"CANNOT RESOLVE PATH FOR {self.ast.unparse_subtree(node_data)}")
+            print(
+                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
             return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[added_file]["diff"] is None:
-            print(f"PARSER FAILED FOR {self.ast.unparse_subtree(node_data)}")
+            print(f"Parser error for {self.ast.unparse_subtree(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
