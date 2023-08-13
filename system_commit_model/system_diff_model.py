@@ -105,7 +105,7 @@ class SystemDiff(object):
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "elapsed_time": None,
+                        "data_flow_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -147,7 +147,7 @@ class SystemDiff(object):
                             ).read_text(encoding="cp1252"),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "elapsed_time": None,
+                            "data_flow_reach": False,
                         },
                     ),
                     other_build_files,
@@ -219,9 +219,7 @@ class SystemDiff(object):
 
     def set_file_data_diffs(self):
         for file_path, file_data in self.file_data.items():
-            file_start = datetime.now()
             self.file_data[file_path]["diff"] = self.get_file_diff(file_path)
-            self.file_data[file_path]["elapsed_time"] = datetime.now() - file_start
 
     def perform_data_flow_analysis(self):
         # Skip if the self.root_file has GumTree error
@@ -240,8 +238,11 @@ class SystemDiff(object):
         )
         self.destination_du_chains.analyze()
 
-    def get_file_directory(self, ast):
-        return self.file_data[ast.file_path]["file_dir"]
+    def get_file_directory(self, file_path):
+        return self.file_data[file_path]["file_dir"]
+
+    def set_file_reach(self, file_path):
+        self.file_data[file_path]["data_flow_reach"] = True
 
     def export_json(self):
         save_path = self.commit_dir / "data_flow_output"
@@ -307,7 +308,7 @@ class SystemDiffShortcut(SystemDiff):
                         "after_path": modified_file.new_path,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "elapsed_time": None,
+                        "data_flow_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -345,7 +346,7 @@ class SystemDiffShortcut(SystemDiff):
                             "after_path": build_file_path,
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "elapsed_time": None,
+                            "data_flow_reach": False,
                         },
                     ),
                     other_build_files,

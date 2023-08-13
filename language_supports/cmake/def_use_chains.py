@@ -46,7 +46,7 @@ class DefUseChains(cm.DefUseChains):
         if len(resolved_path_item) == 1:
             return resolved_path_item[0]["callee_resolved_path"]
         if len(resolved_path_item) > 1:
-            raise DebugException(f"Multiple manual resolutions:\n{resolved_path_item}")
+            raise DebugException(f"Multiple manual resolutions: {resolved_path_item}")
         return None
 
     def resolve_included_file_path_best_effort(self, file_path):
@@ -59,7 +59,7 @@ class DefUseChains(cm.DefUseChains):
         if not candidate_path:
             return None
 
-        current_directory = self.sysdiff.get_file_directory(self.ast)
+        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
 
         if candidate_path in self.sysdiff.file_data:
             return candidate_path
@@ -122,8 +122,16 @@ class DefUseChains(cm.DefUseChains):
         if not candidate_path:
             return None
 
+        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
+
         if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
             return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        if (
+            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
 
         file_keys = list(self.sysdiff.file_data.keys())
 
@@ -642,29 +650,30 @@ class DefUseChains(cm.DefUseChains):
 
         if included_file == self.ast.file_path:
             print(
-                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manual file path resolution setup
         if isinstance(included_file, list):
             raise DebugException(
-                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(included_file)}\nCalled from {self.ast.file_path}"
+                f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
             )
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
         if included_file is None:
             print(
-                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manaully skipped files
         if included_file.upper() == "SKIP":
             print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
+            return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[included_file]["diff"] is None:
@@ -676,6 +685,7 @@ class DefUseChains(cm.DefUseChains):
 
         # Working on included file
         self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_file_reach(self.ast.file_path)
         # Finished working on included file
 
         self.ast = self.ast_stack.pop()
@@ -1013,29 +1023,30 @@ class DefUseChains(cm.DefUseChains):
 
         if added_file == self.ast.file_path:
             print(
-                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manual file path resolution setup
         if isinstance(added_file, list):
             raise DebugException(
-                f"Multiple path found for {self.ast.unparse_subtree(node_data)}:\n{' , '.join(added_file)}\nCalled from {self.ast.file_path}"
+                f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
             )
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
         if added_file is None:
             print(
-                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manaully skipped files
         if added_file.upper() == "SKIP":
             print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
             )
+            return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[added_file]["diff"] is None:
@@ -1047,6 +1058,7 @@ class DefUseChains(cm.DefUseChains):
 
         # Working on added file
         self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_file_reach(self.ast.file_path)
         # Finished working on added file
 
         self.ast = self.ast_stack.pop()

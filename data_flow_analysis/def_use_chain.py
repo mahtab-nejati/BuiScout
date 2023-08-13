@@ -149,6 +149,7 @@ class DefUseChains(NodeVisitor):
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_file_reach(self.ast.file_path)
 
     def to_json(self):
         du_chains_output = {
