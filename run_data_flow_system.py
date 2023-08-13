@@ -166,10 +166,10 @@ for commit in tqdm(repo.traverse_commits()):
                     f'{summary_dir}/{build_file["saved_as"]}_slice_destination.dot'
                 )
 
-            # Convert slices to svg
-            command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
-            process = subprocess.Popen(command, stdout=subprocess.PIPE)
-            output, error = process.communicate()
+            # # Convert slices to svg
+            # command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
+            # process = subprocess.Popen(command, stdout=subprocess.PIPE)
+            # output, error = process.communicate()
 
             for sm in SUMMARIZATION_METHODS:
                 summaries_df = pd.DataFrame(summaries[sm])
