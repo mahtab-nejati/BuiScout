@@ -621,12 +621,6 @@ class DefUseChains(cm.DefUseChains):
             )
             return self.generic_visit(node_data)
 
-        # For manaully skipped files
-        if included_file.upper() == "SKIP":
-            print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
-            )
-
         # For manual file path resolution setup
         if isinstance(included_file, list):
             raise DebugException(
@@ -640,6 +634,12 @@ class DefUseChains(cm.DefUseChains):
                 f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if included_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
 
         # For files with GumTree error
         if self.sysdiff.file_data[included_file]["diff"] is None:
@@ -984,12 +984,6 @@ class DefUseChains(cm.DefUseChains):
             )
             return self.generic_visit(node_data)
 
-        # For manaully skipped files
-        if added_file.upper() == "SKIP":
-            print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
-            )
-
         # For manual file path resolution setup
         if isinstance(added_file, list):
             raise DebugException(
@@ -1003,6 +997,12 @@ class DefUseChains(cm.DefUseChains):
                 f"Cannot resolve path for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if added_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse_subtree(node_data)}\nCalled from {self.ast.file_path}"
+            )
 
         # For files with GumTree error
         if self.sysdiff.file_data[added_file]["diff"] is None:
