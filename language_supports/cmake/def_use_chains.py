@@ -38,7 +38,7 @@ class DefUseChains(cm.DefUseChains):
     def get_manually_resolved_path(self, file_path):
         resolved_path_item = list(
             filter(
-                lambda item: (item["caller_file_path"] in [self.ast.file_path, '*'])
+                lambda item: (item["caller_file_path"] in [self.ast.file_path, "*"])
                 and (item["callee_file_path"] == file_path),
                 self.manual_resolution,
             )
@@ -50,7 +50,7 @@ class DefUseChains(cm.DefUseChains):
         return None
 
     def resolve_included_file_path_best_effort(self, file_path):
-        resolution = self.get_manually_resolved_path(file_path)
+        resolution = self.get_manually_resolved_path(file_path.replace(" ", ""))
         if resolution:
             return resolution
 
