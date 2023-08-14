@@ -38,7 +38,7 @@ class DefUseChains(cm.DefUseChains):
     def get_manually_resolved_path(self, file_path):
         resolved_path_item = list(
             filter(
-                lambda item: (item["caller_file_path"] == self.ast.file_path)
+                lambda item: (item["caller_file_path"] in [self.ast.file_path, '*'])
                 and (item["callee_file_path"] == file_path),
                 self.manual_resolution,
             )
@@ -685,7 +685,7 @@ class DefUseChains(cm.DefUseChains):
 
         # Working on included file
         self.generic_visit(self.ast.get_data(self.ast.root))
-        self.sysdiff.set_file_reach(self.ast.file_path)
+        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
         # Finished working on included file
 
         self.ast = self.ast_stack.pop()
@@ -1058,7 +1058,7 @@ class DefUseChains(cm.DefUseChains):
 
         # Working on added file
         self.generic_visit(self.ast.get_data(self.ast.root))
-        self.sysdiff.set_file_reach(self.ast.file_path)
+        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
         # Finished working on added file
 
         self.ast = self.ast_stack.pop()

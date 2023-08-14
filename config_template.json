@@ -29,7 +29,7 @@
   },
   "MANUAL_PATH_RESOLUTION": [
     {
-      "caller_file_path": "Path to the file calling to include the callee file.",
+      "caller_file_path": "Path to the file calling to include the callee file. Use '*' to apply the same resolutions for everywhere in code.",
       "callee_file_path": "Path specified in the caller file to refer to the callee file.",
       "callee_resolved_path": "Relative path to the callee file (from project root). Use keyword 'SKIP' to skip."
     }

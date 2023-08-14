@@ -100,12 +100,15 @@ class SystemDiff(object):
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
                         "before_path": modified_file.old_path,
+                        # code_before will be removed once written to a file
                         "code_before": modified_file.source_code_before,
                         "after_path": modified_file.new_path,
+                        # code_after will be removed once written to a file
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "data_flow_reach": False,
+                        "data_flow_source_reach": False,
+                        "data_flow_destination_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -147,7 +150,8 @@ class SystemDiff(object):
                             ).read_text(),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "data_flow_reach": False,
+                            "data_flow_source_reach": False,
+                            "data_flow_destination_reach": False,
                         },
                     ),
                     other_build_files,
@@ -241,8 +245,8 @@ class SystemDiff(object):
     def get_file_directory(self, file_path):
         return self.file_data[file_path]["file_dir"]
 
-    def set_file_reach(self, file_path):
-        self.file_data[file_path]["data_flow_reach"] = True
+    def set_data_flow_reach_file(self, file_path, cluster):
+        self.file_data[file_path][f"data_flow_{cluster}_reach"] = True
 
     def export_json(self):
         save_path = self.commit_dir / "data_flow_output"
@@ -308,7 +312,8 @@ class SystemDiffShortcut(SystemDiff):
                         "after_path": modified_file.new_path,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "data_flow_reach": False,
+                        "data_flow_source_reach": False,
+                        "data_flow_destination_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -346,7 +351,8 @@ class SystemDiffShortcut(SystemDiff):
                             "after_path": build_file_path,
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "data_flow_reach": False,
+                            "data_flow_source_reach": False,
+                            "data_flow_destination_reach": False,
                         },
                     ),
                     other_build_files,

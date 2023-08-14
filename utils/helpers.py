@@ -140,24 +140,24 @@ def write_source_code(file_path, source_code):
 # Prepare the report csv files
 def create_csv_files(summarization_methods, save_path):
     # Initialize files
-    # Save summaries
-    summaries_columns = [
-        "commit",
-        "subject_file",
-        "operation",
-        "source_node",
-        "source_node_summary",
-        "source_position",
-        "destination_node",
-        "destination_node_summary",
-        "destination_postion",
-    ]
-    for sm in summarization_methods:
-        summaries_df = pd.DataFrame(columns=summaries_columns)
-        summaries_df.to_csv(save_path / f"summaries_{sm.lower()}.csv", index=False)
+    # # Save summaries
+    # summaries_columns = [
+    #     "commit",
+    #     "subject_file",
+    #     "operation",
+    #     "source_node",
+    #     "source_node_summary",
+    #     "source_position",
+    #     "destination_node",
+    #     "destination_node_summary",
+    #     "destination_postion",
+    # ]
+    # for sm in summarization_methods:
+    #     summaries_df = pd.DataFrame(columns=summaries_columns)
+    #     summaries_df.to_csv(save_path / f"summaries_{sm.lower()}.csv", index=False)
 
     # Save metadata on build changes
-    modified_build_files_columns = [
+    build_files_columns = [
         "commit_hash",
         "file_dir",
         "file_name",
@@ -167,13 +167,14 @@ def create_csv_files(summarization_methods, save_path):
         "after_path",
         "saved_as",
         "has_gumtree_error",
-        "elapsed_time",
+        "data_flow_source_reach",
+        "data_flow_destination_reach",
     ]
-    modified_build_files_df = pd.DataFrame(columns=modified_build_files_columns)
-    modified_build_files_df.to_csv(save_path / "all_build_files.csv", index=False)
+    build_files_df = pd.DataFrame(columns=build_files_columns)
+    build_files_df.to_csv(save_path / "all_build_files.csv", index=False)
 
     # Save metadata on all changes
-    all_commits_columns = [
+    commits_columns = [
         "commit_hash",
         "chronological_commit_order",
         "commit_parents",
@@ -182,5 +183,5 @@ def create_csv_files(summarization_methods, save_path):
         "is_missing",
         "elapsed_time",
     ]
-    all_commits_df = pd.DataFrame(columns=all_commits_columns)
-    all_commits_df.to_csv(save_path / "all_commits.csv", index=False)
+    commits_df = pd.DataFrame(columns=commits_columns)
+    commits_df.to_csv(save_path / "all_commits.csv", index=False)
