@@ -497,7 +497,6 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[2])
-            return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
 
