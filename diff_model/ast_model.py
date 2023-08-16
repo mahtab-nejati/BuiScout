@@ -431,7 +431,7 @@ class AST(nx.DiGraph):
             subtree_nodes.update(next_level_jungle)
         return subtree_nodes
 
-    def unparse_subtree(self, head_data, masked_types=[], *args, **kwargs):
+    def unparse(self, head_data, masked_types=[], *args, **kwargs):
         """
         Unparses the nodes in a subtree with the head_data as the root
         and returns a naive stringification of the parsed subtree.

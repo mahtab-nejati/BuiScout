@@ -11,7 +11,7 @@ class NameGetter(NodeVisitor):
     ]
 
     def generic_visit(self, node_data):
-        return self.ast.unparse_subtree(node_data)
+        return self.ast.unparse(node_data)
 
     def visit_if_statement(self, node_data):
         return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
@@ -35,7 +35,7 @@ class NameGetter(NodeVisitor):
         return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
-        return self.ast.unparse_subtree(node_data, masked_types=["body"])
+        return self.ast.unparse(node_data, masked_types=["body"])
 
     def visit_function_definition(self, node_data):
         header = self.ast.get_data(

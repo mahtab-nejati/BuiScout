@@ -289,7 +289,7 @@ class DefUseChains(cm.DefUseChains):
             key=lambda data: data["s_pos"],
         )
         for argument in arguments:
-            if self.ast.unparse_subtree(argument).upper() not in operators:
+            if self.ast.unparse(argument).upper() not in operators:
                 self.register_new_use_point(argument)
 
         return self.generic_visit(node_data)
@@ -316,7 +316,7 @@ class DefUseChains(cm.DefUseChains):
     #     pass
 
     def visit_normal_command(self, node_data):
-        command_identifier = self.ast.unparse_subtree(
+        command_identifier = self.ast.unparse(
             self.ast.get_data(self.ast.get_children_by_type(node_data, "identifier"))
         ).upper()
         if command_identifier.startswith("CTEST_"):
@@ -357,23 +357,23 @@ class DefUseChains(cm.DefUseChains):
     def visit_CMAKE_LANGUAGE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_LANGUAGE")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET_MESSAGE_LOG_LEVEL":
             self.register_new_def_point(arguments[1])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() in [
+            if self.ast.unparse(argument).upper() in [
                 "ID_VAR",
                 "GET_CALL_IDS",
                 "GET_CALL",
             ]:
                 self.register_new_def_point(arguments[i + 1])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "CALL":
+            if self.ast.unparse(argument).upper() == "CALL":
                 # Inspect and implement the cmake_language command with CALL keyword
                 print(
-                    f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
+                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
                 )
                 continue
 
@@ -388,7 +388,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_CMAKE_PATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_PATH")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         current_target_operations = ["COMPARE", "CONVERT"]
         if not operation in current_target_operations:
@@ -430,7 +430,7 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             for i, argument in enumerate(arguments):
-                if self.ast.unparse_subtree(argument).upper() == "OUTPUT_VARIABLE":
+                if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
                     self.register_new_def_point(arguments[i + 1])
                     break
 
@@ -439,7 +439,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_CMAKE_POLICY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_POLICY")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET":
             self.register_new_def_point(arguments[-1])
@@ -460,7 +460,7 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() in current_target_keywords:
+            if self.ast.unparse(argument).upper() in current_target_keywords:
                 self.register_new_def_point(arguments[i + 1])
 
         return self.generic_visit(node_data)
@@ -468,7 +468,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_FILE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         current_target_operations = ["GLOB", "GLOB_RECURSE", "RELATIVE_PATH"]
         if operation in current_target_operations:
@@ -549,9 +549,9 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "NAMES":
+            if self.ast.unparse(argument).upper() == "NAMES":
                 for arg in arguments[i + 1 :]:
-                    if self.ast.unparse_subtree(arg).upper() in keywords:
+                    if self.ast.unparse(arg).upper() in keywords:
                         break
                     self.register_new_def_point(arg)
                 return self.generic_visit(node_data)
@@ -588,9 +588,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "DEFINITION":
+            if self.ast.unparse(argument).upper() == "DEFINITION":
                 print(
-                    f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
+                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
                 )
 
         return self.generic_visit(node_data)
@@ -603,7 +603,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "PROGRAM_ARGS":
+            if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
                 self.register_new_def_point(arguments[i + 1])
 
         return self.generic_visit(node_data)
@@ -614,7 +614,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            keyword = self.ast.unparse_subtree(argument).upper()
+            keyword = self.ast.unparse(argument).upper()
             current_target_keywords = [
                 "TARGET",
                 "SOURCE",
@@ -625,7 +625,7 @@ class DefUseChains(cm.DefUseChains):
                 "PROPERTY",
             ]
             if keyword == "DIRECTORY":
-                if not self.ast.unparse_subtree(argument[i + 1]).upper() == "PROPERTY":
+                if not self.ast.unparse(argument[i + 1]).upper() == "PROPERTY":
                     self.register_new_use_point(arguments[i + 1])
             elif keyword in current_target_keywords:
                 self.register_new_use_point(arguments[i + 1])
@@ -636,7 +636,7 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "INCLUDE")
 
         for i, argument in enumerate(arguments[1:]):
-            if self.ast.unparse_subtree(argument).upper() == "RESULT_VARIABLE":
+            if self.ast.unparse(argument).upper() == "RESULT_VARIABLE":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -644,19 +644,19 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff is None:
             return self.generic_visit(node_data)
 
-        included_file_path = self.ast.unparse_subtree(arguments[0])
+        included_file_path = self.ast.unparse(arguments[0])
         included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
         if included_file == self.ast.file_path:
             print(
-                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manual file path resolution setup
         if isinstance(included_file, list):
             print(
-                f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
+                f"Multiple path found for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
@@ -664,20 +664,20 @@ class DefUseChains(cm.DefUseChains):
         # or files that are refered to using a variable
         if included_file is None:
             print(
-                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manaully skipped files
         if included_file.upper() == "SKIP":
             print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[included_file]["diff"] is None:
-            print(f"Parser error for {self.ast.unparse_subtree(node_data)}")
+            print(f"Parser error for {self.ast.unparse(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
@@ -694,7 +694,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_LIST(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         self.register_new_use_point(arguments[1])
 
@@ -736,7 +736,7 @@ class DefUseChains(cm.DefUseChains):
 
         keywords = ["CLEAR", "FORCE"]
         start_index = 0
-        if self.ast.unparse_subtree(arguments[0]).upper() in keywords:
+        if self.ast.unparse(arguments[0]).upper() in keywords:
             start_index = 1
 
         for argument in arguments[start_index:]:
@@ -765,7 +765,7 @@ class DefUseChains(cm.DefUseChains):
             return self.generic_visit(node_data)
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "PROPAGATE":
+            if self.ast.unparse(argument).upper() == "PROPAGATE":
                 for arg in argument[i + 1 :]:
                     self.register_new_use_point(arg)
 
@@ -793,9 +793,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_SET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
@@ -815,10 +813,10 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            unparsed_argument = self.ast.unparse_subtree(argument)
+            unparsed_argument = self.ast.unparse(argument)
             if unparsed_argument == "TARGET":
                 for arg in arguments[i + 1 :]:
-                    if self.ast.unparse_subtree(arg) not in keywords:
+                    if self.ast.unparse(arg) not in keywords:
                         self.register_new_use_point(arg)
                     else:
                         break
@@ -837,10 +835,10 @@ class DefUseChains(cm.DefUseChains):
     def visit_STRING(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
 
-        operation = self.ast.unparse_subtree(arguments[0])
+        operation = self.ast.unparse(arguments[0])
 
         if operation == "REGEX":
-            sub_operation = self.ast.unparse_subtree(arguments[1])
+            sub_operation = self.ast.unparse(arguments[1])
             if sub_operation == "REPLACE":
                 self.register_new_def_point(arguments[4])
             else:
@@ -849,7 +847,7 @@ class DefUseChains(cm.DefUseChains):
 
         if operation == "json":
             self.register_new_def_point(arguments[1])
-            if self.ast.unparse_subtree(arguments[2]) == "ERROR_VARIABLE":
+            if self.ast.unparse(arguments[2]) == "ERROR_VARIABLE":
                 self.register_new_def_point(arguments[3])
             return self.generic_visit(node_data)
 
@@ -920,14 +918,12 @@ class DefUseChains(cm.DefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
-        if self.ast.unparse_subtree(arguments[0]).upper() == "TARGET":
+        if self.ast.unparse(arguments[0]).upper() == "TARGET":
             self.register_new_use_point(arguments[1])
 
         return self.generic_visit(node_data)
@@ -942,9 +938,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_ADD_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEFINITIONS")
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
         return self.generic_visit(node_data)
 
@@ -969,7 +963,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_def_point(arguments[0])
 
-        operation = self.ast.unparse_subtree(arguments[1]).upper()
+        operation = self.ast.unparse(arguments[1]).upper()
 
         if operation == "IMPORTED":
             # TODO: After Scoping is implemented, consider if GLOBAL keyword exists?
@@ -994,7 +988,7 @@ class DefUseChains(cm.DefUseChains):
         if len(arguments) == 1:
             return self.generic_visit(node_data)
 
-        operation = self.ast.unparse_subtree(arguments[1]).upper()
+        operation = self.ast.unparse(arguments[1]).upper()
 
         if operation == "ALIAS":
             assert len(arguments) == 3
@@ -1016,21 +1010,21 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff is None:
             return self.generic_visit(node_data)
 
-        added_directory_path = self.ast.unparse_subtree(arguments[0])
+        added_directory_path = self.ast.unparse(arguments[0])
         added_file = self.resolve_add_subdirectory_file_path_best_effort(
             added_directory_path
         )
 
         if added_file == self.ast.file_path:
             print(
-                f"Skipping recursive resolution for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manual file path resolution setup
         if isinstance(added_file, list):
             print(
-                f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
+                f"Multiple path found for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
@@ -1038,20 +1032,20 @@ class DefUseChains(cm.DefUseChains):
         # or files that are refered to using a variable
         if added_file is None:
             print(
-                f"Cannot resolve path for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For manaully skipped files
         if added_file.upper() == "SKIP":
             print(
-                f"Skipping manually set for {self.ast.unparse_subtree(node_data)} called from {self.ast.file_path}"
+                f"Skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
         # For files with GumTree error
         if self.sysdiff.file_data[added_file]["diff"] is None:
-            print(f"Parser error for {self.ast.unparse_subtree(node_data)}")
+            print(f"Parser error for {self.ast.unparse(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
@@ -1069,9 +1063,7 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         # NOTE: There is an old signature at the end of documentation page.
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1088,7 +1080,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -1099,19 +1091,14 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_DEFINE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
 
         self.register_new_def_point(arguments[2])
 
-        if (
-            self.ast.unparse_subtree(arguments[-2]).upper()
-            == "INITIALIZE_FROM_VARIABLE"
-        ):
+        if self.ast.unparse(arguments[-2]).upper() == "INITIALIZE_FROM_VARIABLE":
             self.register_new_def_point(arguments[-1])
 
         return self.generic_visit(node_data)
@@ -1119,7 +1106,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_EXPORT(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "EXPORT")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         keywords = [
             "NAMESPACE",
@@ -1131,7 +1118,7 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation == "TARGETS":
             for argument in arguments[1:]:
-                if self.ast.unparse_subtree(argument).upper() in keywords:
+                if self.ast.unparse(argument).upper() in keywords:
                     break
                 else:
                     self.register_new_use_point(argument)
@@ -1156,7 +1143,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[-1])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET_DIRECTORY":
+            if self.ast.unparse(argument).upper() == "TARGET_DIRECTORY":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -1194,7 +1181,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_INSTALL(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         current_target_keywords = [
             "EXPORT",
@@ -1226,15 +1213,12 @@ class DefUseChains(cm.DefUseChains):
         current_target_operations = ["TARGETS", "IMPORTED_RUNTIME_ARTIFACTS"]
         if operation in current_target_operations:
             for argument in arguments[1:]:
-                if (
-                    self.ast.unparse_subtree(argument).upper()
-                    in current_target_keywords
-                ):
+                if self.ast.unparse(argument).upper() in current_target_keywords:
                     break
                 self.register_new_use_point(argument)
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse_subtree(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
         )
 
         return self.generic_visit(node_data)
@@ -1242,18 +1226,14 @@ class DefUseChains(cm.DefUseChains):
     def visit_REMOVE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_SOURCE_FILES_PROPERTIES"
         )
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
         return self.generic_visit(node_data)
 
@@ -1263,7 +1243,7 @@ class DefUseChains(cm.DefUseChains):
         )
 
         for argument in arguments:
-            if self.ast.unparse_subtree(argument).upper() == "PROPERTIES":
+            if self.ast.unparse(argument).upper() == "PROPERTIES":
                 break
             self.register_new_use_point(argument)
             self.register_new_def_point(argument)
@@ -1275,9 +1255,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_TESTS_PROPERTIES"
         )
 
-        print(
-            f"Observe command for implementation: {self.ast.unparse_subtree(node_data)}"
-        )
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1364,16 +1342,16 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "SOURCE_FROM_VAR":
+            if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
                 self.register_new_use_point(arguments[i + 2])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "OUTPUT_VARIABLE":
+            if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
                 self.register_new_def_point(arguments[i + 1])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "COPY_FILE_ERROR":
+            if self.ast.unparse(argument).upper() == "COPY_FILE_ERROR":
                 self.register_new_def_point(arguments[i + 1])
                 continue
 
@@ -1394,10 +1372,10 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "SOURCE_FROM_VAR":
+            if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
                 self.register_new_use_point(arguments[i + 2])
                 continue
-            if self.ast.unparse_subtree(argument).upper() in current_target_keywords:
+            if self.ast.unparse(argument).upper() in current_target_keywords:
                 self.register_new_def_point(arguments[i + 1])
                 continue
 
@@ -1422,7 +1400,7 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 continue
             if self.ast.unparse_subtree(argument).upper() in current_target_keywords:

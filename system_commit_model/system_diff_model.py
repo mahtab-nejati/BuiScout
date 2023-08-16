@@ -235,11 +235,13 @@ class SystemDiff(object):
         self.source_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].source, sysdiff=self
         )
+        print(f"{'#'*10} Analyzing source {'#'*10}")
         self.source_du_chains.analyze()
 
         self.destination_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].destination, sysdiff=self
         )
+        print(f"{'#'*10} Analyzing destination {'#'*10}")
         self.destination_du_chains.analyze()
 
     def get_file_directory(self, file_path):
