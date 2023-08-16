@@ -655,9 +655,10 @@ class DefUseChains(cm.DefUseChains):
 
         # For manual file path resolution setup
         if isinstance(included_file, list):
-            raise DebugException(
+            print(
                 f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
             )
+            return self.generic_visit(node_data)
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
@@ -1028,9 +1029,10 @@ class DefUseChains(cm.DefUseChains):
 
         # For manual file path resolution setup
         if isinstance(added_file, list):
-            raise DebugException(
+            print(
                 f"Multiple path found for {self.ast.unparse_subtree(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
             )
+            return self.generic_visit(node_data)
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
