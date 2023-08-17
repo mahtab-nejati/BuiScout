@@ -47,7 +47,7 @@ class Def(object):
 
     def to_json(self):
         return {
-            "def_type": self.def_type,
+            "def_type": self.type,
             "def_name": self.name,
             "def_node_id": self.node_data["id"],
             "actor_node_id": self.actor_point.node_data["id"],
