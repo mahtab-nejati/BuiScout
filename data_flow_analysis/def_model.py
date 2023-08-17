@@ -7,8 +7,9 @@ class Def(object):
     Objects are called def_point
     """
 
-    def __init__(self, node_data, actor_point, ast):
+    def __init__(self, node_data, def_type, actor_point, ast):
         self.ast = ast
+        self.type = def_type
 
         # Storing the node_data
         self.node_data = node_data
@@ -46,6 +47,7 @@ class Def(object):
 
     def to_json(self):
         return {
+            "def_type": self.def_type,
             "def_name": self.name,
             "def_node_id": self.node_data["id"],
             "actor_node_id": self.actor_point.node_data["id"],

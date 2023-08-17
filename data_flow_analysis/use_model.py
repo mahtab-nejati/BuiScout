@@ -7,8 +7,9 @@ class Use(object):
     Objects are called use_point
     """
 
-    def __init__(self, node_data, actor_point, ast):
+    def __init__(self, node_data, actor_point, ast, use_type="VAR"):
         self.ast = ast
+        self.type = use_type
 
         # Storing the node_data
         self.node_data = node_data
@@ -31,6 +32,7 @@ class Use(object):
 
     def to_json(self):
         return {
+            "use_type": self.type,
             "use_name": self.name,
             "use_node_id": self.node_data["id"],
             "actor_node_id": self.actor_point.node_data["id"],
