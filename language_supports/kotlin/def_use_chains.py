@@ -44,7 +44,7 @@ class DefUseChains(cm.DefUseChains):
     
     def visit_call_expression(self, node_data):
         children = self.get_sorted_node_children_data_list(node_data)
-        if(children[0]["type"] == "navigation_expression" and self.ast.unparse_subtree(children[0]) == 'tasks . register'):
+        if(children[0]["type"] == "navigation_expression" and self.ast.unparse(children[0]) == 'tasks . register'):
             arguments = self.ast.get_subtree_nodes(children[1])
             function_arguments = list(
                 filter(
