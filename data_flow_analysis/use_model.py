@@ -7,7 +7,7 @@ class Use(object):
     Objects are called use_point
     """
 
-    def __init__(self, node_data, actor_point, ast, use_type="VAR"):
+    def __init__(self, node_data, use_type, actor_point, ast):
         self.ast = ast
         self.type = use_type
 
