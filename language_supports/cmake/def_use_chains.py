@@ -99,7 +99,7 @@ class DefUseChains(cm.DefUseChains):
 
         desparate_list = list(
             filter(
-                lambda file_key: file_key.endswith(
+                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
                     candidate_path.rstrip("/") + "/CMakeLists.txt"
                 ),
                 file_keys,
@@ -112,7 +112,7 @@ class DefUseChains(cm.DefUseChains):
 
         desparate_list = list(
             filter(
-                lambda file_key: file_key.endswith(
+                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
                     "/" + candidate_path.lstrip("/") + ".cmake"
                 ),
                 file_keys,
@@ -150,7 +150,7 @@ class DefUseChains(cm.DefUseChains):
 
         desparate_list = list(
             filter(
-                lambda file_key: file_key.endswith(
+                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
                     candidate_path.rstrip("/") + "/CMakeLists.txt"
                 ),
                 file_keys,
