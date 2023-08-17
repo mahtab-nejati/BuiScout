@@ -214,7 +214,7 @@ class Stringifier(NodeVisitor):
         return self.visit_argument_types(node_data)
 
     def visit_argument_types(self, node_data):  # RECURSIVE for parent node
-        parsed_argument = self.ast.unparse_subtree(node_data)
+        parsed_argument = self.ast.unparse(node_data)
         parent_data = node_data
         while parent_data["type"] not in [
             "arguments",
@@ -248,7 +248,7 @@ class Stringifier(NodeVisitor):
         return self.visit_variables(node_data)
 
     def visit_variables(self, node_data):
-        parsed_node = self.ast.unparse_subtree(node_data)
+        parsed_node = self.ast.unparse(node_data)
         parent_data = node_data
         while parent_data["type"] not in [
             "arguments",

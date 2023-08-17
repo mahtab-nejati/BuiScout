@@ -2,8 +2,7 @@ from pydriller import Repository
 from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
-import subprocess
-import gc
+import subprocess, gc
 from datetime import datetime
 from utils.helpers import (
     create_csv_files,
@@ -140,46 +139,50 @@ for commit in tqdm(repo.traverse_commits()):
                     SAVE_PATH,
                 )
 
-            for build_file in diff.file_data.values():
-                # Skip files with GumTree error
-                if build_file["diff"] is None:
-                    continue
-                # Skip if no change to file
-                if build_file["file_action"] is None:
-                    continue
-                # Summarize and log
-                for sm in SUMMARIZATION_METHODS:
-                    summary = build_file["diff"].summarize(method=sm)
-                    summaries[sm] += list(
-                        map(
-                            lambda entry: {
-                                "commit": commit.hash,
-                                "subject_file": build_file["saved_as"],
-                                **entry,
-                            },
-                            summary,
-                        )
-                    )
-                build_file["diff"].source.slice.export_dot(
-                    f'{summary_dir}/{build_file["saved_as"]}_slice_source.dot'
-                )
-                build_file["diff"].destination.slice.export_dot(
-                    f'{summary_dir}/{build_file["saved_as"]}_slice_destination.dot'
-                )
+            # for build_file in diff.file_data.values():
+            #     # Skip files with GumTree error
+            #     if build_file["diff"] is None:
+            #         continue
+            #     # Skip if no change to file
+            #     if build_file["file_action"] is None:
+            #         continue
+            #     # Summarize and log
+            #     for sm in SUMMARIZATION_METHODS:
+            #         summary = build_file["diff"].summarize(method=sm)
+            #         summaries[sm] += list(
+            #             map(
+            #                 lambda entry: {
+            #                     "commit": commit.hash,
+            #                     "subject_file": build_file["saved_as"],
+            #                     **entry,
+            #                 },
+            #                 summary,
+            #             )
+            #         )
+            #     build_file["diff"].source.slice.export_dot(
+            #         f'{summary_dir}/{build_file["saved_as"]}_slice_source.dot'
+            #     )
+            #     build_file["diff"].destination.slice.export_dot(
+            #         f'{summary_dir}/{build_file["saved_as"]}_slice_destination.dot'
+            #     )
 
-            # Convert slices to svg
-            command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
-            process = subprocess.Popen(command, stdout=subprocess.PIPE)
-            output, error = process.communicate()
+            # # Convert slices to svg
+            # command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
+            # process = subprocess.Popen(command, stdout=subprocess.PIPE)
+            # output, error = process.communicate()
 
-            for sm in SUMMARIZATION_METHODS:
-                summaries_df = pd.DataFrame(summaries[sm])
-                summaries_df.to_csv(
-                    SAVE_PATH / f"summaries_{sm.lower()}.csv",
-                    mode="a",
-                    header=False,
-                    index=False,
-                )
+            # for sm in SUMMARIZATION_METHODS:
+            #     summaries_df = pd.DataFrame(summaries[sm])
+            #     summaries_df.to_csv(
+            #         SAVE_PATH / f"summaries_{sm.lower()}.csv",
+            #         mode="a",
+            #         header=False,
+            #         index=False,
+            #     )
+
+            diff.perform_data_flow_analysis()
+
+            diff.export_csv()
 
             commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
             commit_build_files_df.drop(labels=["diff"], axis=1, inplace=True)

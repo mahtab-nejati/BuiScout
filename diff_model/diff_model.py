@@ -10,7 +10,7 @@ class ASTDiff(object):
     """
     Represents a pair of ASTs with their corresponding diff.
     Initialization:
-        diff = ASTDiff(*utils.read_dotdiff(path), file_name, commit_hash)
+        diff = ASTDiff(*utils.read_dotdiff(path), file_path, file_saved_as, commit_hash)
     The output of utils.read_dotdiff(path) includes
     the source and destination nx.DiGraph objects
     and the dictionary {source_node: destination_node} of matched nodes.
@@ -22,7 +22,8 @@ class ASTDiff(object):
         destination,
         matches,
         file_action,
-        file_name,
+        file_path,
+        file_saved_as,
         commit_hash,
         LANGUAGE,
         *args,
@@ -37,7 +38,8 @@ class ASTDiff(object):
         self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
 
         self.file_action = file_action
-        self.file_name = file_name
+        self.file_path = file_path
+        self.file_saved_as = file_saved_as
         self.commit_hash = commit_hash
 
         # If change does not affect the file:
@@ -61,18 +63,22 @@ class ASTDiff(object):
             # Create ASTs and clearing changes in ASTs
             self.source = AST(
                 source,
-                file_name=file_name,
+                file_path=file_path,
+                file_saved_as=file_saved_as,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             # Clear all changes
             self.source.clear_node_operarions()
 
             self.destination = AST(
                 destination,
-                file_name=file_name,
+                file_path=file_path,
+                file_saved_as=file_saved_as,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             # Clear all changes
             self.destination.clear_node_operarions()
@@ -81,8 +87,8 @@ class ASTDiff(object):
             self.source_match = dict(
                 map(
                     lambda node_id: (
-                        f"{self.commit_hash}:{self.file_name}:{node_id}",
-                        f'{self.commit_hash}:{self.file_name}:{node_id.replace("_src_", "_dst_")}',
+                        f"{self.commit_hash}:{self.file_saved_as}:{node_id}",
+                        f'{self.commit_hash}:{self.file_saved_as}:{node_id.replace("_src_", "_dst_")}',
                     ),
                     source.nodes,
                 )
@@ -95,15 +101,19 @@ class ASTDiff(object):
         else:
             self.source = AST(
                 source,
-                file_name=file_name,
+                file_path=file_path,
+                file_saved_as=file_saved_as,
                 commit_hash=commit_hash,
                 LANGUAGE=LANGUAGE,
+                diff=self,
             )
             self.destination = AST(
                 destination,
-                file_name=file_name,
+                file_path=file_path,
+                file_saved_as=file_saved_as,
                 commit_hash=commit_hash,
                 LANGUAGE=self.LANGUAGE,
+                diff=self,
             )
             self.source_match = dict(
                 map(
@@ -315,8 +325,25 @@ class ASTDiff(object):
         self.source.update_summarization_status(source_node, method)
         self.destination.update_summarization_status(destination_node, method)
 
+    def reveal_match(self, node_data, *args, **kwargs):
+        """
+        Returns the match of the AST and node for external purposes
+        as a pair of AST, dict(nod_data).
+        Returns None, dict() if no match exists.
+        """
+
+        if node_data["id"] in self.source_match:
+            match_id = self.source_match[node_data["id"]]
+            return self.destination, self.destination.nodes[match_id]
+
+        if node_data["id"] in self.destination_match:
+            match_id = self.destination_match[node_data["id"]]
+            return self.source, self.source.nodes[match_id]
+
+        return None, dict()
+
     def export_json(self, save_path):
-        save_path = Path(save_path) / self.file_name
+        save_path = Path(save_path) / self.file_saved_as
         save_path.mkdir(parents=True, exist_ok=True)
         self.source.export_json(save_path)
         self.destination.export_json(save_path)
@@ -326,7 +353,7 @@ class ASTDiff(object):
             )
 
     def export_csv(self, save_path):
-        save_path = Path(save_path) / self.file_name
+        save_path = Path(save_path) / self.file_saved_as
         save_path.mkdir(parents=True, exist_ok=True)
         self.source.export_csv(save_path)
         self.destination.export_csv(save_path)

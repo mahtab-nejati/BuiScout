@@ -135,7 +135,7 @@ class DefUseChains(NodeVisitor):
 
     def add_condition_to_reachability_stack(self, condition_node_data):
         self.reachability_stack.append(
-            self.ast.unparse_subtree(condition_node_data).strip("(").strip(")")
+            self.ast.unparse(condition_node_data).strip("(").strip(")")
         )
 
     def remove_condition_from_reachability_stack(self, last_n=1):
@@ -149,6 +149,7 @@ class DefUseChains(NodeVisitor):
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
 
     def to_json(self):
         du_chains_output = {

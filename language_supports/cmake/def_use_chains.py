@@ -1,8 +1,11 @@
 import data_flow_analysis as cm
+from utils.configurations import PATH_RESOLUTIONS
 from utils.exceptions import MissingArgumentsException, DebugException
 
 
 class DefUseChains(cm.DefUseChains):
+    manual_resolution = PATH_RESOLUTIONS
+
     def get_expected_arguments_node_data(self, command_node_data, command_id):
         """
         Retruns the "arguments" node's node_data (the parent of the list of arguments).
@@ -31,6 +34,132 @@ class DefUseChains(cm.DefUseChains):
             self.ast.get_children(arguments_node_data).values(),
             key=lambda argument_node_data: argument_node_data["s_pos"],
         )
+
+    def get_manually_resolved_path(self, file_path):
+        resolved_path_item = list(
+            filter(
+                lambda item: (item["caller_file_path"] in [self.ast.file_path, "*"])
+                and (item["callee_file_path"] == file_path),
+                self.manual_resolution,
+            )
+        )
+        if len(resolved_path_item) == 1:
+            return resolved_path_item[0]["callee_resolved_path"]
+        if len(resolved_path_item) > 1:
+            raise DebugException(f"Multiple manual resolutions: {resolved_path_item}")
+        return None
+
+    def resolve_included_file_path_best_effort(self, file_path):
+        resolution = self.get_manually_resolved_path(file_path.replace(" ", ""))
+        if resolution:
+            return resolution
+
+        candidate_path = file_path.replace(" ", "")
+        candidate_path = candidate_path.split("}")[-1]
+        if not candidate_path:
+            return None
+
+        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
+
+        if candidate_path in self.sysdiff.file_data:
+            return candidate_path
+
+        if candidate_path + ".cmake" in self.sysdiff.file_data:
+            return candidate_path + ".cmake"
+
+        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
+            return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        if (
+            current_directory + candidate_path.lstrip("/") + ".cmake"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.lstrip("/") + ".cmake"
+
+        if (
+            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        file_keys = list(self.sysdiff.file_data.keys())
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith("/" + candidate_path.lstrip("/")),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            return desparate_list
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            return desparate_list
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    "/" + candidate_path.lstrip("/") + ".cmake"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            return desparate_list
+
+        return None
+
+    def resolve_add_subdirectory_file_path_best_effort(self, file_path):
+        resolution = self.get_manually_resolved_path(file_path)
+        if resolution:
+            return resolution
+
+        candidate_path = file_path.replace(" ", "")
+        candidate_path = candidate_path.split("}")[-1]
+        if not candidate_path:
+            return None
+
+        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
+
+        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
+            return candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        if (
+            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
+            in self.sysdiff.file_data
+        ):
+            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
+
+        file_keys = list(self.sysdiff.file_data.keys())
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            return desparate_list
+
+        return None
 
     def visit_function_definition(self, node_data):
         self.register_new_def_point(node_data)
@@ -171,7 +300,7 @@ class DefUseChains(cm.DefUseChains):
             key=lambda data: data["s_pos"],
         )
         for argument in arguments:
-            if self.ast.unparse_subtree(argument).upper() not in operators:
+            if self.ast.unparse(argument).upper() not in operators:
                 self.register_new_use_point(argument)
 
         return self.generic_visit(node_data)
@@ -198,7 +327,7 @@ class DefUseChains(cm.DefUseChains):
     #     pass
 
     def visit_normal_command(self, node_data):
-        command_identifier = self.ast.unparse_subtree(
+        command_identifier = self.ast.unparse(
             self.ast.get_data(self.ast.get_children_by_type(node_data, "identifier"))
         ).upper()
         if command_identifier.startswith("CTEST_"):
@@ -221,6 +350,12 @@ class DefUseChains(cm.DefUseChains):
 
     ########## Scripting Commands:
 
+    def visit_A(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_BREAK(self, node_data):
+        return
+
     def visit_CMAKE_HOST_SYSTEM_INFORMATION(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
@@ -233,23 +368,38 @@ class DefUseChains(cm.DefUseChains):
     def visit_CMAKE_LANGUAGE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_LANGUAGE")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET_MESSAGE_LOG_LEVEL":
             self.register_new_def_point(arguments[1])
 
-        for i, arg in enumerate(arguments):
-            if self.ast.unparse_subtree(arg).upper() == "CALL":
-                raise DebugException(
-                    "Inspect and implement the cmake_language command with CALL keyword"
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse(argument).upper() in [
+                "ID_VAR",
+                "GET_CALL_IDS",
+                "GET_CALL",
+            ]:
+                self.register_new_def_point(arguments[i + 1])
+                continue
+            if self.ast.unparse(argument).upper() == "CALL":
+                # Inspect and implement the cmake_language command with CALL keyword
+                print(
+                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
                 )
+                continue
 
+        return self.generic_visit(node_data)
+
+    def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_CMAKE_PATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_PATH")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         current_target_operations = ["COMPARE", "CONVERT"]
         if not operation in current_target_operations:
@@ -294,29 +444,42 @@ class DefUseChains(cm.DefUseChains):
                 if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
                     self.register_new_def_point(arguments[i + 1])
                     break
-            return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
 
     def visit_CMAKE_POLICY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_POLICY")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET":
             self.register_new_def_point(arguments[-1])
 
         return self.generic_visit(node_data)
 
+    def visit_CONFIGURE_FILE(self, node_data):
+        return self.generic_visit(node_data)
+
     def visit_EXECUTE_PROCESS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "EXECUTE_PROCESS")
 
-        raise DebugException("IMPLEMENT EXECUTE_PROCESS")
+        current_target_keywords = [
+            "RESULT_VARIABLE",
+            "RESULTS_VARIABLE",
+            "OUTPUT_VARIABLE",
+            "ERROR_VARIABLE",
+        ]
+
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse(argument).upper() in current_target_keywords:
+                self.register_new_def_point(arguments[i + 1])
+
+        return self.generic_visit(node_data)
 
     def visit_FILE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         current_target_operations = ["GLOB", "GLOB_RECURSE", "RELATIVE_PATH"]
         if operation in current_target_operations:
@@ -345,7 +508,6 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[2])
-            return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
 
@@ -398,9 +560,9 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "NAMES":
+            if self.ast.unparse(argument).upper() == "NAMES":
                 for arg in arguments[i + 1 :]:
-                    if self.ast.unparse_subtree(arg).upper() in keywords:
+                    if self.ast.unparse(arg).upper() in keywords:
                         break
                     self.register_new_def_point(arg)
                 return self.generic_visit(node_data)
@@ -437,8 +599,10 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "DEFINITION":
-                raise DebugException("Fix GET_DIRECTORY_PROPERTY")
+            if self.ast.unparse(argument).upper() == "DEFINITION":
+                print(
+                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+                )
 
         return self.generic_visit(node_data)
 
@@ -450,7 +614,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "PROGRAM_ARGS":
+            if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
                 self.register_new_def_point(arguments[i + 1])
 
         return self.generic_visit(node_data)
@@ -461,7 +625,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            keyword = self.ast.unparse_subtree(argument).upper()
+            keyword = self.ast.unparse(argument).upper()
             current_target_keywords = [
                 "TARGET",
                 "SOURCE",
@@ -472,7 +636,7 @@ class DefUseChains(cm.DefUseChains):
                 "PROPERTY",
             ]
             if keyword == "DIRECTORY":
-                if not self.ast.unparse_subtree(argument[i + 1]).upper() == "PROPERTY":
+                if not self.ast.unparse(arguments[i + 1]).upper() == "PROPERTY":
                     self.register_new_use_point(arguments[i + 1])
             elif keyword in current_target_keywords:
                 self.register_new_use_point(arguments[i + 1])
@@ -491,29 +655,48 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff is None:
             return self.generic_visit(node_data)
 
-        # The included path
-        # TODO: Fix for including Moduels
-        included_file_path = self.ast.unparse_subtree(arguments[0])
+        included_file_path = self.ast.unparse(arguments[0])
+        included_file = self.resolve_included_file_path_best_effort(included_file_path)
+
+        if included_file == self.ast.file_path:
+            print(
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For manual file path resolution setup
+        if isinstance(included_file, list):
+            print(
+                f"Multiple path found for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
 
         # For files that do not exist in the project
         # or files that are refered to using a variable
-        # or importing modules instead of files (CAVEAT)
-        if included_file_path not in self.sysdiff.file_data:
-            if not included_file_path.endswith(("CMakeLists.txt", ".cmake")):
-                raise DebugException("Implement module imports in INCLUDE.")
+        if included_file is None:
+            print(
+                f"Cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if included_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
             return self.generic_visit(node_data)
 
         # For files with GumTree error
-        if self.sysdiff.file_data[included_file_path]["diff"] is None:
+        if self.sysdiff.file_data[included_file]["diff"] is None:
+            print(f"Parser error for {self.ast.unparse(node_data)}")
             return self.generic_visit(node_data)
 
         self.ast_stack.append(self.ast)
-        self.ast = getattr(
-            self.sysdiff.file_data[included_file_path]["diff"], self.ast.name
-        )
+        self.ast = getattr(self.sysdiff.file_data[included_file]["diff"], self.ast.name)
 
         # Working on included file
         self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
         # Finished working on included file
 
         self.ast = self.ast_stack.pop()
@@ -522,7 +705,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_LIST(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         self.register_new_use_point(arguments[1])
 
@@ -564,7 +747,7 @@ class DefUseChains(cm.DefUseChains):
 
         keywords = ["CLEAR", "FORCE"]
         start_index = 0
-        if self.ast.unparse_subtree(arguments[0]).upper() in keywords:
+        if self.ast.unparse(arguments[0]).upper() in keywords:
             start_index = 1
 
         for argument in arguments[start_index:]:
@@ -590,9 +773,14 @@ class DefUseChains(cm.DefUseChains):
         try:
             arguments = self.get_sorted_arguments_data_list(node_data, "RETURN")
         except MissingArgumentsException:
-            pass
+            return self.generic_visit(node_data)
 
-        raise DebugException("Implement RETURN")
+        for i, argument in enumerate(arguments):
+            if self.ast.unparse(argument).upper() == "PROPAGATE":
+                for arg in argument[i + 1 :]:
+                    self.register_new_use_point(arg)
+
+        self.generic_visit(node_data)
 
     def visit_SEPARATE_ARGUMENTS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
@@ -616,7 +804,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
 
-        raise DebugException("Implement SET_DIRECTORY_PROPERTIES")
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_SET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
@@ -636,10 +824,10 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            unparsed_argument = self.ast.unparse_subtree(argument)
+            unparsed_argument = self.ast.unparse(argument)
             if unparsed_argument == "TARGET":
                 for arg in arguments[i + 1 :]:
-                    if self.ast.unparse_subtree(arg) not in keywords:
+                    if self.ast.unparse(arg) not in keywords:
                         self.register_new_use_point(arg)
                     else:
                         break
@@ -658,10 +846,10 @@ class DefUseChains(cm.DefUseChains):
     def visit_STRING(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
 
-        operation = self.ast.unparse_subtree(arguments[0])
+        operation = self.ast.unparse(arguments[0])
 
         if operation == "REGEX":
-            sub_operation = self.ast.unparse_subtree(arguments[1])
+            sub_operation = self.ast.unparse(arguments[1])
             if sub_operation == "REPLACE":
                 self.register_new_def_point(arguments[4])
             else:
@@ -670,7 +858,7 @@ class DefUseChains(cm.DefUseChains):
 
         if operation == "json":
             self.register_new_def_point(arguments[1])
-            if self.ast.unparse_subtree(arguments[2]) == "ERROR_VARIABLE":
+            if self.ast.unparse(arguments[2]) == "ERROR_VARIABLE":
                 self.register_new_def_point(arguments[3])
             return self.generic_visit(node_data)
 
@@ -741,12 +929,12 @@ class DefUseChains(cm.DefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        raise DebugException("Implement ADD_COMPILE_DEFINITIONS")
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
-        if self.ast.unparse_subtree(arguments[0]).upper() == "TARGET":
+        if self.ast.unparse(arguments[0]).upper() == "TARGET":
             self.register_new_use_point(arguments[1])
 
         return self.generic_visit(node_data)
@@ -761,8 +949,9 @@ class DefUseChains(cm.DefUseChains):
     def visit_ADD_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEFINITIONS")
 
-        # NOTE from documentations: Definitions are specified using the syntax -VAR or -VAR=value
-        raise DebugException("Implement ADD_DEFINITIONS")
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+
+        return self.generic_visit(node_data)
 
     def visit_ADD_DEPENDENCIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
@@ -772,7 +961,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_use_point(arguments[0])
 
-        raise DebugException("IMPLEMENT ADD_DEPENDENCIES")
+        return self.generic_visit(node_data)
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -785,7 +974,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_def_point(arguments[0])
 
-        operation = self.ast.unparse_subtree(arguments[1]).upper()
+        operation = self.ast.unparse(arguments[1]).upper()
 
         if operation == "IMPORTED":
             # TODO: After Scoping is implemented, consider if GLOBAL keyword exists?
@@ -810,7 +999,7 @@ class DefUseChains(cm.DefUseChains):
         if len(arguments) == 1:
             return self.generic_visit(node_data)
 
-        operation = self.ast.unparse_subtree(arguments[1]).upper()
+        operation = self.ast.unparse(arguments[1]).upper()
 
         if operation == "ALIAS":
             assert len(arguments) == 3
@@ -828,13 +1017,64 @@ class DefUseChains(cm.DefUseChains):
         """
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
 
-        raise DebugException("IMPLEMENT ADD_SUBDIRECTORY")
+        # For file-level analysis (No system provided)
+        if self.sysdiff is None:
+            return self.generic_visit(node_data)
+
+        added_directory_path = self.ast.unparse(arguments[0])
+        added_file = self.resolve_add_subdirectory_file_path_best_effort(
+            added_directory_path
+        )
+
+        if added_file == self.ast.file_path:
+            print(
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For manual file path resolution setup
+        if isinstance(added_file, list):
+            print(
+                f"Multiple path found for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For files that do not exist in the project
+        # or files that are refered to using a variable
+        if added_file is None:
+            print(
+                f"Cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For manaully skipped files
+        if added_file.upper() == "SKIP":
+            print(
+                f"Skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # For files with GumTree error
+        if self.sysdiff.file_data[added_file]["diff"] is None:
+            print(f"Parser error for {self.ast.unparse(node_data)}")
+            return self.generic_visit(node_data)
+
+        self.ast_stack.append(self.ast)
+        self.ast = getattr(self.sysdiff.file_data[added_file]["diff"], self.ast.name)
+
+        # Working on added file
+        self.generic_visit(self.ast.get_data(self.ast.root))
+        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
+        # Finished working on added file
+
+        self.ast = self.ast_stack.pop()
+        return self.generic_visit(node_data)
 
     def visit_ADD_TEST(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         # NOTE: There is an old signature at the end of documentation page.
-        raise DebugException("Implement ADD_TEST")
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -851,7 +1091,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -862,17 +1102,14 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        raise DebugException("Implement CREATE_TEST_SOURCELIST")
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_DEFINE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
 
         self.register_new_def_point(arguments[2])
 
-        if (
-            self.ast.unparse_subtree(arguments[-2]).upper()
-            == "INITIALIZE_FROM_VARIABLE"
-        ):
+        if self.ast.unparse(arguments[-2]).upper() == "INITIALIZE_FROM_VARIABLE":
             self.register_new_def_point(arguments[-1])
 
         return self.generic_visit(node_data)
@@ -880,7 +1117,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_EXPORT(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "EXPORT")
 
-        operation = self.ast.unparse_subtree(arguments[0]).upper()
+        operation = self.ast.unparse(arguments[0]).upper()
 
         keywords = [
             "NAMESPACE",
@@ -892,7 +1129,7 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation == "TARGETS":
             for argument in arguments[1:]:
-                if self.ast.unparse_subtree(argument).upper() in keywords:
+                if self.ast.unparse(argument).upper() in keywords:
                     break
                 else:
                     self.register_new_use_point(argument)
@@ -917,7 +1154,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[-1])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET_DIRECTORY":
+            if self.ast.unparse(argument).upper() == "TARGET_DIRECTORY":
                 self.register_new_use_point(arguments[i + 1])
                 break
 
@@ -943,13 +1180,6 @@ class DefUseChains(cm.DefUseChains):
 
         return self.generic_visit(node_data)
 
-    def visit_INCLUDE_DIRECTORIES(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(
-            node_data, "INCLUDE_DIRECTORIES"
-        )
-
-        raise DebugException("Implement INCLUDE_DIRECTORIES")
-
     def visit_INCLUDE_EXTERNAL_MSPROJECT(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "INCLUDE_EXTERNAL_MSPROJECT"
@@ -962,19 +1192,81 @@ class DefUseChains(cm.DefUseChains):
     def visit_INSTALL(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
 
-        raise DebugException("Implement INSTALL")
+        operation = self.ast.unparse(arguments[0]).upper()
+
+        current_target_keywords = [
+            "EXPORT",
+            "RUNTIME_DEPENDENCIES",
+            "RUNTIME_DEPENDENCY_SET",
+            "LIBRARY",
+            "RUNTIME",
+            "OBJECTS",
+            "FRAMEWORK",
+            "BUNDLE",
+            "PRIVATE_HEADER",
+            "PUBLIC_HEADER",
+            "RESOURCE",
+            "FILE_SET",
+            "CXX_MODULES_BMI",
+            "DESTINATION",
+            "PERMISSIONS",
+            "CONFIGURATIONS",
+            "COMPONENT",
+            "NAMELINK_COMPONENT",
+            "OPTIONAL",
+            "EXCLUDE_FROM_ALL",
+            "NAMELINK_ONLY",
+            "NAMELINK_SKIP",
+            "INCLUDES",
+            "DESTINATION",
+        ]
+
+        current_target_operations = ["TARGETS", "IMPORTED_RUNTIME_ARTIFACTS"]
+        if operation in current_target_operations:
+            for argument in arguments[1:]:
+                if self.ast.unparse(argument).upper() in current_target_keywords:
+                    break
+                self.register_new_use_point(argument)
+
+        print(
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+        )
+
+        return self.generic_visit(node_data)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
-        raise DebugException("Implement REMOVE_DEFINITIONS")
+        arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
+
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_SOURCE_FILES_PROPERTIES")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_SOURCE_FILES_PROPERTIES"
+        )
+
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+
+        return self.generic_visit(node_data)
 
     def visit_SET_TARGET_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_TARGET_PROPERTIES")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_TARGET_PROPERTIES"
+        )
+
+        for argument in arguments:
+            if self.ast.unparse(argument).upper() == "PROPERTIES":
+                break
+            self.register_new_use_point(argument)
+            self.register_new_def_point(argument)
+
+        return self.generic_visit(node_data)
 
     def visit_SET_TESTS_PROPERTIES(self, node_data):
-        raise DebugException("Implement SET_TESTS_PROPERTIES")
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "SET_TESTS_PROPERTIES"
+        )
+
+        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1010,7 +1302,7 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_use_point(arguments[0])
 
-        raise DebugException("Implement TARGET_INCLUDE_DIRECTORIES")
+        return self.generic_visit(node_data)
 
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
@@ -1056,21 +1348,21 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_TRY_COMPILE(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(node_data)
+        arguments = self.get_sorted_arguments_data_list(node_data, "TRY_COMPILE")
 
         self.register_new_def_point(arguments[0])
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "SOURCE_FROM_VAR":
+            if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
                 self.register_new_use_point(arguments[i + 2])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "OUTPUT_VARIABLE":
+            if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
                 self.register_new_def_point(arguments[i + 1])
                 continue
-            if self.ast.unparse_subtree(argument).upper() == "COPY_FILE_ERROR":
+            if self.ast.unparse(argument).upper() == "COPY_FILE_ERROR":
                 self.register_new_def_point(arguments[i + 1])
                 continue
 
@@ -1091,10 +1383,10 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "SOURCE_FROM_VAR":
+            if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
                 self.register_new_use_point(arguments[i + 2])
                 continue
-            if self.ast.unparse_subtree(argument).upper() in current_target_keywords:
+            if self.ast.unparse(argument).upper() in current_target_keywords:
                 self.register_new_def_point(arguments[i + 1])
                 continue
 
@@ -1119,7 +1411,7 @@ class DefUseChains(cm.DefUseChains):
         ]
 
         for i, argument in enumerate(arguments):
-            if self.ast.unparse_subtree(argument).upper() == "TARGET":
+            if self.ast.unparse(argument).upper() == "TARGET":
                 self.register_new_use_point(arguments[i + 1])
                 continue
             if self.ast.unparse_subtree(argument).upper() in current_target_keywords:

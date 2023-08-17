@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from pathlib import Path
 import subprocess, time, importlib
@@ -101,12 +100,15 @@ class SystemDiff(object):
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
                         "before_path": modified_file.old_path,
+                        # code_before will be removed once written to a file
                         "code_before": modified_file.source_code_before,
                         "after_path": modified_file.new_path,
+                        # code_after will be removed once written to a file
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "elapsed_time": None,
+                        "data_flow_source_reach": False,
+                        "data_flow_destination_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -148,7 +150,8 @@ class SystemDiff(object):
                             ).read_text(),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "elapsed_time": None,
+                            "data_flow_source_reach": False,
+                            "data_flow_destination_reach": False,
                         },
                     ),
                     other_build_files,
@@ -209,6 +212,7 @@ class SystemDiff(object):
             return ASTDiff(
                 *dotdiff_content,
                 self.file_data[file_path]["file_action"],
+                file_path,
                 self.file_data[file_path]["saved_as"],
                 self.commit.hash,
                 self.language,
@@ -219,9 +223,7 @@ class SystemDiff(object):
 
     def set_file_data_diffs(self):
         for file_path, file_data in self.file_data.items():
-            file_start = datetime.now()
             self.file_data[file_path]["diff"] = self.get_file_diff(file_path)
-            self.file_data[file_path]["elapsed_time"] = datetime.now() - file_start
 
     def perform_data_flow_analysis(self):
         # Skip if the self.root_file has GumTree error
@@ -233,12 +235,20 @@ class SystemDiff(object):
         self.source_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].source, sysdiff=self
         )
+        print(f"{'#'*10} Analyzing source {'#'*10}")
         self.source_du_chains.analyze()
 
         self.destination_du_chains = self.DefUseChains(
             self.file_data[self.root_file]["diff"].destination, sysdiff=self
         )
+        print(f"{'#'*10} Analyzing destination {'#'*10}")
         self.destination_du_chains.analyze()
+
+    def get_file_directory(self, file_path):
+        return self.file_data[file_path]["file_dir"]
+
+    def set_data_flow_reach_file(self, file_path, cluster):
+        self.file_data[file_path][f"data_flow_{cluster}_reach"] = True
 
     def export_json(self):
         save_path = self.commit_dir / "data_flow_output"
@@ -304,7 +314,8 @@ class SystemDiffShortcut(SystemDiff):
                         "after_path": modified_file.new_path,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
-                        "elapsed_time": None,
+                        "data_flow_source_reach": False,
+                        "data_flow_destination_reach": False,
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -342,7 +353,8 @@ class SystemDiffShortcut(SystemDiff):
                             "after_path": build_file_path,
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
-                            "elapsed_time": None,
+                            "data_flow_source_reach": False,
+                            "data_flow_destination_reach": False,
                         },
                     ),
                     other_build_files,
@@ -357,6 +369,7 @@ class SystemDiffShortcut(SystemDiff):
             return ASTDiff(
                 *dotdiff_content,
                 self.file_data[file_path]["file_action"],
+                file_path,
                 self.file_data[file_path]["saved_as"],
                 self.commit.hash,
                 self.language,

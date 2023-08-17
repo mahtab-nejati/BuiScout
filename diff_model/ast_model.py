@@ -22,9 +22,11 @@ class AST(nx.DiGraph):
     def __init__(
         self,
         *args,
-        file_name=None,
+        file_path=None,
+        file_saved_as=None,
         commit_hash=None,
         LANGUAGE=None,
+        diff=None,
         **kwargs,
     ):
         super(AST, self).__init__(*args, **kwargs)
@@ -36,8 +38,11 @@ class AST(nx.DiGraph):
         self.ROOT_TYPE = language_support_tools.ROOT_TYPE
         self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
 
+        self.diff = diff
+
         # Set file and commit_hash
-        self.file_name = file_name
+        self.file_path = file_path
+        self.file_saved_as = file_saved_as
         self.commit_hash = commit_hash
 
         self.set_node_universal_ids()
@@ -83,7 +88,7 @@ class AST(nx.DiGraph):
             map(
                 lambda node_id: (
                     node_id,
-                    f"{self.commit_hash}:{self.file_name}:{node_id}",
+                    f"{self.file_saved_as}:{node_id}",
                 ),
                 self.nodes,
             )
@@ -157,6 +162,28 @@ class AST(nx.DiGraph):
 
         return attrs
 
+    def update_node_operation(self, node_data, operation, *args, **kwargs):
+        if node_data["operation"] != operation:
+            self.nodes[node_data["id"]]["operation"] = operation
+
+            if operation == "deleted":
+                self.nodes[node_data["id"]]["color"] = "red"
+            elif operation == "added":
+                self.nodes[node_data["id"]]["color"] = "green"
+            elif operation == "moved":
+                self.nodes[node_data["id"]]["color"] = "blue"
+            elif operation == "updated":
+                self.nodes[node_data["id"]]["color"] = "orange"
+            else:
+                self.nodes[node_data["id"]]["color"] = "lightgrey"
+
+            if not self.diff is None:
+                match_AST, match_node_data = self.diff.reveal_match(node_data)
+                if match_node_data:
+                    match_AST.update_node_operation(match_node_data, operation)
+
+        return
+
     def get_data(self, node, *args, **kwargs):
         """
         Retruns the node attributes when node is a dictionary {'node_id': dict(nod_data)}
@@ -185,11 +212,11 @@ class AST(nx.DiGraph):
         """
         Returns the location of the node_data
         """
-        if self.file_name:
-            file_name = self.file_name
+        if self.file_saved_as:
+            file_saved_as = self.file_saved_as
         else:
-            file_name = "<UNKNOWN_FILE>"
-        return f' at {file_name}:{node_data["s_pos"]}-{node_data["e_pos"]}'
+            file_saved_as = "<UNKNOWN_FILE>"
+        return f' at {file_saved_as}:{node_data["s_pos"]}-{node_data["e_pos"]}'
 
     def set_root(self, *args, **kwargs):
         """
@@ -204,7 +231,7 @@ class AST(nx.DiGraph):
         if root:
             self.root = root
         else:
-            raise MissingRootException(self.ROOT_TYPE, self.file_name)
+            raise MissingRootException(self.ROOT_TYPE, self.file_saved_as)
 
     def get_parent(self, node_data, *args, **kwargs):
         """
@@ -377,6 +404,7 @@ class AST(nx.DiGraph):
             slice_nodes,
             slice_edges,
             LANGUAGE=self.LANGUAGE,
+            diff=self.diff,
         )
 
     def get_subtree_nodes(self, head_data, *args, **kwargs):
@@ -403,7 +431,7 @@ class AST(nx.DiGraph):
             subtree_nodes.update(next_level_jungle)
         return subtree_nodes
 
-    def unparse_subtree(self, head_data, masked_types=[], *args, **kwargs):
+    def unparse(self, head_data, masked_types=[], *args, **kwargs):
         """
         Unparses the nodes in a subtree with the head_data as the root
         and returns a naive stringification of the parsed subtree.
@@ -535,6 +563,7 @@ class ASTSlice(AST):
         nodes={},
         edges=[],
         LANGUAGE=None,
+        diff=None,
         *args,
         **kwargs,
     ):
@@ -546,6 +575,8 @@ class ASTSlice(AST):
         self.LANGUAGE = LANGUAGE
         self.ROOT_TYPE = language_support_tools.ROOT_TYPE
         self.IGNORED_TYPES = language_support_tools.IGNORED_TYPES
+
+        self.diff = diff
 
         if edges:
             super(AST, self).__init__(edges)

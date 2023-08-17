@@ -2,7 +2,6 @@ from utils.visitors import NodeVisitor
 
 
 class NameGetter(NodeVisitor):
-    builtin_commands = ["LIST", "OPTION", "SET", "INCLUDE"]
     types_with_body_child = [
         "if_clause",
         "elseif_clause",
@@ -12,7 +11,7 @@ class NameGetter(NodeVisitor):
     ]
 
     def generic_visit(self, node_data):
-        return self.ast.unparse_subtree(node_data)
+        return self.ast.unparse(node_data)
 
     def visit_if_statement(self, node_data):
         return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
@@ -36,7 +35,7 @@ class NameGetter(NodeVisitor):
         return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
-        return self.ast.unparse_subtree(node_data, masked_types=["body"])
+        return self.ast.unparse(node_data, masked_types=["body"])
 
     def visit_function_definition(self, node_data):
         header = self.ast.get_data(
@@ -64,10 +63,7 @@ class NameGetter(NodeVisitor):
         command_identifier = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "identifier")
         )["content"].upper()
-        if command_identifier in self.builtin_commands:
-            return f"<BUILTIN_CMD>{command_identifier}"
-        else:
-            return f"<CMD>{command_identifier}"
+        return f"<CMD>{command_identifier}"
 
     def visit_bracket_argument(self, node_data):
         """
