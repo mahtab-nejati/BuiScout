@@ -86,6 +86,17 @@ class DefUseChains(cm.DefUseChains):
 
         desparate_list = list(
             filter(
+                lambda file_key: file_key.endswith("/" + candidate_path.lstrip("/")),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0]
+        elif len(desparate_list) > 1:
+            return desparate_list
+
+        desparate_list = list(
+            filter(
                 lambda file_key: file_key.endswith(
                     candidate_path.rstrip("/") + "/CMakeLists.txt"
                 ),
@@ -625,7 +636,7 @@ class DefUseChains(cm.DefUseChains):
                 "PROPERTY",
             ]
             if keyword == "DIRECTORY":
-                if not self.ast.unparse(argument[i + 1]).upper() == "PROPERTY":
+                if not self.ast.unparse(arguments[i + 1]).upper() == "PROPERTY":
                     self.register_new_use_point(arguments[i + 1])
             elif keyword in current_target_keywords:
                 self.register_new_use_point(arguments[i + 1])
