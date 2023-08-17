@@ -86,7 +86,9 @@ class DefUseChains(cm.DefUseChains):
 
         desparate_list = list(
             filter(
-                lambda file_key: file_key.endswith("/" + candidate_path.lstrip("/")),
+                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
+                    "/" + candidate_path.lstrip("/")
+                ),
                 file_keys,
             )
         )
