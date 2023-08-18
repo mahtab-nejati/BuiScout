@@ -109,6 +109,7 @@ class SystemDiff(object):
                         "has_gumtree_error": False,
                         "data_flow_source_reach": False,
                         "data_flow_destination_reach": False,
+                        "importers": [],
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -152,6 +153,7 @@ class SystemDiff(object):
                             "has_gumtree_error": False,
                             "data_flow_source_reach": False,
                             "data_flow_destination_reach": False,
+                            "importers": [],
                         },
                     ),
                     other_build_files,
@@ -316,6 +318,7 @@ class SystemDiffShortcut(SystemDiff):
                         "has_gumtree_error": False,
                         "data_flow_source_reach": False,
                         "data_flow_destination_reach": False,
+                        "importers": [],
                     },
                     filter(
                         lambda modified_file: file_is_target(
@@ -355,6 +358,7 @@ class SystemDiffShortcut(SystemDiff):
                             "has_gumtree_error": False,
                             "data_flow_source_reach": False,
                             "data_flow_destination_reach": False,
+                            "importers": [],
                         },
                     ),
                     other_build_files,

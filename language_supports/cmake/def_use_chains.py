@@ -660,12 +660,6 @@ class DefUseChains(cm.DefUseChains):
         included_file_path = self.ast.unparse(arguments[0])
         included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
-        if included_file == self.ast.file_path:
-            print(
-                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-            )
-            return self.generic_visit(node_data)
-
         # For manual file path resolution setup
         if isinstance(included_file, list):
             print(
@@ -693,6 +687,17 @@ class DefUseChains(cm.DefUseChains):
             print(f"Parser error for {self.ast.unparse(node_data)}")
             return self.generic_visit(node_data)
 
+        # Recursive resolution
+        if (included_file == self.ast.file_path) or (
+            node_data["id"] in self.sysdiff.file_data[included_file]["importers"]
+        ):
+            print(
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # Successful resolution
+        self.sysdiff.file_data[included_file]["importers"].append(node_data["id"])
         self.ast_stack.append(self.ast)
         self.ast = getattr(self.sysdiff.file_data[included_file]["diff"], self.ast.name)
 
@@ -1028,12 +1033,6 @@ class DefUseChains(cm.DefUseChains):
             added_directory_path
         )
 
-        if added_file == self.ast.file_path:
-            print(
-                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-            )
-            return self.generic_visit(node_data)
-
         # For manual file path resolution setup
         if isinstance(added_file, list):
             print(
@@ -1060,6 +1059,18 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff.file_data[added_file]["diff"] is None:
             print(f"Parser error for {self.ast.unparse(node_data)}")
             return self.generic_visit(node_data)
+
+        # Recursive resolution
+        if (added_file == self.ast.file_path) or (
+            node_data["id"] in self.sysdiff.file_data[added_file]["importers"]
+        ):
+            print(
+                f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # Successful resolution
+        self.sysdiff.file_data[added_file]["importers"].append(node_data["id"])
 
         self.ast_stack.append(self.ast)
         self.ast = getattr(self.sysdiff.file_data[added_file]["diff"], self.ast.name)
