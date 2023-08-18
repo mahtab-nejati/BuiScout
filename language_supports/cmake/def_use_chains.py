@@ -1,10 +1,17 @@
+from pathlib import Path
 import data_flow_analysis as cm
-from utils.configurations import PATH_RESOLUTIONS
+from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, ROOT_FILE
 from utils.exceptions import MissingArgumentsException, DebugException
+
+# CMake Modules based on the official documentation
+# https://cmake.org/cmake/help/v3.27/manual/cmake-modules.7.html
+with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
+    CMAKE_MODULES = list(map(lambda entry: entry.strip("\n"), f.readlines()))
 
 
 class DefUseChains(cm.DefUseChains):
     manual_resolution = PATH_RESOLUTIONS
+    exclude_resolutions = CMAKE_MODULES
 
     def get_expected_arguments_node_data(self, command_node_data, command_id):
         """
@@ -668,6 +675,14 @@ class DefUseChains(cm.DefUseChains):
             return self.generic_visit(node_data)
 
         included_file_path = self.ast.unparse(arguments[0])
+
+        # Exclude CMake module
+        if included_file_path in self.exclude_resolutions:
+            print(
+                f"Excluding a CMake module {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
         included_file = self.resolve_included_file_path_best_effort(included_file_path)
 
         # For manual file path resolution setup
@@ -703,6 +718,13 @@ class DefUseChains(cm.DefUseChains):
         ):
             print(
                 f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+            )
+            return self.generic_visit(node_data)
+
+        # Resolving to entry point
+        if included_file == ROOT_FILE:
+            print(
+                f"Resolving to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
