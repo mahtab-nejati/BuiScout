@@ -190,7 +190,6 @@ for commit in tqdm(repo.traverse_commits()):
                 SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
             )
 
-            diff.perform_data_flow_analysis()
             diff.export_json()
 
     # Log all changes
