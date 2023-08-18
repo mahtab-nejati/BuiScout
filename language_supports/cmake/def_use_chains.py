@@ -363,7 +363,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
         )
 
-        self.register_new_def_point(arguments[1])
+        self.register_new_def_point(arguments[1], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -373,7 +373,7 @@ class DefUseChains(cm.DefUseChains):
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET_MESSAGE_LOG_LEVEL":
-            self.register_new_def_point(arguments[1])
+            self.register_new_def_point(arguments[1], "VAR")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in [
@@ -381,12 +381,11 @@ class DefUseChains(cm.DefUseChains):
                 "GET_CALL_IDS",
                 "GET_CALL",
             ]:
-                self.register_new_def_point(arguments[i + 1])
+                self.register_new_def_point(arguments[i + 1], "VAR")
                 continue
             if self.ast.unparse(argument).upper() == "CALL":
-                # Inspect and implement the cmake_language command with CALL keyword
                 print(
-                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for CALL keyword): {self.ast.unparse(node_data)}"
                 )
                 continue
 
@@ -405,10 +404,10 @@ class DefUseChains(cm.DefUseChains):
 
         current_target_operations = ["COMPARE", "CONVERT"]
         if not operation in current_target_operations:
-            self.register_new_use_point(arguments[1])
+            self.register_new_use_point(arguments[1], "VAR")
 
         if operation == "CONVERT":
-            self.register_new_def_point(arguments[3])
+            self.register_new_def_point(arguments[3], "VAR")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -427,7 +426,7 @@ class DefUseChains(cm.DefUseChains):
             "HASH",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1])
+            self.register_new_def_point(arguments[-1], "VAR")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -444,7 +443,7 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             for i, argument in enumerate(arguments):
                 if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
-                    self.register_new_def_point(arguments[i + 1])
+                    self.register_new_def_point(arguments[i + 1], "VAR")
                     break
 
         return self.generic_visit(node_data)
@@ -455,11 +454,14 @@ class DefUseChains(cm.DefUseChains):
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET":
-            self.register_new_def_point(arguments[-1])
+            self.register_new_def_point(arguments[-1], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_CONFIGURE_FILE(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_CONTINUE(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_EXECUTE_PROCESS(self, node_data):
@@ -474,7 +476,7 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1])
+                self.register_new_def_point(arguments[i + 1], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -485,7 +487,7 @@ class DefUseChains(cm.DefUseChains):
 
         current_target_operations = ["GLOB", "GLOB_RECURSE", "RELATIVE_PATH"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1])
+            self.register_new_def_point(arguments[1], "VAR")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -509,21 +511,21 @@ class DefUseChains(cm.DefUseChains):
             "SHA3_512",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[2])
+            self.register_new_def_point(arguments[2], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_FILE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_FILE")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_LIBRARY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_LIBRARY")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -566,30 +568,30 @@ class DefUseChains(cm.DefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in keywords:
                         break
-                    self.register_new_def_point(arg)
+                    self.register_new_def_point(arg, "VAR")
                 return self.generic_visit(node_data)
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
         return self.generic_visit(node_data)
 
     def visit_FIND_PATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PATH")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_PROGRAM(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PROGRAM")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_GET_CMAKE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_CMAKE_PROPERTY")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -598,12 +600,12 @@ class DefUseChains(cm.DefUseChains):
             node_data, "GET_DIRECTORY_PROPERTY"
         )
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "DEFINITION":
                 print(
-                    f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for DEFINITION keyword): {self.ast.unparse(node_data)}"
                 )
 
         return self.generic_visit(node_data)
@@ -613,18 +615,20 @@ class DefUseChains(cm.DefUseChains):
             node_data, "GET_FILENAME_COMPONENT"
         )
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
-                self.register_new_def_point(arguments[i + 1])
+                print(
+                    f"Observe command for implementation (incomplete for PROGRAM_ARGS keyword): {self.ast.unparse(node_data)}"
+                )
 
         return self.generic_visit(node_data)
 
     def visit_GET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_PROPERTY")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         for i, argument in enumerate(arguments):
             keyword = self.ast.unparse(argument).upper()
@@ -638,9 +642,15 @@ class DefUseChains(cm.DefUseChains):
                 "PROPERTY",
             ]
             if keyword == "DIRECTORY":
-                if not self.ast.unparse(arguments[i + 1]).upper() == "PROPERTY":
-                    self.register_new_use_point(arguments[i + 1])
+                if self.ast.unparse(arguments[i + 1]).upper() != "PROPERTY":
+                    print(
+                        f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}"
+                    )
             elif keyword in current_target_keywords:
+                print(
+                    f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}"
+                )
+                # TODO SET USE_TYPE
                 self.register_new_use_point(arguments[i + 1])
 
         return self.generic_visit(node_data)
@@ -650,7 +660,7 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments[1:]):
             if self.ast.unparse(argument).upper() == "RESULT_VARIABLE":
-                self.register_new_use_point(arguments[i + 1])
+                self.register_new_def_point(arguments[i + 1], "VAR")
                 break
 
         # For file-level analysis (No system provided)
@@ -709,16 +719,19 @@ class DefUseChains(cm.DefUseChains):
         self.ast = self.ast_stack.pop()
         return self.generic_visit(node_data)
 
+    def visit_INCLUDE_GUARD(self, node_data):
+        return self.generic_visit(node_data)
+
     def visit_LIST(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
 
         operation = self.ast.unparse(arguments[0]).upper()
 
-        self.register_new_use_point(arguments[1])
+        self.register_new_use_point(arguments[1], "VAR")
 
         current_target_operations = ["LENGTH", "GET", "JOIN", "SUBLIST", "FIND"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1])
+            self.register_new_def_point(arguments[-1], "VAR")
 
         current_target_operations = [
             "POP_BACK",
@@ -727,7 +740,7 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             if len(arguments) > 2:
                 for def_node in arguments[2:]:
-                    self.register_new_def_point(def_node)
+                    self.register_new_def_point(def_node, "VAR")
 
         # TODO (Decision): The following commented operations modify the list
         # but do not change the content (only reordering and cleaning).
@@ -739,13 +752,13 @@ class DefUseChains(cm.DefUseChains):
             "PREPEND",
             "REMOVE_ITEM",
             "REMOVE_AT",
-            # "REMOVE_DUPLICATES",
+            "REMOVE_DUPLICATES",
             "TRANSFORM",
-            # "REVERSE",
-            # "SORT",
+            "REVERSE",
+            "SORT",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1])
+            self.register_new_def_point(arguments[1], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -758,21 +771,25 @@ class DefUseChains(cm.DefUseChains):
             start_index = 1
 
         for argument in arguments[start_index:]:
-            self.register_new_use_point(argument)
+            self.register_new_use_point(argument, "VAR")
+            self.register_new_def_point(argument, "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_MATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "MATH")
 
-        self.register_new_def_point(arguments[1])
+        self.register_new_def_point(arguments[1], "VAR")
 
+        return self.generic_visit(node_data)
+
+    def visit_MESSAGE(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_OPTION(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "OPTION")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -785,7 +802,8 @@ class DefUseChains(cm.DefUseChains):
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROPAGATE":
                 for arg in argument[i + 1 :]:
-                    self.register_new_use_point(arg)
+                    self.register_new_use_point(arg, "VAR")
+                    self.register_new_def_point(arg, "VAR")
 
         self.generic_visit(node_data)
 
@@ -793,7 +811,7 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
 
         if len(arguments) == 1:
-            self.register_new_use_point(arguments[0])
+            self.register_new_use_point(arguments[0], "ARG")
 
         self.register_new_def_point(arguments[0])
 
