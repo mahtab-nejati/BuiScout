@@ -57,16 +57,28 @@ class DefUseChains(cm.DefUseChains):
         return None
 
     def resolve_included_file_path_best_effort(self, file_path):
-        resolution = self.get_manually_resolved_path(file_path.replace(" ", ""))
+        file_path = file_path.replace(" ", "")
+
+        resolution = self.get_manually_resolved_path(file_path)
         if resolution:
             return resolution
 
-        candidate_path = file_path.replace(" ", "")
-        candidate_path = candidate_path.split("}")[-1]
+        candidate_path = file_path.split("}")[-1]
         if not candidate_path:
             return None
+        candidate_path = candidate_path.strip("./")
 
-        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
+        current_directory = (
+            self.sysdiff.get_file_directory(self.ast.file_path).strip("/") + "/"
+        )
+        if current_directory == "/":
+            current_directory = ""
+
+        if current_directory + candidate_path in self.sysdiff.file_data:
+            return current_directory + candidate_path
+
+        if current_directory + candidate_path + ".cmake" in self.sysdiff.file_data:
+            return current_directory + candidate_path + ".cmake"
 
         if candidate_path in self.sysdiff.file_data:
             return candidate_path
@@ -74,99 +86,122 @@ class DefUseChains(cm.DefUseChains):
         if candidate_path + ".cmake" in self.sysdiff.file_data:
             return candidate_path + ".cmake"
 
-        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
-            return candidate_path.rstrip("/") + "/CMakeLists.txt"
-
-        if (
-            current_directory + candidate_path.lstrip("/") + ".cmake"
-            in self.sysdiff.file_data
-        ):
-            return current_directory + candidate_path.lstrip("/") + ".cmake"
-
-        if (
-            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
-            in self.sysdiff.file_data
-        ):
-            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
-
-        file_keys = list(self.sysdiff.file_data.keys())
+        file_keys = list(
+            map(
+                lambda file_key: ("/" + file_key.strip("/")),
+                self.sysdiff.file_data.keys(),
+            )
+        )
 
         desparate_list = list(
             filter(
-                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
-                    "/" + candidate_path.lstrip("/")
+                lambda file_key: file_key.endswith(
+                    "/" + current_directory + candidate_path
                 ),
                 file_keys,
             )
         )
         if len(desparate_list) == 1:
-            return desparate_list[0]
+            return desparate_list[0].strip("/")
         elif len(desparate_list) > 1:
-            return desparate_list
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
-                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
-                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                lambda file_key: file_key.endswith(
+                    "/" + current_directory + candidate_path + ".cmake"
                 ),
                 file_keys,
             )
         )
         if len(desparate_list) == 1:
-            return desparate_list[0]
+            return desparate_list[0].strip("/")
         elif len(desparate_list) > 1:
-            return desparate_list
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
-                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
-                    "/" + candidate_path.lstrip("/") + ".cmake"
-                ),
+                lambda file_key: file_key.endswith("/" + candidate_path),
                 file_keys,
             )
         )
         if len(desparate_list) == 1:
-            return desparate_list[0]
+            return desparate_list[0].strip("/")
         elif len(desparate_list) > 1:
-            return desparate_list
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith("/" + candidate_path + ".cmake"),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0].strip("/")
+        elif len(desparate_list) > 1:
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         return None
 
     def resolve_add_subdirectory_file_path_best_effort(self, file_path):
+        file_path = file_path.replace(" ", "")
+
         resolution = self.get_manually_resolved_path(file_path)
         if resolution:
             return resolution
 
-        candidate_path = file_path.replace(" ", "")
-        candidate_path = candidate_path.split("}")[-1]
+        candidate_path = file_path.split("}")[-1]
         if not candidate_path:
             return None
+        candidate_path = candidate_path.strip("./")
 
-        current_directory = self.sysdiff.get_file_directory(self.ast.file_path)
-
-        if candidate_path.rstrip("/") + "/CMakeLists.txt" in self.sysdiff.file_data:
-            return candidate_path.rstrip("/") + "/CMakeLists.txt"
+        current_directory = (
+            self.sysdiff.get_file_directory(self.ast.file_path).strip("/") + "/"
+        )
+        if current_directory == "/":
+            current_directory = ""
 
         if (
-            current_directory + candidate_path.strip("/") + "/CMakeLists.txt"
+            current_directory + candidate_path + "/CMakeLists.txt"
             in self.sysdiff.file_data
         ):
-            return current_directory + candidate_path.rstrip("/") + "/CMakeLists.txt"
+            return current_directory + candidate_path + "/CMakeLists.txt"
 
-        file_keys = list(self.sysdiff.file_data.keys())
+        if candidate_path + "/CMakeLists.txt" in self.sysdiff.file_data:
+            return candidate_path + "/CMakeLists.txt"
+
+        file_keys = list(
+            map(
+                lambda file_key: ("/" + file_key.strip("/")),
+                self.sysdiff.file_data.keys(),
+            )
+        )
 
         desparate_list = list(
             filter(
-                lambda file_key: ("/" + file_key.lstrip("/")).endswith(
-                    candidate_path.rstrip("/") + "/CMakeLists.txt"
+                lambda file_key: file_key.endswith(
+                    "/" + current_directory + candidate_path + "/CMakeLists.txt"
                 ),
                 file_keys,
             )
         )
         if len(desparate_list) == 1:
-            return desparate_list[0]
+            return desparate_list[0].strip("/")
         elif len(desparate_list) > 1:
-            return desparate_list
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    "/" + candidate_path + "/CMakeLists.txt"
+                ),
+                file_keys,
+            )
+        )
+        if len(desparate_list) == 1:
+            return desparate_list[0].strip("/")
+        elif len(desparate_list) > 1:
+            return list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         return None
 
