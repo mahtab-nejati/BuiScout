@@ -867,17 +867,16 @@ class DefUseChains(cm.DefUseChains):
     def visit_SEPARATE_ARGUMENTS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
 
-        if len(arguments) == 1:
-            self.register_new_use_point(arguments[0], "ARG")
-
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
     def visit_SET(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET")
 
-        self.register_new_def_point(arguments[0])
+        if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
+            pass
+        self.register_new_def_point(arguments[0], "VAR")
 
         return self.generic_visit(node_data)
 
@@ -887,6 +886,8 @@ class DefUseChains(cm.DefUseChains):
         )
 
         print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+
+        return self.generic_visit(node_data)
 
     def visit_SET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
