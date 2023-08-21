@@ -72,6 +72,8 @@ class AST(nx.DiGraph):
         self.set_slice()
 
         # Set up language support tools
+        extended_processor = language_support_tools.ExtendedProcessor(self)
+        extended_processor.visit(self.get_data(self.root))
         self.node_names = language_support_tools.NameGetter(self)
         self.node_actors = language_support_tools.ActorGetter(self)
         self.du_chains = language_support_tools.DefUseChains(self)
