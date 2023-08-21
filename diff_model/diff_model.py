@@ -87,8 +87,8 @@ class ASTDiff(object):
             self.source_match = dict(
                 map(
                     lambda node_id: (
-                        f"{self.commit_hash}:{self.file_saved_as}:{node_id}",
-                        f'{self.commit_hash}:{self.file_saved_as}:{node_id.replace("_src_", "_dst_")}',
+                        f"{self.file_saved_as}:{node_id}",
+                        f'{self.file_saved_as}:{node_id.replace("_src_", "_dst_")}',
                     ),
                     source.nodes,
                 )
@@ -128,6 +128,10 @@ class ASTDiff(object):
                 map(lambda pair: (pair[1], pair[0]), self.source_match.items())
             )
 
+        self.destination.extended_processor.visit(
+            self.destination.get_data(self.destination.root)
+        )
+        self.source.extended_processor.visit(self.source.get_data(self.source.root))
         self.summary = dict()
 
     def get_match(self, node_data, *args, **kwargs):
