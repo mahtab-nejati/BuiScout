@@ -62,13 +62,14 @@ class SystemDiff(object):
 
     def set_paths(self):
         self.commit_dir = self.save_path / "commits" / self.commit.hash
+        self.code_dir = self.commit_dir / "code"
 
         # Build files before change
-        self.before_dir = self.commit_dir / "before"
+        self.before_dir = self.code_dir / "before"
         self.before_dir.mkdir(parents=True, exist_ok=True)
 
         # Build files after change
-        self.after_dir = self.commit_dir / "after"
+        self.after_dir = self.code_dir / "after"
         self.after_dir.mkdir(parents=True, exist_ok=True)
 
         # GumTree output setup
@@ -182,18 +183,18 @@ class SystemDiff(object):
         command = [
             str(self.root_path / "process.sh"),
             str(self.language),
-            str(self.commit_dir),
+            str(self.code_dir),
             str(self.file_data[file_path]["saved_as"]),
             str(self.gumtree_output_dir),
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE)
         output, error = process.communicate()
-        with open(f"{self.gumtree_output_dir}/get_webdiff.txt", "a") as f:
-            f.write(
-                f"gumtree webdiff -g {self.language}-treesitter "
-                + f'{self.commit_dir}/before/{self.file_data[file_path]["saved_as"]} '
-                + f'{self.commit_dir}/after/{self.file_data[file_path]["saved_as"]}\n'
-            )
+        # with open(f"{self.gumtree_output_dir}/get_webdiff.txt", "a") as f:
+        #     f.write(
+        #         f"gumtree webdiff -g {self.language}-treesitter "
+        #         + f'{self.commit_dir}/before/{self.file_data[file_path]["saved_as"]} '
+        #         + f'{self.commit_dir}/after/{self.file_data[file_path]["saved_as"]}\n'
+        #     )
 
     def read_gumtree_output(self, file_path):
         try:
@@ -381,3 +382,134 @@ class SystemDiffShortcut(SystemDiff):
 
         else:
             return None
+
+
+class SystemDiffSeries(SystemDiff):
+    def set_paths(self):
+        self.commit_dir = self.save_path / "commits" / self.commit.hash
+        self.code_dir = self.save_path / "code"
+
+        # Build files before change
+        self.before_dir = self.code_dir / "before"
+        self.before_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build files after change
+        self.after_dir = self.code_dir / "after"
+        self.after_dir.mkdir(parents=True, exist_ok=True)
+
+        # GumTree output setup
+        self.gumtree_output_dir = self.save_path / "gumtree_output"
+        self.gumtree_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def set_file_data_non_modified_only(self):
+        # Non-modified build files at the commit checkpoint
+        other_build_files = filter(
+            lambda file_path: file_is_target(file_path, self.patterns)
+            and file_path not in self.file_data.keys(),
+            map(
+                lambda full_path: full_path.replace(self.repository_path + "/", ""),
+                self.git_repository.files(),
+            ),
+        )
+
+        self.file_data.update(
+            dict(
+                map(
+                    lambda build_file_path: (
+                        build_file_path,
+                        {
+                            "commit_hash": self.commit.hash,
+                            "file_dir": "/".join(build_file_path.split("/")[:-1]) + "/",
+                            "file_name": build_file_path.split("/")[-1],
+                            "build_language": self.language,
+                            "file_action": None,
+                            "before_path": build_file_path,
+                            "after_path": build_file_path,
+                            "saved_as": build_file_path.replace("/", "__").strip(),
+                            "has_gumtree_error": False,
+                            "data_flow_source_reach": False,
+                            "data_flow_destination_reach": False,
+                            "importers": [],
+                        },
+                    ),
+                    other_build_files,
+                )
+            )
+        )
+
+    def get_modified_file_diff(self, file_path):
+        self.write_code_files(file_path)
+        self.run_gumtree_on_file(file_path)
+        gumtree_success, dotdiff_content = self.read_gumtree_output(file_path)
+
+        if gumtree_success:
+            return ASTDiff(
+                *dotdiff_content,
+                self.file_data[file_path]["file_action"],
+                file_path,
+                self.file_data[file_path]["saved_as"],
+                self.commit.hash,
+                self.language,
+            )
+
+        else:
+            write_source_code(
+                self.before_dir / self.file_data[file_path]["saved_as"],
+                "",
+            )
+            self.run_gumtree_on_file(file_path)
+            gumtree_success, dotdiff_content = self.read_gumtree_output(file_path)
+
+            if gumtree_success:
+                return ASTDiff(
+                    *dotdiff_content,
+                    self.file_data[file_path]["file_action"],
+                    file_path,
+                    self.file_data[file_path]["saved_as"],
+                    self.commit.hash,
+                    self.language,
+                )
+
+        return None
+
+    def get_non_modified_file_diff(self, file_path):
+        gumtree_success, dotdiff_content = self.read_gumtree_output(file_path)
+
+        if (not gumtree_success) or (
+            not Path(self.after_dir / self.file_data[file_path]["saved_as"]).exists()
+        ):
+            self.write_non_modified_code_files(file_path)
+            self.run_gumtree_on_file(file_path)
+            gumtree_success, dotdiff_content = self.read_gumtree_output(file_path)
+
+        if gumtree_success:
+            return ASTDiff(
+                *dotdiff_content,
+                self.file_data[file_path]["file_action"],
+                file_path,
+                self.file_data[file_path]["saved_as"],
+                self.commit.hash,
+                self.language,
+            )
+
+        else:
+            return None
+
+    def write_non_modified_code_files(self, file_path):
+        write_source_code(
+            self.after_dir / self.file_data[file_path]["saved_as"],
+            Path(
+                Path(self.repository_path) / self.file_data[file_path]["after_path"]
+            ).read_text(),
+        )
+
+        write_source_code(
+            self.before_dir / self.file_data[file_path]["saved_as"],
+            "",
+        )
+
+    def get_file_diff(self, file_path):
+        if self.file_data[file_path]["file_action"] is None:
+            return self.get_non_modified_file_diff(file_path)
+        else:
+            return self.get_modified_file_diff(file_path)

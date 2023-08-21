@@ -44,7 +44,7 @@ class ASTDiff(object):
 
         # If change does not affect the file:
         if self.file_action is None:
-            # Replace the empty source with a deepcopy of destination
+            # Replace the empty/old source with a deepcopy of destination
             # and prep for initialization
             source = deepcopy(destination)
             source.name = "source"
