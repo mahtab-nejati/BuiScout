@@ -202,4 +202,13 @@ for commit in tqdm(repo.traverse_commits()):
         SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
     )
 
+
+# Clear existing code and gumtree outputs
+to_remove = Path(SAVE_PATH / "code")
+if to_remove.exists():
+    shutil.rmtree(to_remove)
+to_remove = Path(SAVE_PATH / "gumtree_output")
+if to_remove.exists():
+    shutil.rmtree(to_remove)
+
 print(f"Finished processing in {datetime.now()-all_commits_start}")
