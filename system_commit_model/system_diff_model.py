@@ -243,17 +243,20 @@ class SystemDiff(object):
 
     def analyze_change_location(self):
         for file_path, file_data in self.file_data.items():
-            print(f"{'#'*10} {file_path} {'#'*10}")
+            if file_data["diff"]:
+                print(f"{'#'*10} {file_path} {'#'*10}")
 
-            self.source_du_chains.append(self.DefUseChains(file_data["diff"].source))
-            print(f"{'#'*10} Analyzing source {'#'*10}")
-            self.source_du_chains[-1].analyze()
+                self.source_du_chains.append(
+                    self.DefUseChains(file_data["diff"].source)
+                )
+                print(f"{'#'*10} Analyzing source {'#'*10}")
+                self.source_du_chains[-1].analyze()
 
-            self.destination_du_chains.append(
-                self.DefUseChains(file_data["diff"].destination)
-            )
-            print(f"{'#'*10} Analyzing source {'#'*10}")
-            self.destination_du_chains[-1].analyze()
+                self.destination_du_chains.append(
+                    self.DefUseChains(file_data["diff"].destination)
+                )
+                print(f"{'#'*10} Analyzing source {'#'*10}")
+                self.destination_du_chains[-1].analyze()
 
     def analyze_global(self):
         # Skip if the self.root_file has GumTree error
