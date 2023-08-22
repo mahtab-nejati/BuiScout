@@ -347,17 +347,19 @@ class ASTDiff(object):
         return None, dict()
 
     def export_json(self, save_path):
-        save_path = Path(save_path) / self.file_saved_as
+        save_path = Path(save_path) / "diffs"
         save_path.mkdir(parents=True, exist_ok=True)
         self.source.export_json(save_path)
         self.destination.export_json(save_path)
-        with open(save_path / f"matches.json", "w") as f:
+        with open(
+            save_path / self.file_saved_as / f"matches_{self.file_saved_as}.json", "w"
+        ) as f:
             json.dump(
                 {"src_match": self.source_match, "dst_match": self.destination_match}, f
             )
 
     def export_csv(self, save_path):
-        save_path = Path(save_path) / self.file_saved_as
+        save_path = Path(save_path) / "diffs"
         save_path.mkdir(parents=True, exist_ok=True)
         self.source.export_csv(save_path)
         self.destination.export_csv(save_path)
@@ -369,4 +371,7 @@ class ASTDiff(object):
                 )
             )
         )
-        matches_df.to_csv(save_path / f"matches.csv", index=False)
+        matches_df.to_csv(
+            save_path / self.file_saved_as / f"matches_{self.file_saved_as}.csv",
+            index=False,
+        )

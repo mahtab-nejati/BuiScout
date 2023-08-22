@@ -16,11 +16,16 @@ class DefUseChains(NodeVisitor):
         - chains: {'node_id': Def}, a mapping between def nodes and their chains.
     """
 
-    def __init__(self, ast, sysdiff=None):
+    def __init__(self, ast, scope=None, sysdiff=None):
         """
         ast: ast_model.AST
         """
         self.ast = ast
+
+        if scope:
+            self.scope = scope.replace(":", "_")
+        else:
+            self.scope = self.ast.get_data(self.ast.root)["id"].replace(":", "_")
 
         self.ast_stack = []
 
@@ -149,7 +154,8 @@ class DefUseChains(NodeVisitor):
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
-        self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
+        if self.sysdiff:
+            self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
 
     def to_json(self):
         du_chains_output = {
@@ -200,23 +206,27 @@ class DefUseChains(NodeVisitor):
         save_path.mkdir(parents=True, exist_ok=True)
         if self.sysdiff is None:
             self.ast.export_json(save_path / "diffs")
-        with open(save_path / f"{self.ast.name}_du_output.json", "w") as f:
+        with open(save_path / f"{self.ast.name}_du_output_{self.scope}.json", "w") as f:
             json.dump(self.to_json(), f)
 
     def export_csv(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
         if self.sysdiff is None:
-            self.ast.export_csv(save_path)
+            self.ast.export_csv(save_path / "diffs")
         data = self.to_json()
         def_points_df = pd.DataFrame(data["def_points"])
-        def_points_df.to_csv(save_path / f"{self.ast.name}_def_points.csv", index=False)
+        def_points_df.to_csv(
+            save_path / f"{self.ast.name}_def_points_{self.scope}.csv", index=False
+        )
         use_points_df = pd.DataFrame(data["use_points"])
-        use_points_df.to_csv(save_path / f"{self.ast.name}_use_points.csv", index=False)
+        use_points_df.to_csv(
+            save_path / f"{self.ast.name}_use_points_{self.scope}.csv", index=False
+        )
         actor_points_df = pd.DataFrame(data["actor_points"])
         actor_points_df.to_csv(
-            save_path / f"{self.ast.name}_actor_points.csv", index=False
+            save_path / f"{self.ast.name}_actor_points_{self.scope}.csv", index=False
         )
         undefined_names_df = pd.DataFrame(data["undefined_names"])
         undefined_names_df.to_csv(
-            save_path / f"{self.ast.name}_undefined_names.csv", index=False
+            save_path / f"{self.ast.name}_undefined_names_{self.scope}.csv", index=False
         )

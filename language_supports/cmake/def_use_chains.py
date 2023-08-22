@@ -206,7 +206,7 @@ class DefUseChains(cm.DefUseChains):
         return None
 
     def visit_function_definition(self, node_data):
-        self.register_new_def_point(node_data)
+        self.register_new_def_point(node_data, "FUNCTION")
 
         # header_data = self.ast.get_data(
         #     self.ast.get_children_by_type(node_data, "function_header")
@@ -220,7 +220,7 @@ class DefUseChains(cm.DefUseChains):
         return self.generic_visit(node_data)
 
     def visit_macro_definition(self, node_data):
-        self.register_new_def_point(node_data)
+        self.register_new_def_point(node_data, "MACRO")
 
         # header_data = self.ast.get_data(
         #     self.ast.get_children_by_type(node_data, "macro_header")
@@ -405,7 +405,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
         )
 
-        self.register_new_def_point(arguments[1], "VAR")
+        self.register_new_def_point(arguments[1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -415,7 +415,7 @@ class DefUseChains(cm.DefUseChains):
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET_MESSAGE_LOG_LEVEL":
-            self.register_new_def_point(arguments[1], "VAR")
+            self.register_new_def_point(arguments[1], "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in [
@@ -423,7 +423,7 @@ class DefUseChains(cm.DefUseChains):
                 "GET_CALL_IDS",
                 "GET_CALL",
             ]:
-                self.register_new_def_point(arguments[i + 1], "VAR")
+                self.register_new_def_point(arguments[i + 1], "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() == "CALL":
                 print(
@@ -446,10 +446,10 @@ class DefUseChains(cm.DefUseChains):
 
         current_target_operations = ["COMPARE", "CONVERT"]
         if not operation in current_target_operations:
-            self.register_new_use_point(arguments[1], "VAR")
+            self.register_new_use_point(arguments[1], "VARIABLE")
 
         if operation == "CONVERT":
-            self.register_new_def_point(arguments[3], "VAR")
+            self.register_new_def_point(arguments[3], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -468,7 +468,7 @@ class DefUseChains(cm.DefUseChains):
             "HASH",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1], "VAR")
+            self.register_new_def_point(arguments[-1], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -485,7 +485,7 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             for i, argument in enumerate(arguments):
                 if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
-                    self.register_new_def_point(arguments[i + 1], "VAR")
+                    self.register_new_def_point(arguments[i + 1], "VARIABLE")
                     break
 
         return self.generic_visit(node_data)
@@ -496,7 +496,7 @@ class DefUseChains(cm.DefUseChains):
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET":
-            self.register_new_def_point(arguments[-1], "VAR")
+            self.register_new_def_point(arguments[-1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -518,7 +518,7 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1], "VAR")
+                self.register_new_def_point(arguments[i + 1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -529,7 +529,7 @@ class DefUseChains(cm.DefUseChains):
 
         current_target_operations = ["GLOB", "GLOB_RECURSE", "RELATIVE_PATH"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1], "VAR")
+            self.register_new_def_point(arguments[1], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -553,21 +553,21 @@ class DefUseChains(cm.DefUseChains):
             "SHA3_512",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[2], "VAR")
+            self.register_new_def_point(arguments[2], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_FILE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_FILE")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_LIBRARY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_LIBRARY")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -610,30 +610,30 @@ class DefUseChains(cm.DefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in keywords:
                         break
-                    self.register_new_def_point(arg, "VAR")
+                    self.register_new_def_point(arg, "VARIABLE")
                 return self.generic_visit(node_data)
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
         return self.generic_visit(node_data)
 
     def visit_FIND_PATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PATH")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_FIND_PROGRAM(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PROGRAM")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_GET_CMAKE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_CMAKE_PROPERTY")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -642,7 +642,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "GET_DIRECTORY_PROPERTY"
         )
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "DEFINITION":
@@ -657,7 +657,7 @@ class DefUseChains(cm.DefUseChains):
             node_data, "GET_FILENAME_COMPONENT"
         )
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
@@ -670,7 +670,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_GET_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_PROPERTY")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         for i, argument in enumerate(arguments):
             keyword = self.ast.unparse(argument).upper()
@@ -702,7 +702,7 @@ class DefUseChains(cm.DefUseChains):
 
         for i, argument in enumerate(arguments[1:]):
             if self.ast.unparse(argument).upper() == "RESULT_VARIABLE":
-                self.register_new_def_point(arguments[i + 1], "VAR")
+                self.register_new_def_point(arguments[i + 1], "VARIABLE")
                 break
 
         # For file-level analysis (No system provided)
@@ -784,11 +784,11 @@ class DefUseChains(cm.DefUseChains):
 
         operation = self.ast.unparse(arguments[0]).upper()
 
-        self.register_new_use_point(arguments[1], "VAR")
+        self.register_new_use_point(arguments[1], "VARIABLE")
 
         current_target_operations = ["LENGTH", "GET", "JOIN", "SUBLIST", "FIND"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1], "VAR")
+            self.register_new_def_point(arguments[-1], "VARIABLE")
 
         current_target_operations = [
             "POP_BACK",
@@ -797,7 +797,7 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             if len(arguments) > 2:
                 for def_node in arguments[2:]:
-                    self.register_new_def_point(def_node, "VAR")
+                    self.register_new_def_point(def_node, "VARIABLE")
 
         # TODO (Decision): The following commented operations modify the list
         # but do not change the content (only reordering and cleaning).
@@ -815,7 +815,7 @@ class DefUseChains(cm.DefUseChains):
             "SORT",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1], "VAR")
+            self.register_new_def_point(arguments[1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -828,15 +828,15 @@ class DefUseChains(cm.DefUseChains):
             start_index = 1
 
         for argument in arguments[start_index:]:
-            self.register_new_use_point(argument, "VAR")
-            self.register_new_def_point(argument, "VAR")
+            self.register_new_use_point(argument, "VARIABLE")
+            self.register_new_def_point(argument, "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_MATH(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "MATH")
 
-        self.register_new_def_point(arguments[1], "VAR")
+        self.register_new_def_point(arguments[1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -846,7 +846,7 @@ class DefUseChains(cm.DefUseChains):
     def visit_OPTION(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "OPTION")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -859,15 +859,15 @@ class DefUseChains(cm.DefUseChains):
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROPAGATE":
                 for arg in argument[i + 1 :]:
-                    self.register_new_use_point(arg, "VAR")
-                    self.register_new_def_point(arg, "VAR")
+                    self.register_new_use_point(arg, "VARIABLE")
+                    self.register_new_def_point(arg, "VARIABLE")
 
         self.generic_visit(node_data)
 
     def visit_SEPARATE_ARGUMENTS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
 
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -876,7 +876,7 @@ class DefUseChains(cm.DefUseChains):
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
             pass
-        self.register_new_def_point(arguments[0], "VAR")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -911,38 +911,37 @@ class DefUseChains(cm.DefUseChains):
             if unparsed_argument == "TARGET":
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg) not in keywords:
-                        self.register_new_use_point(arg)
+                        self.register_new_use_point(arg, "TARGET")
+                        self.register_new_def_point(arg, "TARGET")
                     else:
                         break
-            elif unparsed_argument == "PROPERTY":
-                self.register_new_def_point(arguments[i + 1])
 
         return self.generic_visit(node_data)
 
     def visit_SITE_NAME(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SITE_NAME")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_STRING(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
 
-        operation = self.ast.unparse(arguments[0])
+        operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "REGEX":
             sub_operation = self.ast.unparse(arguments[1])
             if sub_operation == "REPLACE":
-                self.register_new_def_point(arguments[4])
+                self.register_new_def_point(arguments[4], "VARIABLE")
             else:
-                self.register_new_def_point(arguments[3])
+                self.register_new_def_point(arguments[3], "VARIABLE")
             return self.generic_visit(node_data)
 
-        if operation == "json":
-            self.register_new_def_point(arguments[1])
-            if self.ast.unparse(arguments[2]) == "ERROR_VARIABLE":
-                self.register_new_def_point(arguments[3])
+        if operation == "JSON":
+            self.register_new_def_point(arguments[1], "VARIABLE")
+            if self.ast.unparse(arguments[2]).upper() == "ERROR_VARIABLE":
+                self.register_new_def_point(arguments[3], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -963,17 +962,17 @@ class DefUseChains(cm.DefUseChains):
             "SHA3_512",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1])
+            self.register_new_def_point(arguments[1], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = ["JOIN", "CONFIGURE"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[2])
+            self.register_new_def_point(arguments[2], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = ["FIND", "REPLACE"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[3])
+            self.register_new_def_point(arguments[3], "VARIABLE")
             return self.generic_visit(node_data)
 
         current_target_operations = [
@@ -991,7 +990,7 @@ class DefUseChains(cm.DefUseChains):
             "RANDOM",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1])
+            self.register_new_def_point(arguments[-1], "VARIABLE")
             return self.generic_visit(node_data)
 
         return self.generic_visit(node_data)
@@ -999,9 +998,15 @@ class DefUseChains(cm.DefUseChains):
     def visit_UNSET(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
 
-        self.register_new_use_point(arguments[0])
-        self.register_new_def_point(arguments[0])
+        self.register_new_use_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
+        if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
+            pass
+
+        return self.generic_visit(node_data)
+
+    def visit_VARIABLE_WATCH(self, node_data):
         return self.generic_visit(node_data)
 
     ########## Project Commands:

@@ -9,6 +9,7 @@ from utils.helpers import (
     read_dotdiff,
 )
 from diff_model import ASTDiff
+from utils.configurations import DATA_FLOW_ANALYSIS_MODE
 
 
 class SystemDiff(object):
@@ -19,6 +20,8 @@ class SystemDiff(object):
     Initialization:
         diff = ASTDiff(commit_hash, root_file)
     """
+
+    mode = DATA_FLOW_ANALYSIS_MODE.lower()
 
     def __init__(
         self,
@@ -47,6 +50,10 @@ class SystemDiff(object):
 
         self.root_path = root_path
         self.save_path = save_path
+
+        # Storing lists of du_chains
+        self.source_du_chains = []
+        self.destination_du_chains = []
 
         self.set_paths()
 
@@ -164,7 +171,8 @@ class SystemDiff(object):
 
     def set_file_data(self):
         self.set_file_data_modified_only()
-        self.set_file_data_non_modified_only()
+        if self.mode != "change_location":
+            self.set_file_data_non_modified_only()
 
     def write_code_files(self, file_path):
         write_source_code(
@@ -229,23 +237,44 @@ class SystemDiff(object):
             self.file_data[file_path]["diff"] = self.get_file_diff(file_path)
 
     def perform_data_flow_analysis(self):
+        analysis_method = "analyze_" + self.mode
+        analyzer = getattr(self, analysis_method, self.analyze_global)
+        analyzer()
+
+    def analyze_change_location(self):
+        for file_path, file_data in self.file_data.items():
+            print(f"{'#'*10} {file_path} {'#'*10}")
+
+            self.source_du_chains.append(self.DefUseChains(file_data["diff"].source))
+            print(f"{'#'*10} Analyzing source {'#'*10}")
+            self.source_du_chains[-1].analyze()
+
+            self.destination_du_chains.append(
+                self.DefUseChains(file_data["diff"].destination)
+            )
+            print(f"{'#'*10} Analyzing source {'#'*10}")
+            self.destination_du_chains[-1].analyze()
+
+    def analyze_global(self):
         # Skip if the self.root_file has GumTree error
         if self.file_data[self.root_file]["diff"] is None:
-            self.source_du_chains = None
-            self.destination_du_chains = None
             return
 
-        self.source_du_chains = self.DefUseChains(
-            self.file_data[self.root_file]["diff"].source, sysdiff=self
+        self.source_du_chains.append(
+            self.DefUseChains(
+                self.file_data[self.root_file]["diff"].source, sysdiff=self
+            )
         )
         print(f"{'#'*10} Analyzing source {'#'*10}")
-        self.source_du_chains.analyze()
+        self.source_du_chains[-1].analyze()
 
-        self.destination_du_chains = self.DefUseChains(
-            self.file_data[self.root_file]["diff"].destination, sysdiff=self
+        self.destination_du_chains.append(
+            self.DefUseChains(
+                self.file_data[self.root_file]["diff"].destination, sysdiff=self
+            )
         )
         print(f"{'#'*10} Analyzing destination {'#'*10}")
-        self.destination_du_chains.analyze()
+        self.destination_du_chains[-1].analyze()
 
     def get_file_directory(self, file_path):
         return self.file_data[file_path]["file_dir"]
@@ -257,17 +286,20 @@ class SystemDiff(object):
         save_path = self.commit_dir / "data_flow_output"
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        if self.source_du_chains is not None:
-            self.source_du_chains.export_json(save_path)
+        if self.source_du_chains:
+            list(map(lambda chain: chain.export_json(save_path), self.source_du_chains))
 
-        if self.destination_du_chains is not None:
-            self.destination_du_chains.export_json(save_path)
+        if self.destination_du_chains:
+            list(
+                map(
+                    lambda chain: chain.export_json(save_path),
+                    self.destination_du_chains,
+                )
+            )
 
         list(
             map(
-                lambda file_data: file_data["diff"].export_json(
-                    Path(save_path) / "diffs"
-                ),
+                lambda file_data: file_data["diff"].export_json(save_path),
                 filter(
                     lambda file_data: (file_data["diff"] is not None),
                     self.file_data.values(),
@@ -279,17 +311,20 @@ class SystemDiff(object):
         save_path = self.commit_dir / "data_flow_output"
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        if self.source_du_chains is not None:
-            self.source_du_chains.export_csv(save_path)
+        if self.source_du_chains:
+            list(map(lambda chain: chain.export_csv(save_path), self.source_du_chains))
 
-        if self.destination_du_chains is not None:
-            self.destination_du_chains.export_csv(save_path)
+        if self.destination_du_chains:
+            list(
+                map(
+                    lambda chain: chain.export_csv(save_path),
+                    self.destination_du_chains,
+                )
+            )
 
         list(
             map(
-                lambda file_data: file_data["diff"].export_csv(
-                    Path(save_path) / "diffs"
-                ),
+                lambda file_data: file_data["diff"].export_csv(save_path),
                 filter(
                     lambda file_data: (file_data["diff"] is not None),
                     self.file_data.values(),
@@ -511,5 +546,5 @@ class SystemDiffSeries(SystemDiff):
     def get_file_diff(self, file_path):
         if self.file_data[file_path]["file_action"] is None:
             return self.get_non_modified_file_diff(file_path)
-        else:
-            return self.get_modified_file_diff(file_path)
+
+        return self.get_modified_file_diff(file_path)

@@ -30,6 +30,10 @@ SUMMARIZATION_METHODS = list(
     map(lambda method: method.upper(), config["SUMMARIZATION_METHODS"])
 )
 
+DATA_FLOW_ANALYSIS_MODE = config["DATA_FLOW_ANALYSIS_MODE"].upper()
+if not DATA_FLOW_ANALYSIS_MODE in ["CHANGE_PROPAGATION", "GLOBAL"]:
+    DATA_FLOW_ANALYSIS_MODE = "CHANGE_LOCATION"
+
 SAVE_PATH = Path(DATA_PATH / f"{PROJECT}_{BUILD_SYSTEM}_results")
 SAVE_PATH.mkdir(parents=True, exist_ok=True)
 

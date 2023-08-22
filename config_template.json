@@ -9,6 +9,7 @@
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
   "ROOT_FILE": "The file that's the entry point to the build specifications, e.g. 'CMakeLists.txt'",
   "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']",
+  "DATA_FLOW_ANALYSIS_MODE": "Any of 'CHANGE_LOCATION', 'CHANGE_PROPAGATION', or 'GLOBAL'. Default is 'CHANGE_LOCATION'.",
   "PROJECT_SPECIFIC_FILTERS": {
     "include": {
       "starts_with": [
