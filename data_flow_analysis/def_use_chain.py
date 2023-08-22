@@ -93,17 +93,19 @@ class DefUseChains(NodeVisitor):
             self.undefined_names[use_point.name].append(use_point)
         return use_point
 
-    def register_new_def_point(self, def_node_data, def_type="VAR"):
-        def_point = self.create_and_get_def_point(def_node_data, def_type)
+    def register_new_def_point(self, def_node_data, def_type="VAR", suffix=None):
+        def_point = self.create_and_get_def_point(
+            def_node_data, def_type, suffix=suffix
+        )
         self.def_points[def_point.node_data["id"]] = def_point
         self.defined_names[def_point.name].append(def_point)
         self.update_local_chains(def_point)
         return def_point
 
-    def create_and_get_def_point(self, def_node, def_type):
+    def create_and_get_def_point(self, def_node, def_type, suffix=None):
         actor_point = self.get_or_create_actor_point(def_node)
         actor_point.add_def_point_id(def_node["id"])
-        return Def(def_node, def_type, actor_point, self.ast)
+        return Def(def_node, def_type, actor_point, self.ast, suffix=suffix)
 
     def create_and_get_use_point(self, use_node, use_type="VAR"):
         actor_point = self.get_or_create_actor_point(use_node)

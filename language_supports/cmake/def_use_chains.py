@@ -394,9 +394,6 @@ class DefUseChains(cm.DefUseChains):
 
     ########## Scripting Commands:
 
-    def visit_A(self, node_data):
-        return self.generic_visit(node_data)
-
     def visit_BREAK(self, node_data):
         return
 
@@ -1011,6 +1008,9 @@ class DefUseChains(cm.DefUseChains):
 
     ########## Project Commands:
 
+    def visit_A(self, node_data):
+        return self.generic_visit(node_data)
+
     def visit_ADD_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "ADD_COMPILE_DEFINITIONS"
@@ -1019,18 +1019,23 @@ class DefUseChains(cm.DefUseChains):
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
         print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
+        return self.generic_visit(node_data)
+
+    def visit_ADD_COMPILE_OPTIONS(self, node_data):
+        return self.generic_visit(node_data)
+
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
         if self.ast.unparse(arguments[0]).upper() == "TARGET":
-            self.register_new_use_point(arguments[1])
+            self.register_new_use_point(arguments[1], "TARGET")
 
         return self.generic_visit(node_data)
 
     def visit_ADD_CUSTOM_TARGET(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "TARGET")
 
         return self.generic_visit(node_data)
 
@@ -1045,9 +1050,9 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
 
         for argument in arguments:
-            self.register_new_use_point(argument)
+            self.register_new_use_point(argument, "TARGET")
 
-        self.register_new_use_point(arguments[0])
+        self.register_new_use_point(arguments[0], "TARGET")
 
         return self.generic_visit(node_data)
 
@@ -1060,16 +1065,19 @@ class DefUseChains(cm.DefUseChains):
         """
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_EXECUTABLE")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "TARGET")
 
-        operation = self.ast.unparse(arguments[1]).upper()
+        try:
+            operation = self.ast.unparse(arguments[1]).upper()
+        except IndexError:
+            return self.generic_visit(node_data)
 
         if operation == "IMPORTED":
             # TODO: After Scoping is implemented, consider if GLOBAL keyword exists?
             pass
         elif operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1])
+            self.register_new_use_point(arguments[-1], "TARGET")
 
         return self.generic_visit(node_data)
 
@@ -1083,16 +1091,20 @@ class DefUseChains(cm.DefUseChains):
         """
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_LIBRARY")
 
-        self.register_new_def_point(arguments[0])
-        if len(arguments) == 1:
-            return self.generic_visit(node_data)
+        self.register_new_def_point(arguments[0], "TARGET")
 
-        operation = self.ast.unparse(arguments[1]).upper()
+        try:
+            operation = self.ast.unparse(arguments[1]).upper()
+        except IndexError:
+            return self.generic_visit(node_data)
 
         if operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1])
+            self.register_new_use_point(arguments[-1], "TARGET")
 
+        return self.generic_visit(node_data)
+
+    def visit_ADD_LINK_OPTIONS(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_ADD_SUBDIRECTORY(self, node_data):
@@ -1170,25 +1182,30 @@ class DefUseChains(cm.DefUseChains):
         # NOTE: There is an old signature at the end of documentation page.
         print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
 
+        return self.generic_visit(node_data)
+
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "AUX_SOURCE_DIRECTORY"
         )
 
-        self.register_new_def_point(arguments[-1])
+        self.register_new_def_point(arguments[-1], "VARIABLE")
 
         return self.generic_visit(node_data)
 
     def visit_BUILD_COMMAND(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "BUILD_COMMAND")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1])
+                self.register_new_use_point(arguments[i + 1], "TARGET")
                 break
 
+        return self.generic_visit(node_data)
+
+    def visit_CMAKE_FILE_API(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_CREATE_TEST_SOURCELIST(self, node_data):
@@ -1196,16 +1213,24 @@ class DefUseChains(cm.DefUseChains):
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        self.register_new_def_point(arguments[0], "VARIABLE")
+
+        return self.generic_visit(node_data)
 
     def visit_DEFINE_PROPERTY(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
 
-        self.register_new_def_point(arguments[2])
+        # self.register_new_def_point(arguments[2], "PROPERTY")
 
         if self.ast.unparse(arguments[-2]).upper() == "INITIALIZE_FROM_VARIABLE":
-            self.register_new_def_point(arguments[-1])
+            self.register_new_def_point(arguments[-1], "VARIABLE")
 
+        return self.generic_visit(node_data)
+
+    def visit_ENABLE_LANGUAGE(self, node_data):
+        return self.generic_visit(node_data)
+
+    def visit_ENABLE_TESTING(self, node_data):
         return self.generic_visit(node_data)
 
     def visit_EXPORT(self, node_data):
@@ -1226,16 +1251,20 @@ class DefUseChains(cm.DefUseChains):
                 if self.ast.unparse(argument).upper() in keywords:
                     break
                 else:
-                    self.register_new_use_point(argument)
+                    self.register_new_use_point(argument, "TARGET")
         else:
-            self.register_new_def_point(arguments[1])
+            self.register_new_use_point(arguments[1], "TARGET")
+
+        print(
+            f"Observe command for implementation (knowledge): {self.ast.unparse(node_data)}"
+        )
 
         return self.generic_visit(node_data)
 
     def visit_FLTK_WRAP_UI(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "FLTK_WRAP_UI")
 
-        self.register_new_def_point(arguments[0])
+        self.register_new_def_point(arguments[0], "VARIABLE", suffix="_FLTK_UI_SRCS")
 
         return self.generic_visit(node_data)
 
