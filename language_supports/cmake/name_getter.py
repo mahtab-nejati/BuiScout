@@ -2,14 +2,6 @@ from utils.visitors import NodeVisitor
 
 
 class NameGetter(NodeVisitor):
-    types_with_body_child = [
-        "if_clause",
-        "elseif_clause",
-        "else_clause",
-        "while_clause",
-        "foreach_clause",
-    ]
-
     def generic_visit(self, node_data):
         return self.ast.unparse(node_data)
 
@@ -32,6 +24,9 @@ class NameGetter(NodeVisitor):
         return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_foreach_statement(self, node_data):
+        return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
+
+    def visit_foreach_clause(self, node_data):
         return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
