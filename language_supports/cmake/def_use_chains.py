@@ -345,7 +345,7 @@ class DefUseChains(cm.DefUseChains):
         )
         for argument in arguments:
             if self.ast.unparse(argument).upper() not in operators:
-                self.register_new_use_point(argument)
+                self.register_new_use_point(argument, "VARIABLE")
 
         return self.generic_visit(node_data)
 
@@ -379,7 +379,7 @@ class DefUseChains(cm.DefUseChains):
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
-        self.register_new_use_point(node_data)
+        self.register_new_use_point(node_data, 'COMMAND')
         return self.generic_visit(node_data)
 
     ############################
