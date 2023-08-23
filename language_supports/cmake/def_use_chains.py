@@ -364,7 +364,7 @@ class DefUseChains(cm.DefUseChains):
             key=lambda data: data["s_pos"],
         )
         def_node = arguments.pop(0)
-        self.register_new_def_point(def_node)
+        self.register_new_def_point(def_node, "VARIABLE")
         return self.generic_visit(node_data)
 
     # def visit_endforeach_clause(self, node_data):
