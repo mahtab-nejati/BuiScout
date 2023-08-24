@@ -379,7 +379,7 @@ class DefUseChains(cm.DefUseChains):
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
-        self.register_new_use_point(node_data, 'COMMAND')
+        self.register_new_use_point(node_data, "COMMAND")
         return self.generic_visit(node_data)
 
     ############################
@@ -743,7 +743,10 @@ class DefUseChains(cm.DefUseChains):
 
         # Recursive resolution
         if (included_file == self.ast.file_path) or (
-            node_data["id"] in self.sysdiff.file_data[included_file]["importers"]
+            node_data["id"]
+            in self.sysdiff.file_data[included_file]["language_specific_info"][
+                "importers"
+            ]
         ):
             print(
                 f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
@@ -758,7 +761,9 @@ class DefUseChains(cm.DefUseChains):
             return self.generic_visit(node_data)
 
         # Successful resolution
-        self.sysdiff.file_data[included_file]["importers"].append(node_data["id"])
+        self.sysdiff.file_data[included_file]["language_specific_info"][
+            "importers"
+        ].append(node_data["id"])
         self.ast_stack.append(self.ast)
         self.ast = getattr(self.sysdiff.file_data[included_file]["diff"], self.ast.name)
 
@@ -1156,7 +1161,8 @@ class DefUseChains(cm.DefUseChains):
 
         # Recursive resolution
         if (added_file == self.ast.file_path) or (
-            node_data["id"] in self.sysdiff.file_data[added_file]["importers"]
+            node_data["id"]
+            in self.sysdiff.file_data[added_file]["language_specific_info"]["importers"]
         ):
             print(
                 f"Skipping recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
@@ -1164,7 +1170,9 @@ class DefUseChains(cm.DefUseChains):
             return self.generic_visit(node_data)
 
         # Successful resolution
-        self.sysdiff.file_data[added_file]["importers"].append(node_data["id"])
+        self.sysdiff.file_data[added_file]["language_specific_info"][
+            "importers"
+        ].append(node_data["id"])
 
         self.ast_stack.append(self.ast)
         self.ast = getattr(self.sysdiff.file_data[added_file]["diff"], self.ast.name)
