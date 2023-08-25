@@ -169,7 +169,6 @@ def create_csv_files(summarization_methods, save_path):
         "has_gumtree_error",
         "data_flow_source_reach",
         "data_flow_destination_reach",
-        "importers",
     ]
     build_files_df = pd.DataFrame(columns=build_files_columns)
     build_files_df.to_csv(save_path / "all_build_files.csv", index=False)

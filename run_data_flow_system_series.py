@@ -181,7 +181,11 @@ for commit in tqdm(repo.traverse_commits()):
             diff.export_csv()
 
             commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
-            commit_build_files_df.drop(labels=["diff"], axis=1, inplace=True)
+            commit_build_files_df.drop(
+                labels=["diff", "language_specific_info"],
+                axis=1,
+                inplace=True,
+            )
             commit_build_files_df.to_csv(
                 SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
             )
