@@ -21,10 +21,11 @@ from utils.configurations import (
     PATTERNS_FLATTENED,
     FILTERING,
     SUMMARIZATION_METHODS,
+    DATA_FLOW_ANALYSIS_MODE,
 )
 from system_commit_model import SystemDiff, SystemDiffShortcut
 
-SAVE_PATH = SAVE_PATH / "run_data_flow_system"
+SAVE_PATH = SAVE_PATH / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -105,12 +106,12 @@ for commit in tqdm(repo.traverse_commits()):
         if any(map(lambda mf: file_is_target(mf, PATTERNS), commit.modified_files)):
             has_build = True
 
-            # Initialize summaries
-            summary_dir = COMMITS_SAVE_PATH / commit.hash / "summaries"
-            summary_dir.mkdir(parents=True, exist_ok=True)
-            summaries = {}.copy()
-            for sm in SUMMARIZATION_METHODS:
-                summaries[sm] = [].copy()
+            # # Initialize summaries
+            # summary_dir = COMMITS_SAVE_PATH / commit.hash / "summaries"
+            # summary_dir.mkdir(parents=True, exist_ok=True)
+            # summaries = {}.copy()
+            # for sm in SUMMARIZATION_METHODS:
+            #     summaries[sm] = [].copy()
 
             if not GUMTREE_OUTPUT_AVAILABLE:
                 diff = SystemDiff(

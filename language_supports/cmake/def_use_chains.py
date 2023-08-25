@@ -1014,9 +1014,6 @@ class DefUseChains(cm.DefUseChains):
 
     ########## Project Commands:
 
-    def visit_A(self, node_data):
-        return self.generic_visit(node_data)
-
     def visit_ADD_COMPILE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(
             node_data, "ADD_COMPILE_DEFINITIONS"
