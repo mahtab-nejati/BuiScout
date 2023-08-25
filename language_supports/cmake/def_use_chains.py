@@ -687,7 +687,7 @@ class DefUseChains(cm.DefUseChains):
                     f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}"
                 )
                 # TODO SET USE_TYPE
-                self.register_new_use_point(arguments[i + 1])
+                self.register_new_use_point(arguments[i + 1], "UNKNOWN")
 
         return self.generic_visit(node_data)
 
