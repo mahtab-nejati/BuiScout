@@ -42,7 +42,10 @@ class DefUseChains(cm.DefUseChains):
             key=lambda argument_node_data: argument_node_data["s_pos"],
         )
 
-    def get_manually_resolved_path(self, file_path):
+    def get_manually_resolved_path(self, file_path_node):
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
+
         resolved_path_item = list(
             filter(
                 lambda item: (item["caller_file_path"] in [self.ast.file_path, "*"])
@@ -56,13 +59,13 @@ class DefUseChains(cm.DefUseChains):
             raise DebugException(f"Multiple manual resolutions: {resolved_path_item}")
         return None
 
-    def resolve_included_file_path_best_effort(self, file_path):
-        file_path = file_path.replace(" ", "")
-
-        resolution = self.get_manually_resolved_path(file_path)
+    def resolve_included_file_path_best_effort(self, file_path_node):
+        resolution = self.get_manually_resolved_path(file_path_node)
         if resolution:
             return resolution
 
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
             return None
@@ -143,13 +146,13 @@ class DefUseChains(cm.DefUseChains):
 
         return None
 
-    def resolve_add_subdirectory_file_path_best_effort(self, file_path):
-        file_path = file_path.replace(" ", "")
-
-        resolution = self.get_manually_resolved_path(file_path)
+    def resolve_add_subdirectory_file_path_best_effort(self, file_path_node):
+        resolution = self.get_manually_resolved_path(file_path_node)
         if resolution:
             return resolution
 
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
             return None
@@ -712,7 +715,7 @@ class DefUseChains(cm.DefUseChains):
             )
             return self.generic_visit(node_data)
 
-        included_file = self.resolve_included_file_path_best_effort(included_file_path)
+        included_file = self.resolve_included_file_path_best_effort(arguments[0])
 
         # For manual file path resolution setup
         if isinstance(included_file, list):
@@ -1124,10 +1127,7 @@ class DefUseChains(cm.DefUseChains):
         if self.sysdiff is None:
             return self.generic_visit(node_data)
 
-        added_directory_path = self.ast.unparse(arguments[0])
-        added_file = self.resolve_add_subdirectory_file_path_best_effort(
-            added_directory_path
-        )
+        added_file = self.resolve_add_subdirectory_file_path_best_effort(arguments[0])
 
         # For manual file path resolution setup
         if isinstance(added_file, list):
