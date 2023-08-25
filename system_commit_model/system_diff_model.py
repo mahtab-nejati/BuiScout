@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 import subprocess, time, importlib
 from collections import defaultdict
@@ -10,8 +9,7 @@ from utils.helpers import (
     read_dotdiff,
 )
 from diff_model import ASTDiff
-from utils.configurations import DATA_FLOW_ANALYSIS_MODE
-from utils.exceptions import DebugException
+from utils.configurations import ROOT_PATH, PROJECT, DATA_FLOW_ANALYSIS_MODE
 
 
 class SystemDiff(object):
@@ -63,9 +61,16 @@ class SystemDiff(object):
 
         # Import language support tools but not saved as an attribute
         # for pickling reasons
-        language_support_tools = importlib.import_module(
-            f"language_supports.{self.language}"
-        )
+        project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
+        if project_specific_support_path.exists():
+            language_support_tools = importlib.import_module(
+                f"project_specific_support.{PROJECT}"
+            )
+        else:
+            language_support_tools = importlib.import_module(
+                f"language_supports.{self.language}"
+            )
+
         self.DefUseChains = language_support_tools.DefUseChains
 
     def set_paths(self):
