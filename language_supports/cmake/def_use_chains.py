@@ -208,6 +208,9 @@ class DefUseChains(cm.DefUseChains):
 
         return None
 
+    def project_specific_add_directory(self, node_data, added_files):
+        return self.generic_visit(node_data)
+
     def visit_function_definition(self, node_data):
         self.register_new_def_point(node_data, "FUNCTION")
 
@@ -1129,7 +1132,14 @@ class DefUseChains(cm.DefUseChains):
 
         added_file = self.resolve_add_subdirectory_file_path_best_effort(arguments[0])
 
-        # For manual file path resolution setup
+        # For project-specific solutions.
+        # The default self.project_specific_add_directory(added_file)
+        # does a generic visit.
+        # This method must be implemented for a project.
+        if isinstance(added_file, dict):
+            return self.project_specific_add_directory(node_data, added_file)
+
+        # For multiple resolutions
         if isinstance(added_file, list):
             print(
                 f"Multiple path found for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
