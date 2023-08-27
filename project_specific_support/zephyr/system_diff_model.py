@@ -16,7 +16,7 @@ class SystemDiff(scm.SystemDiff):
         root_path,
         save_path,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             repository_path,
