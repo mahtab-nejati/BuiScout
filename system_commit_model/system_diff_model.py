@@ -9,7 +9,7 @@ from utils.helpers import (
     read_dotdiff,
 )
 from diff_model import ASTDiff
-from utils.configurations import ROOT_PATH, PROJECT, DATA_FLOW_ANALYSIS_MODE
+from utils.configurations import DATA_FLOW_ANALYSIS_MODE
 
 
 class SystemDiff(object):
@@ -61,15 +61,9 @@ class SystemDiff(object):
 
         # Import language support tools but not saved as an attribute
         # for pickling reasons
-        project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
-        if project_specific_support_path.exists():
-            language_support_tools = importlib.import_module(
-                f"project_specific_support.{PROJECT}"
-            )
-        else:
-            language_support_tools = importlib.import_module(
-                f"language_supports.{self.language}"
-            )
+        language_support_tools = importlib.import_module(
+            f"language_supports.{self.language}"
+        )
 
         self.DefUseChains = language_support_tools.DefUseChains
 

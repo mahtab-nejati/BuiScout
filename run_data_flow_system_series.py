@@ -3,7 +3,7 @@ from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
 from pathlib import Path
-import subprocess, gc, shutil
+import subprocess, gc, shutil, importlib
 from datetime import datetime
 from utils.helpers import (
     create_csv_files,
@@ -13,6 +13,7 @@ from utils.configurations import (
     ROOT_PATH,
     SAVE_PATH,
     REPOSITORY,
+    PROJECT,
     BRANCH,
     COMMITS,
     LANGUAGES,
@@ -21,14 +22,23 @@ from utils.configurations import (
     PATTERNS_FLATTENED,
     FILTERING,
     SUMMARIZATION_METHODS,
+    USE_PROJECT_SPECIFIC_MODELS,
     DATA_FLOW_ANALYSIS_MODE,
 )
-from system_commit_model import SystemDiffSeries
+
+from system_commit_model import SystemDiffSeries as SystemDiffModel
+
+if USE_PROJECT_SPECIFIC_MODELS:
+    project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
+    if project_specific_support_path.exists():
+        SystemDiffModel = importlib.import_module(
+            f"project_specific_support.{PROJECT}"
+        ).SystemDiffSeries
+
 
 SAVE_PATH = SAVE_PATH / f"system_series_{DATA_FLOW_ANALYSIS_MODE.lower()}"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
-
 
 repo = Repository(
     REPOSITORY,
@@ -122,7 +132,7 @@ for commit in tqdm(repo.traverse_commits()):
             # for sm in SUMMARIZATION_METHODS:
             #     summaries[sm] = [].copy()
 
-            diff = SystemDiffSeries(
+            diff = SystemDiffModel(
                 REPOSITORY,
                 repo,
                 git_repo,

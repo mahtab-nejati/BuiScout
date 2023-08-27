@@ -2,7 +2,7 @@ from pydriller import Repository
 from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
-import subprocess, gc
+import subprocess, gc, importlib
 from datetime import datetime
 from utils.helpers import (
     create_csv_files,
@@ -13,6 +13,7 @@ from utils.configurations import (
     ROOT_PATH,
     SAVE_PATH,
     REPOSITORY,
+    PROJECT,
     BRANCH,
     COMMITS,
     LANGUAGES,
@@ -21,14 +22,27 @@ from utils.configurations import (
     PATTERNS_FLATTENED,
     FILTERING,
     SUMMARIZATION_METHODS,
+    USE_PROJECT_SPECIFIC_MODELS,
     DATA_FLOW_ANALYSIS_MODE,
 )
-from system_commit_model import SystemDiff, SystemDiffShortcut
+
+if not GUMTREE_OUTPUT_AVAILABLE:
+    from system_commit_model import SystemDiff as SystemDiffModel
+else:
+    from system_commit_model import SystemDiffShortcut as SystemDiffModel
+
+if USE_PROJECT_SPECIFIC_MODELS:
+    project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
+    if project_specific_support_path.exists():
+        psm = importlib.import_module(f"project_specific_support.{PROJECT}")
+        if not GUMTREE_OUTPUT_AVAILABLE:
+            SystemDiffModel = psm.SystemDiff
+        else:
+            SystemDiffModel = psm.SystemDiffShortcut
 
 SAVE_PATH = SAVE_PATH / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
-
 
 repo = Repository(
     REPOSITORY,
@@ -113,32 +127,18 @@ for commit in tqdm(repo.traverse_commits()):
             # for sm in SUMMARIZATION_METHODS:
             #     summaries[sm] = [].copy()
 
-            if not GUMTREE_OUTPUT_AVAILABLE:
-                diff = SystemDiff(
-                    REPOSITORY,
-                    repo,
-                    git_repo,
-                    BRANCH,
-                    commit,
-                    ROOT_FILE,
-                    LANGUAGE,
-                    PATTERNS,
-                    ROOT_PATH,
-                    SAVE_PATH,
-                )
-            else:
-                diff = SystemDiffShortcut(
-                    REPOSITORY,
-                    repo,
-                    git_repo,
-                    BRANCH,
-                    commit,
-                    ROOT_FILE,
-                    LANGUAGE,
-                    PATTERNS,
-                    ROOT_PATH,
-                    SAVE_PATH,
-                )
+            diff = SystemDiffModel(
+                REPOSITORY,
+                repo,
+                git_repo,
+                BRANCH,
+                commit,
+                ROOT_FILE,
+                LANGUAGE,
+                PATTERNS,
+                ROOT_PATH,
+                SAVE_PATH,
+            )
 
             # for build_file in diff.file_data.values():
             #     # Skip files with GumTree error
