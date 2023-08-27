@@ -34,16 +34,37 @@ class SystemDiff(scm.SystemDiff):
         )
         self.DefUseChains = ProjectDefUseChains
 
+    def analyze_global(self):
+        # Skip if the self.root_file has GumTree error
+        if self.file_data[self.root_file]["diff"] is None:
+            return
+
+        self.source_du_chains.append(
+            self.DefUseChains(
+                self.file_data[self.root_file]["diff"].source, sysdiff=self
+            )
+        )
+        print(f"{'#'*10} Analyzing source {'#'*10}")
+        self.source_du_chains[-1].analyze()
+
+        self.destination_du_chains.append(
+            self.DefUseChains(
+                self.file_data[self.root_file]["diff"].destination, sysdiff=self
+            )
+        )
+        print(f"{'#'*10} Analyzing destination {'#'*10}")
+        self.destination_du_chains[-1].analyze()
+
 
 class SystemDiffShortcut(SystemDiff, scm.SystemDiffShortcut):
     def set_file_data_modified_only(self):
-        scm.SystemDiffShortcut.set_file_data_modified_only(self)
+        return scm.SystemDiffShortcut.set_file_data_modified_only(self)
 
     def set_file_data_non_modified_only(self):
-        scm.SystemDiffShortcut.set_file_data_non_modified_only(self)
+        return scm.SystemDiffShortcut.set_file_data_non_modified_only(self)
 
     def get_file_diff(self, file_path):
-        scm.SystemDiffShortcut.get_file_diff(self, file_path)
+        return scm.SystemDiffShortcut.get_file_diff(self, file_path)
 
 
 class SystemDiffSeries(SystemDiff, scm.SystemDiffSeries):

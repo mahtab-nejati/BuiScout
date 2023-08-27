@@ -26,19 +26,19 @@ from utils.configurations import (
     DATA_FLOW_ANALYSIS_MODE,
 )
 
-if not GUMTREE_OUTPUT_AVAILABLE:
-    from system_commit_model import SystemDiff as SystemDiffModel
-else:
+if GUMTREE_OUTPUT_AVAILABLE:
     from system_commit_model import SystemDiffShortcut as SystemDiffModel
+else:
+    from system_commit_model import SystemDiff as SystemDiffModel
 
 if USE_PROJECT_SPECIFIC_MODELS:
     project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
     if project_specific_support_path.exists():
-        psm = importlib.import_module(f"project_specific_support.{PROJECT}")
-        if not GUMTREE_OUTPUT_AVAILABLE:
-            SystemDiffModel = psm.SystemDiff
+        pss = importlib.import_module(f"project_specific_support.{PROJECT}")
+        if GUMTREE_OUTPUT_AVAILABLE:
+            SystemDiffModel = pss.SystemDiffShortcut
         else:
-            SystemDiffModel = psm.SystemDiffShortcut
+            SystemDiffModel = pss.SystemDiff
 
 SAVE_PATH = SAVE_PATH / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
