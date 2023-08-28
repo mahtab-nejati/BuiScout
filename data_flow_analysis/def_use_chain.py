@@ -16,7 +16,7 @@ class DefUseChains(NodeVisitor):
         - chains: {'node_id': Def}, a mapping between def nodes and their chains.
     """
 
-    def __init__(self, ast, scope=None, sysdiff=None):
+    def __init__(self, ast, scope=None, parent=None, sysdiff=None):
         """
         ast: ast_model.AST
         """
@@ -26,6 +26,11 @@ class DefUseChains(NodeVisitor):
             self.scope = scope.replace(":", "_")
         else:
             self.scope = self.ast.get_data(self.ast.root)["id"].replace(":", "_")
+
+        # The DefUseChains object of the parent scope
+        self.parent = parent
+        # A list of DefUseChains objects of the children scopes
+        self.children = []
 
         self.ast_stack = []
 
@@ -72,21 +77,27 @@ class DefUseChains(NodeVisitor):
 
     def get_definitions_by_name(self, node_data):
         """
-        Looks up use (node_data) in current context
+        Looks up use (node_data) in current and all ancestor contexts
         Returns the list of defs linked to the node_data
         """
         name = self.ast.get_name(node_data)
-        return self.defined_names[name]
+        defined_names = self.defined_names[name]
+        parent = self.parent
+        while not parent is None:
+            defined_names = defined_names + parent.defined_names["name"]
+            parent = parent.parent
+        return defined_names
 
     def register_new_use_point(self, use_node_data, use_type="VAR"):
         use_point = self.create_and_get_use_point(use_node_data, use_type)
         self.use_points[use_point.node_data["id"]] = use_point
         self.used_names[use_point.name].append(use_point)
-        if use_point.name in self.defined_names:
+        defined_names = self.get_definitions_by_name(use_point.node_data)
+        if defined_names:
             list(
                 map(
                     lambda def_point: def_point.add_use_point(use_point),
-                    self.defined_names[use_point.name],
+                    defined_names,
                 )
             )
         else:

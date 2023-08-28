@@ -285,6 +285,13 @@ class SystemDiff(object):
     def set_data_flow_reach_file(self, file_path, cluster):
         self.file_data[file_path][f"data_flow_{cluster}_reach"] = True
 
+    def append_to_chains(self, du_chains):
+        chain = getattr(
+            self,
+            f"{du_chains.ast.name}_du_chains",
+        )
+        chain.append(du_chains)
+
     def export_json(self):
         save_path = self.commit_dir / "data_flow_output"
         Path(save_path).mkdir(parents=True, exist_ok=True)

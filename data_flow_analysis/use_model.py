@@ -23,12 +23,12 @@ class Use(object):
         # Storing actor_point
         self.actor_point = actor_point
 
-    def is_user_of(self, def_name):
+    def is_user_of(self, def_point):
         """
         Checks if both the self (user) refers to the
         same name as the def_name and returns.
         """
-        return True if def_name == self.name else False
+        return self.name == def_point.name
 
     def to_json(self):
         return {

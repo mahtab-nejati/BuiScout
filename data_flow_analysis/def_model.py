@@ -40,7 +40,7 @@ class Def(object):
         Checks if both the use_point and self (definition) refer to the
         same name and returns True if they do.
         """
-        return use_point.is_user_of(self.name)
+        return self.name == use_point.name
 
     def is_listed_use_point(self, use_point, *args, **kwargs):
         return use_point.node_data["id"] in set(
