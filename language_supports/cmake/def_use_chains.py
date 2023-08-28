@@ -427,7 +427,7 @@ class DefUseChains(cm.DefUseChains):
                 continue
             if self.ast.unparse(argument).upper() == "CALL":
                 print(
-                    f"Observe command for implementation (incomplete for CALL keyword): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for CALL keyword): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
                 continue
 
@@ -647,7 +647,7 @@ class DefUseChains(cm.DefUseChains):
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "DEFINITION":
                 print(
-                    f"Observe command for implementation (incomplete for DEFINITION keyword): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for DEFINITION keyword): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
 
         return self.generic_visit(node_data)
@@ -662,7 +662,7 @@ class DefUseChains(cm.DefUseChains):
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
                 print(
-                    f"Observe command for implementation (incomplete for PROGRAM_ARGS keyword): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for PROGRAM_ARGS keyword): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
 
         return self.generic_visit(node_data)
@@ -686,11 +686,11 @@ class DefUseChains(cm.DefUseChains):
             if keyword == "DIRECTORY":
                 if self.ast.unparse(arguments[i + 1]).upper() != "PROPERTY":
                     print(
-                        f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}"
+                        f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                     )
             elif keyword in current_target_keywords:
                 print(
-                    f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}"
+                    f"Observe command for implementation (incomplete for keywords): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
                 # TODO SET USE_TYPE
                 self.register_new_use_point(arguments[i + 1], "UNKNOWN")
@@ -890,7 +890,9 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -922,7 +924,7 @@ class DefUseChains(cm.DefUseChains):
                         break
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1026,7 +1028,9 @@ class DefUseChains(cm.DefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1051,7 +1055,9 @@ class DefUseChains(cm.DefUseChains):
     def visit_ADD_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEFINITIONS")
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1196,7 +1202,9 @@ class DefUseChains(cm.DefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         # NOTE: There is an old signature at the end of documentation page.
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1232,7 +1240,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0], "VARIABLE")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1246,7 +1254,7 @@ class DefUseChains(cm.DefUseChains):
             self.register_new_def_point(arguments[-1], "VARIABLE")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1280,7 +1288,7 @@ class DefUseChains(cm.DefUseChains):
             self.register_new_use_point(arguments[1], "TARGET")
 
         print(
-            f"Observe command for implementation (knowledge): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (knowledge): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1306,7 +1314,7 @@ class DefUseChains(cm.DefUseChains):
                 break
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1321,7 +1329,7 @@ class DefUseChains(cm.DefUseChains):
         # self.register_new_use_point(arguments[-1], "PROPERTY")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1334,7 +1342,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[-1], "VARIABLE")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1350,7 +1358,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0], "TARGET")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1425,7 +1433,7 @@ class DefUseChains(cm.DefUseChains):
                     self.register_new_use_point(arg, "TARGET")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1436,14 +1444,18 @@ class DefUseChains(cm.DefUseChains):
     def visit_LINK_LIBRARIES(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "LINK_LIBRARIES")
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
     def visit_LOAD_CACHE(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1453,7 +1465,9 @@ class DefUseChains(cm.DefUseChains):
     def visit_REMOVE_DEFINITIONS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1477,7 +1491,7 @@ class DefUseChains(cm.DefUseChains):
                 break
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1494,7 +1508,7 @@ class DefUseChains(cm.DefUseChains):
             self.register_new_def_point(argument, "TARGET")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
@@ -1504,7 +1518,9 @@ class DefUseChains(cm.DefUseChains):
             node_data, "SET_TESTS_PROPERTIES"
         )
 
-        print(f"Observe command for implementation: {self.ast.unparse(node_data)}")
+        print(
+            f"Observe command for implementation: {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
 
         return self.generic_visit(node_data)
 
@@ -1570,7 +1586,7 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_def_point(arguments[0], "TARGET")
 
         print(
-            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}"
+            f"Observe command for implementation (incomplete): {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
         return self.generic_visit(node_data)
