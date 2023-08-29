@@ -1,6 +1,8 @@
 from pathlib import Path
-import subprocess, time, importlib
+import pandas as pd
+import subprocess, time, importlib, json
 from collections import defaultdict
+from functools import reduce
 from utils.helpers import (
     file_is_target,
     get_file_dir,
@@ -297,15 +299,19 @@ class SystemDiff(object):
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
         if self.source_du_chains:
-            list(map(lambda chain: chain.export_json(save_path), self.source_du_chains))
+            sducs = list(map(lambda chain: chain.to_json(), self.source_du_chains))
+            with open(save_path / f"source_du_output.json", "w") as f:
+                json.dump(sducs, f)
 
         if self.destination_du_chains:
-            list(
+            dducs = list(
                 map(
-                    lambda chain: chain.export_json(save_path),
+                    lambda chain: chain.to_json(),
                     self.destination_du_chains,
                 )
             )
+            with open(save_path / f"destination_du_output.json", "w") as f:
+                json.dump(dducs, f)
 
         list(
             map(
@@ -322,14 +328,40 @@ class SystemDiff(object):
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
         if self.source_du_chains:
-            list(map(lambda chain: chain.export_csv(save_path), self.source_du_chains))
+            sducs = list(map(lambda chain: chain.to_csv(), self.source_du_chains))
+
+            def_points_df = pd.concat(list(map(lambda row: row[0], sducs)))
+            use_points_df = pd.concat(list(map(lambda row: row[1], sducs)))
+            actor_points_df = pd.concat(list(map(lambda row: row[2], sducs)))
+            undefined_names_df = pd.concat(list(map(lambda row: row[3], sducs)))
+
+            def_points_df.to_csv(save_path / f"source_def_points.csv", index=False)
+            use_points_df.to_csv(save_path / f"source_use_points.csv", index=False)
+            actor_points_df.to_csv(save_path / f"source_actor_points.csv", index=False)
+            undefined_names_df.to_csv(
+                save_path / f"source_undefined_names.csv", index=False
+            )
 
         if self.destination_du_chains:
-            list(
+            dducs = list(
                 map(
-                    lambda chain: chain.export_csv(save_path),
+                    lambda chain: chain.to_csv(),
                     self.destination_du_chains,
                 )
+            )
+
+            def_points_df = pd.concat(list(map(lambda row: row[0], dducs)))
+            use_points_df = pd.concat(list(map(lambda row: row[1], dducs)))
+            actor_points_df = pd.concat(list(map(lambda row: row[2], dducs)))
+            undefined_names_df = pd.concat(list(map(lambda row: row[3], dducs)))
+
+            def_points_df.to_csv(save_path / f"destination_def_points.csv", index=False)
+            use_points_df.to_csv(save_path / f"destination_use_points.csv", index=False)
+            actor_points_df.to_csv(
+                save_path / f"destination_actor_points.csv", index=False
+            )
+            undefined_names_df.to_csv(
+                save_path / f"destination_undefined_names.csv", index=False
             )
 
         list(
