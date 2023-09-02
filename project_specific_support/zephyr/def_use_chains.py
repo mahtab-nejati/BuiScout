@@ -264,11 +264,3 @@ class DefUseChains(cmake.DefUseChains):
             # Finished working on added file
 
         return self.generic_visit(node_data)
-
-    # def project_specific_add_directory(self, node_data, added_files):
-    #     mode = added_files["mode"]
-    #     resolutions = added_files["resolution"]
-
-    #     for directory in resolutions:
-    #         if directory + "/CMakeLists.txt" in self.sysdiff.file_data:
-    #             print(directory + "/CMakeLists.txt")
