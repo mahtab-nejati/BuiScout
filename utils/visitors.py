@@ -25,16 +25,16 @@ class NodeVisitor(object):
     def __init__(self, ast):
         self.ast = ast
 
-    def visit(self, node_data):
+    def visit(self, node_data, *args, **kwargs):
         """
         Visit a node.
         The input is the output of the ast.get_data(node), i.e., node_data.
         """
         method = "visit_" + node_data["type"]
         visitor = getattr(self, method, self.generic_visit)
-        return visitor(node_data)
+        return visitor(node_data, *args, **kwargs)
 
-    def generic_visit(self, node_data):
+    def generic_visit(self, node_data, *args, **kwargs):
         """
         Called if no explicit visitor function exists for a node.
         """
@@ -43,4 +43,4 @@ class NodeVisitor(object):
             key=lambda child_data: child_data["s_pos"],
         )
         for child_data in children:
-            self.visit(child_data)
+            self.visit(child_data, *args, **kwargs)

@@ -5,7 +5,7 @@ from pathlib import Path
 from networkx.drawing.nx_agraph import write_dot
 from networkx.readwrite import json_graph
 from functools import reduce
-import importlib, re
+import importlib
 from copy import deepcopy
 from utils.helpers import parse_label
 from utils.exceptions import (
@@ -73,6 +73,7 @@ class AST(nx.DiGraph):
 
         # Set up language support tools
         self.extended_processor = language_support_tools.ExtendedProcessor(self)
+        self.unparser = language_support_tools.Unparser(self)
         self.node_names = language_support_tools.NameGetter(self)
         self.node_actors = language_support_tools.ActorGetter(self)
         self.du_chains = language_support_tools.DefUseChains(self)
@@ -437,61 +438,7 @@ class AST(nx.DiGraph):
         Unparses the nodes in a subtree with the head_data as the root
         and returns a naive stringification of the parsed subtree.
         """
-        subtree_nodes = self.get_subtree_nodes(head_data)
-        if masked_types:
-            masked_nodes_heads = dict(
-                filter(
-                    lambda node_data: node_data[1]["type"] in masked_types,
-                    subtree_nodes.items(),
-                )
-            )
-            all_masked_nodes_ids = list(
-                set(
-                    reduce(
-                        lambda a, b: {**a, **b},
-                        map(
-                            lambda masked_node_data: self.get_subtree_nodes(
-                                masked_node_data
-                            ),
-                            masked_nodes_heads.values(),
-                        ),
-                        {},
-                    ).keys(),
-                ).difference(set(masked_nodes_heads.keys()))
-            )
-            subtree_nodes = dict(
-                filter(
-                    lambda subtree_node_data: (
-                        subtree_node_data[1]["id"] not in all_masked_nodes_ids
-                    ),
-                    subtree_nodes.items(),
-                )
-            )
-
-        text = " ".join(
-            map(
-                lambda cp: "..." if cp[0] in masked_types else cp[1],
-                sorted(
-                    map(
-                        lambda node_data: (
-                            node_data["type"],
-                            node_data["content"],
-                            node_data["s_pos"],
-                        ),
-                        subtree_nodes.values(),
-                    ),
-                    key=lambda cp: cp[-1],
-                ),
-            )
-        )
-
-        dots = re.compile(r"(\.\.\.\s)+")
-        spaces = re.compile(r"\s+")
-
-        text = dots.sub("... ", text)
-        text = spaces.sub(" ", text)
-
-        return text.strip()
+        return self.unparser.visit(head_data, masked_types)
 
     def update_summarization_status(self, head_data, method, *args, **kwargs):
         """
