@@ -1574,7 +1574,7 @@ class DefUseChains(cm.DefUseChains):
                     if self.ast.unparse(arg).upper() in current_target_keywords:
                         break
                     self.register_new_use_point(arg, "TARGET")
-            elif self.ast.unpars(argument).upper() == "PROPERTIES":
+            elif self.ast.unparse(argument).upper() == "PROPERTIES":
                 j = i + 1
                 while True:
                     if len(arguments) > j:
