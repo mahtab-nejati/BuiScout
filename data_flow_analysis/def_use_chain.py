@@ -78,17 +78,18 @@ class DefUseChains(NodeVisitor):
     #                     newdef.add_use_node(user)
     #         del self.undefined_names[undefined_name]
 
-    def get_definitions_by_name(self, node_data):
+    def get_definitions_by_name(self, node_data, get_from_parent_scopes=True):
         """
         Looks up use (node_data) in current and all ancestor contexts
         Returns the list of defs linked to the node_data
         """
         name = self.ast.get_name(node_data)
         defined_names = self.defined_names[name]
-        parent = self.parent
-        while not parent is None:
-            defined_names = defined_names + parent.defined_names["name"]
-            parent = parent.parent
+        if get_from_parent_scopes:
+            parent = self.parent
+            while not parent is None:
+                defined_names = defined_names + parent.defined_names["name"]
+                parent = parent.parent
         return defined_names
 
     def register_new_use_point(self, use_node_data, use_type="VAR"):
