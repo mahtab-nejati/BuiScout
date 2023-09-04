@@ -256,6 +256,57 @@ class DefUseChains(cm.DefUseChains):
     def visit_macro_header(self, node_data):
         return self.generic_visit(node_data)
 
+    def visit_block_definition(self, node_data):
+        header_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "block_header")
+        )
+        arguments = sorted(
+            self.ast.get_children(
+                self.ast.get_data(
+                    self.ast.get_children_by_type(header_data, "arguments")
+                )
+            ).values(),
+            key=lambda argument_node_data: argument_node_data["s_pos"],
+        )
+        body_data = self.ast.get_data(self.ast.get_children_by_type(node_data, "body"))
+
+        new_scope = False
+
+        if len(arguments) == 0:
+            new_scope = True
+        if self.ast.unparse(arguments[0]).upper() != "SCOPE_FOR":
+            new_scope = True
+        for argument in arguments:
+            if self.ast.unparse(argument).upper() == "VARIABLES":
+                new_scope = True
+                break
+
+        if new_scope:
+            child_scope = self.sysdiff.DefUseChains(
+                self.ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
+            )
+            self.children.append(child_scope)
+            self.sysdiff.append_to_chains(child_scope)
+
+            child_scope.visit(body_data)
+
+            for i, argument in enumerate(arguments):
+                if self.ast.unparse(argument).upper() == "PROPAGATE":
+                    for arg in arguments[i + 1 :]:
+                        var_name = self.ast.get_name(arg)
+                        def_points = child_scope.get_definitions_by_name(
+                            var_name, False
+                        )
+                        for def_point in def_points:
+                            self.defined_names[var_name].append(def_point)
+                            self.def_points[def_point.node_data["id"]] = def_point
+                            self.actor_points[
+                                def_point.actor_point.node_data["id"]
+                            ] = def_point.actor_point
+
+        else:
+            return self.generic_visit(node_data)
+
     def visit_if_statement(self, node_data):
         stacked_condition_count = (
             len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
