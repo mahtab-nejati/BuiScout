@@ -211,6 +211,7 @@ class SystemDiff(object):
             dotdiff_content = read_dotdiff(
                 f'{self.gumtree_output_dir}/{self.file_data[file_path]["saved_as"]}_dotdiff.dot'
             )
+            self.file_data[file_path]["has_gumtree_error"] = False
             return True, dotdiff_content
         except:
             self.file_data[file_path]["has_gumtree_error"] = True
@@ -568,7 +569,6 @@ class SystemDiffSeries(SystemDiff):
                 self.commit.hash,
                 self.language,
             )
-
         else:
             return None
 
