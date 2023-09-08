@@ -29,6 +29,7 @@ class DefUseChains(NodeVisitor):
 
         # The DefUseChains object of the parent scope
         self.parent = parent
+        self.parent_names_available = True
         # A list of DefUseChains objects of the children scopes
         self.children = []
 
@@ -85,7 +86,7 @@ class DefUseChains(NodeVisitor):
         """
         name = self.ast.get_name(node_data)
         defined_names = self.defined_names[name]
-        if get_from_parent_scopes:
+        if self.parent_names_available and get_from_parent_scopes:
             parent = self.parent
             while not parent is None:
                 defined_names = parent.defined_names["name"] + defined_names
