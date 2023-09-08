@@ -25,6 +25,10 @@ class Def(object):
         # Storing actor_point
         self.actor_point = actor_point
 
+        # Locking further addition of use_points
+        # used when a variable is terminated
+        self.lock = False
+
         # Storing use_points
         self.use_points = []
 
@@ -32,8 +36,9 @@ class Def(object):
         """
         Add use_point to the list of use_points if it is a user of the self.node_data
         """
-        if self.is_user(use_point):
-            self.use_points.append(use_point)
+        if not self.lock:
+            if self.is_user(use_point):
+                self.use_points.append(use_point)
 
     def is_user(self, use_point):
         """
