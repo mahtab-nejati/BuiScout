@@ -26,7 +26,7 @@ class Def(object):
         self.actor_point = actor_point
 
         # Locking further addition of use_points
-        # used when a variable is terminated
+        # used when no further users are allowed
         self.lock = False
 
         # Storing use_points
