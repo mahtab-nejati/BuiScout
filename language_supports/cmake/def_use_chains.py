@@ -232,7 +232,8 @@ class DefUseChains(cm.DefUseChains):
     def visit_function_definition(self, node_data):
         print(f"Function definition {self.ast.get_name(node_data)}")
         self.register_new_def_point(node_data, "FUNCTION")
-        return
+
+        return self.process_callable_definition_scope(node_data, "function")
 
     def visit_function_header(self, node_data):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
@@ -251,7 +252,8 @@ class DefUseChains(cm.DefUseChains):
     def visit_macro_definition(self, node_data):
         print(f"Macro definition {self.ast.get_name(node_data)}")
         self.register_new_def_point(node_data, "MACRO")
-        return
+
+        return self.process_callable_definition_scope(node_data, "macro")
 
     def visit_macro_header(self, node_data):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
@@ -265,6 +267,30 @@ class DefUseChains(cm.DefUseChains):
                     arguments,
                 )
             )
+        return
+
+    def process_callable_definition_scope(self, node_data, callable_type):
+        """
+        This method only analyzes the definition of a function/macro
+        so that changes to a callable that has never been used also get analyzed
+        """
+        target_ast = self.ast
+        child_scope = self.sysdiff.DefUseChains(
+            target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
+        )
+        child_scope.parent_names_available = False
+
+        self.children.append(child_scope)
+        self.sysdiff.append_to_chains(child_scope)
+
+        header_data = child_scope.ast.get_data(
+            child_scope.ast.get_children_by_type(node_data, f"{callable_type}_header")
+        )
+        child_scope.visit(header_data)
+        body_data = child_scope.ast.get_data(
+            child_scope.ast.get_children_by_type(node_data, "body")
+        )
+        child_scope.visit(body_data)
         return
 
     def visit_block_definition(self, node_data):
@@ -445,7 +471,10 @@ class DefUseChains(cm.DefUseChains):
         )
         def_node = arguments.pop(0)
         self.register_new_def_point(def_node, "VARIABLE")
-        return self.generic_visit(node_data)
+
+        self.generic_visit(node_data)
+
+        self.def_points[def_node["id"]].lock = True
 
     def visit_normal_command(self, node_data):
         command_identifier = self.ast.unparse(
@@ -456,7 +485,13 @@ class DefUseChains(cm.DefUseChains):
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
-        def_points = self.get_definitions_by_name(node_data)
+        # # TODO: Should we uncomment the following 3 commented lines
+        # # and allow for analysis of function inside functions
+        # # at definition location processing time?
+        # temp_flag = self.parent_names_available
+        # self.parent_names_available = True
+        def_points = self.get_definitions_by_name(node_data, True)
+        # self.parent_names_available = temp_flag
         if len(def_points) > 0:
             def_point = def_points[-1]
             self.register_new_use_point(node_data, def_point.type)
@@ -504,7 +539,10 @@ class DefUseChains(cm.DefUseChains):
                 self.visit(body_data)
 
                 self.ast = self.ast_stack.pop()
-        else:
+        elif not self.parent_names_available:
+            self.register_new_use_point(node_data, "SOME_COMMAND")
+            self.generic_visit(node_data)
+        elif self.parent_names_available:
             self.register_new_use_point(node_data, "UNKNOWN_COMMAND")
             self.generic_visit(node_data)
         return
@@ -826,7 +864,7 @@ class DefUseChains(cm.DefUseChains):
         # Exclude CMake module
         if included_file_path in self.exclude_resolutions:
             print(
-                f"Include resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+                f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
             )
             return self.generic_visit(node_data)
 
@@ -838,7 +876,7 @@ class DefUseChains(cm.DefUseChains):
             # For failures due to multiple resolutions
             if isinstance(included_file, list):
                 print(
-                    f"Include resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
+                    f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -846,7 +884,7 @@ class DefUseChains(cm.DefUseChains):
             # or files that are refered to using a variable
             if included_file is None:
                 print(
-                    f"Include resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -855,14 +893,14 @@ class DefUseChains(cm.DefUseChains):
             # For manaully skipped files
             if included_file.upper() == "SKIP":
                 print(
-                    f"Include resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
             # For files with GumTree error
             if self.sysdiff.file_data[included_file]["diff"] is None:
                 print(
-                    f"Include resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                    f"INCLUDE resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
                 )
                 return self.generic_visit(node_data)
 
@@ -874,14 +912,14 @@ class DefUseChains(cm.DefUseChains):
                 ]
             ):
                 print(
-                    f"Include resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"INCLUDE resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
             # Resolving to entry point
             if included_file == ROOT_FILE:
                 print(
-                    f"Include resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"INCLUDE resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -1343,7 +1381,7 @@ class DefUseChains(cm.DefUseChains):
             # For failures due to multiple resolutions
             if isinstance(added_file, list):
                 print(
-                    f"Add_subdirectory resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
+                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -1351,7 +1389,7 @@ class DefUseChains(cm.DefUseChains):
             # or files that are refered to using a variable
             if added_file is None:
                 print(
-                    f"Add_subdirectory resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -1359,7 +1397,7 @@ class DefUseChains(cm.DefUseChains):
             # For manaully skipped files
             if added_file.upper() == "SKIP":
                 print(
-                    f"Add_subdirectory resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
@@ -1376,14 +1414,14 @@ class DefUseChains(cm.DefUseChains):
                 ]
             ):
                 print(
-                    f"Add_subdirectory resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
             # Resolving to entry point
             if added_file == ROOT_FILE:
                 print(
-                    f"Add_subdirectory resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return self.generic_visit(node_data)
 
