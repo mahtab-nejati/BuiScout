@@ -88,7 +88,7 @@ class DefUseChains(NodeVisitor):
         if get_from_parent_scopes:
             parent = self.parent
             while not parent is None:
-                defined_names = defined_names + parent.defined_names["name"]
+                defined_names = parent.defined_names["name"] + defined_names
                 parent = parent.parent
         return defined_names
 
