@@ -118,6 +118,16 @@ class DefUseChains(NodeVisitor):
         self.update_local_chains(def_point)
         return def_point
 
+    def register_def_point_to_parent_scope(self, def_point):
+        """
+        Consumes a Def object and registers it to the parent scope.
+        """
+        self.parent.defined_names[def_point.name].append(def_point)
+        self.parent.def_points[def_point.node_data["id"]] = def_point
+        self.parent.actor_points[
+            def_point.actor_point.node_data["id"]
+        ] = def_point.actor_point
+
     def create_and_get_def_point(self, def_node, def_type, suffix=None):
         actor_point = self.get_or_create_actor_point(def_node)
         actor_point.add_def_point_id(def_node["id"])
