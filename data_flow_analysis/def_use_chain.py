@@ -94,17 +94,65 @@ class DefUseChains(NodeVisitor):
         return defined_names
 
     def register_new_use_point(self, use_node_data, use_type="VAR"):
+        """
+        By default, adds the use_point to all applicable def_points defined
+        prior to the use_point, REGARDLESS OF REACHABILITY.
+
+        HOWEVER, the subclass of DefUseChains in language support can define a method
+        called "compare_reachability_conditions(def_point, use_point)" which consumes
+        the def_point and use_point objects and returns:
+                    "=" (equal reachability condition)
+                    "<" (def reachability is subset of use reachability)
+                    ">" (use reachability is subset of def reachability)
+                    "!" (contradiction exists in reachabilities)
+                    "?" (unable to find a concrete relation between)
+
+        if "compare_reachability_conditions(def_point, use_point)" returns:
+                - "=" or "<":
+                    the use_point is added to the current def_point only and
+                    prior def_points are ignored.
+                - "?" or ">":
+                    the use_point is added to the current def_point and
+                    prior def_points are also considered.
+                - "!":
+                    the use_point is NOT added to the current def_point but
+                    prior def_points are stil considered.
+
+        """
         use_point = self.create_and_get_use_point(use_node_data, use_type)
         self.use_points[use_point.node_data["id"]] = use_point
         self.used_names[use_point.name].append(use_point)
         defined_names = self.get_definitions_by_name(use_point.node_data)
         if defined_names:
-            list(
-                map(
-                    lambda def_point: def_point.add_use_point(use_point),
-                    defined_names,
-                )
+            reachability_checker = getattr(
+                self, "compare_reachability_conditions", None
             )
+            if reachability_checker is None:
+                list(
+                    map(
+                        lambda def_point: def_point.add_use_point(use_point),
+                        defined_names,
+                    )
+                )
+                return
+            for def_point in reversed(defined_names):
+                reachability_status = reachability_checker(def_point, use_point)
+                if reachability_status in [
+                    "=",
+                    "<",
+                ]:  # The def_point is always on all reachable paths to the use-point
+                    def_point.add_use_point(use_point)
+                    break
+                if reachability_status in [
+                    "!"
+                ]:  # The use_point and def_point never happen on the same reachable path
+                    continue
+                if reachability_status in [
+                    ">",
+                    "?",
+                ]:  # The use_point is/might be on this reachable path but might also be on another reachable path
+                    def_point.add_use_point(use_point)
+                    continue
         else:
             self.undefined_names[use_point.name].append(use_point)
         return use_point
