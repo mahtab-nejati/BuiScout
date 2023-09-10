@@ -102,20 +102,24 @@ class DefUseChains(NodeVisitor):
         called "compare_reachability_conditions(def_point, use_point)" which consumes
         the def_point and use_point objects and returns:
                     "=" (equal reachability condition)
-                    "<" (def reachability is subset of use reachability)
-                    ">" (use reachability is subset of def reachability)
+                    "<" (def reachability is subset of (loser than) use reachability)
+                    ">" (def reachability is superset of (tighter than) use reachability)
                     "!" (contradiction exists in reachabilities)
                     "?" (unable to find a concrete relation between)
 
         if "compare_reachability_conditions(def_point, use_point)" returns:
                 - "=" or "<":
-                    the use_point is added to the current def_point only and
+                    Indicates that the def_point is on all reachable paths to the use-point.
+                    Therefore, the use_point is added to the current def_point only and
                     prior def_points are ignored.
                 - "?" or ">":
-                    the use_point is added to the current def_point and
+                    Indicates the use_point is/might be on the same reachable path as def_point
+                    but might also be on other def_points' reachable paths.
+                    Therefore, the use_point is added to the current def_point and
                     prior def_points are also considered.
                 - "!":
-                    the use_point is NOT added to the current def_point but
+                    Indicates the use_point and def_point never happen on the same reachable path.
+                    Therefore, the use_point is NOT added to the current def_point but
                     prior def_points are stil considered.
 
         """
@@ -137,20 +141,12 @@ class DefUseChains(NodeVisitor):
                 return
             for def_point in reversed(defined_names):
                 reachability_status = reachability_checker(def_point, use_point)
-                if reachability_status in [
-                    "=",
-                    "<",
-                ]:  # The def_point is always on all reachable paths to the use-point
+                if reachability_status in ["=", "<"]:
                     def_point.add_use_point(use_point)
                     break
-                if reachability_status in [
-                    "!"
-                ]:  # The use_point and def_point never happen on the same reachable path
+                if reachability_status in ["!"]:
                     continue
-                if reachability_status in [
-                    ">",
-                    "?",
-                ]:  # The use_point is/might be on this reachable path but might also be on another reachable path
+                if reachability_status in [">", "?"]:
                     def_point.add_use_point(use_point)
                     continue
         else:
