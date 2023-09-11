@@ -13,6 +13,41 @@ class DefUseChains(cm.DefUseChains):
     manual_resolution = PATH_RESOLUTIONS
     exclude_resolutions = CMAKE_MODULES
 
+    def compare_reachability_conditions(self, def_point, use_point):
+        """
+        Consumes the def_point and use_point objects and returns:
+                    "=" (equal reachability condition)
+                    "<" (def reachability is subset of use reachability)
+                    ">" (use reachability is subset of def reachability)
+                    "!" (contradiction exists in reachabilities)
+                    "?" (unable to find a concrete relation between)
+
+        The comparison is NAIVE.
+        """
+        if def_point.type == "PROPERTY" or use_point.type == "PROPERTY":
+            return "?"
+
+        def_conditions = set(def_point.actor_point.reachability)
+        use_conditions = set(use_point.actor_point.reachability)
+
+        if def_conditions == use_conditions:
+            return "="
+        if def_conditions.issubset(use_conditions):
+            return "<"
+        if use_conditions.issubset(def_conditions):
+            return ">"
+
+        if set(map(lambda cond: f"NOT {cond}", def_conditions)).intersection(
+            use_conditions
+        ):
+            return "!"
+        if set(map(lambda cond: f"NOT {cond}", use_conditions)).intersection(
+            def_conditions
+        ):
+            return "!"
+
+        return "?"
+
     def get_expected_arguments_node_data(self, command_node_data, command_id):
         """
         Retruns the "arguments" node's node_data (the parent of the list of arguments).
