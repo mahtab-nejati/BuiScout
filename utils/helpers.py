@@ -21,12 +21,16 @@ def parse_label(label):
     start_content, end_content = find_word_indexes(label, "GumTreeContent")
     start_pos, end_pos = find_word_indexes(label, "GumTreeSPos")
     start_end, end_end = find_word_indexes(label, "GumTreeEPos")
-    return {
+    parsed_label = {
         "type": label[end_type + 2 : start_content].strip(),
         "content": label[end_content + 2 : start_pos].strip(),
         "s_pos": int(label[end_pos + 2 : start_end].strip()),
         "e_pos": int(label[end_end + 2 :].strip()),
     }
+    if len(parsed_label["type"]) == 0 and len(parsed_label["content"]) == 0:
+        parsed_label["type"] = '"'
+        parsed_label["content"] = '"'
+    return parsed_label
 
 
 #################################

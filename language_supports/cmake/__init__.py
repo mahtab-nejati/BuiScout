@@ -22,7 +22,7 @@ IGNORED_TYPES = [
     "$",
     ";",
     ":",
-    "quotation",
+    '"',
     "",
 ]
 BASIC_TYPES = [ROOT_TYPE]
