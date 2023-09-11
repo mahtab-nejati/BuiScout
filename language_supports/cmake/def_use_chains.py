@@ -37,11 +37,11 @@ class DefUseChains(cm.DefUseChains):
         if use_conditions.issubset(def_conditions):
             return ">"
 
-        if set(map(lambda cond: f"NOT {cond}", def_conditions)).intersection(
+        if set(map(lambda cond: f"NOT ({cond})", def_conditions)).intersection(
             use_conditions
         ):
             return "!"
-        if set(map(lambda cond: f"NOT {cond}", use_conditions)).intersection(
+        if set(map(lambda cond: f"NOT ({cond})", use_conditions)).intersection(
             def_conditions
         ):
             return "!"
