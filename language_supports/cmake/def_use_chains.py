@@ -290,7 +290,8 @@ class DefUseChains(cm.DefUseChains):
         body_data = child_scope.ast.get_data(
             child_scope.ast.get_children_by_type(node_data, "body")
         )
-        child_scope.visit(body_data)
+        if body_data:
+            child_scope.visit(body_data)
         return
 
     def visit_block_definition(self, node_data):
