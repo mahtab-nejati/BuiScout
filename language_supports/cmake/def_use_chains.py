@@ -593,18 +593,20 @@ class DefUseChains(cm.DefUseChains):
     ########## Scripting Commands:
 
     def visit_BREAK(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_CMAKE_HOST_SYSTEM_INFORMATION(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
         )
 
         self.register_new_def_point(arguments[1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_CMAKE_LANGUAGE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_LANGUAGE")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -626,15 +628,15 @@ class DefUseChains(cm.DefUseChains):
                 )
                 continue
 
-        return self.generic_visit(node_data)
-
     def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_CMAKE_PATH(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_PATH")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -683,9 +685,9 @@ class DefUseChains(cm.DefUseChains):
                     self.register_new_def_point(arguments[i + 1], "VARIABLE")
                     break
 
-        return self.generic_visit(node_data)
-
     def visit_CMAKE_POLICY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_POLICY")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -693,15 +695,15 @@ class DefUseChains(cm.DefUseChains):
         if operation == "GET":
             self.register_new_def_point(arguments[-1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_CONFIGURE_FILE(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_CONTINUE(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_EXECUTE_PROCESS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "EXECUTE_PROCESS")
 
         current_target_keywords = [
@@ -715,9 +717,9 @@ class DefUseChains(cm.DefUseChains):
             if self.ast.unparse(argument).upper() in current_target_keywords:
                 self.register_new_def_point(arguments[i + 1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_FILE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -750,23 +752,23 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             self.register_new_def_point(arguments[2], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_FIND_FILE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_FILE")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_FIND_LIBRARY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_LIBRARY")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_FIND_PACKAGE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PACKAGE")
         print(
             f"Support needed for including modules using {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -812,31 +814,32 @@ class DefUseChains(cm.DefUseChains):
                 return self.generic_visit(node_data)
 
         self.register_new_def_point(arguments[0], "VARIABLE")
-        return self.generic_visit(node_data)
 
     def visit_FIND_PATH(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PATH")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_FIND_PROGRAM(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PROGRAM")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_GET_CMAKE_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_CMAKE_PROPERTY")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
         self.register_new_use_point(arguments[1], "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_GET_DIRECTORY_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_DIRECTORY_PROPERTY"
         )
@@ -850,9 +853,9 @@ class DefUseChains(cm.DefUseChains):
 
         self.register_new_use_point(arguments[-1], "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_GET_FILENAME_COMPONENT(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_FILENAME_COMPONENT"
         )
@@ -865,9 +868,9 @@ class DefUseChains(cm.DefUseChains):
                     f"Support needed for command arguments for PROGRAM_ARGS keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
 
-        return self.generic_visit(node_data)
-
     def visit_GET_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_PROPERTY")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
@@ -881,9 +884,9 @@ class DefUseChains(cm.DefUseChains):
             elif keyword == "PROPERTY":
                 self.register_new_use_point(arguments[i + 1], "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_INCLUDE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "INCLUDE")
 
         for i, argument in enumerate(arguments[1:]):
@@ -893,7 +896,7 @@ class DefUseChains(cm.DefUseChains):
 
         # For file-level analysis (No system provided)
         if self.sysdiff is None:
-            return self.generic_visit(node_data)
+            return
 
         included_file_path = self.ast.unparse(arguments[0])
 
@@ -902,7 +905,7 @@ class DefUseChains(cm.DefUseChains):
             print(
                 f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
             )
-            return self.generic_visit(node_data)
+            return
 
         resolution_success, included_file = self.resolve_included_file_path_best_effort(
             arguments[0]
@@ -914,7 +917,7 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # For files that do not exist in the project
             # or files that are refered to using a variable
@@ -922,7 +925,7 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
         # Successful resolution
         if isinstance(included_file, str):
@@ -931,14 +934,14 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # For files with GumTree error
             if self.sysdiff.file_data[included_file]["diff"] is None:
                 print(
                     f"INCLUDE resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # Recursive resolution
             if (included_file == self.ast.file_path) or (
@@ -950,14 +953,14 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"INCLUDE resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # Resolving to entry point
             if included_file == ROOT_FILE:
                 print(
                     f"INCLUDE resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             included_file = [included_file]
 
@@ -978,12 +981,12 @@ class DefUseChains(cm.DefUseChains):
 
         self.ast = self.ast_stack.pop()
 
-        return self.generic_visit(node_data)
-
     def visit_INCLUDE_GUARD(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_LIST(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -1021,9 +1024,9 @@ class DefUseChains(cm.DefUseChains):
         if operation in current_target_operations:
             self.register_new_def_point(arguments[1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_MARK_AS_ADVANCED(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "MARK_AS_ADVANCED")
 
         keywords = ["CLEAR", "FORCE"]
@@ -1035,30 +1038,30 @@ class DefUseChains(cm.DefUseChains):
             self.register_new_use_point(argument, "VARIABLE")
             self.register_new_def_point(argument, "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_MATH(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "MATH")
 
         self.register_new_def_point(arguments[1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_MESSAGE(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_OPTION(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "OPTION")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_RETURN(self, node_data):
+        self.generic_visit(node_data)
+
         try:
             arguments = self.get_sorted_arguments_data_list(node_data, "RETURN")
         except MissingArgumentsException:
-            return self.generic_visit(node_data)
+            return
 
         print(
             f"Support needed for PROPAGATE keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -1070,9 +1073,9 @@ class DefUseChains(cm.DefUseChains):
         #             self.register_new_use_point(arg, "VARIABLE")
         #             self.register_new_def_point(arg, "VARIABLE")
 
+    def visit_SEPARATE_ARGUMENTS(self, node_data):
         self.generic_visit(node_data)
 
-    def visit_SEPARATE_ARGUMENTS(self, node_data):
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
@@ -1083,20 +1086,20 @@ class DefUseChains(cm.DefUseChains):
                     f"Support needed for command arguments for PROGRAM keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
                 )
 
-        return self.generic_visit(node_data)
-
     def visit_SET(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "SET")
 
-        if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            print(
-                f"Support needed for PARENT_SCOPE keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-            )
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
+        if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
+            def_point = self.def_points[arguments[0]["id"]]
+            self.register_def_point_to_parent_scope(def_point)
 
     def visit_SET_DIRECTORY_PROPERTIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_DIRECTORY_PROPERTIES"
         )
@@ -1105,9 +1108,9 @@ class DefUseChains(cm.DefUseChains):
             if (i % 2) == 1:
                 self.register_new_def_point(argument, "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_SET_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
 
         keywords = [
@@ -1143,16 +1146,16 @@ class DefUseChains(cm.DefUseChains):
             elif unparsed_argument == "PROPERTY":
                 self.register_new_def_point(arguments[i + 1], "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_SITE_NAME(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "SITE_NAME")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_STRING(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -1163,13 +1166,13 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_def_point(arguments[4], "VARIABLE")
             else:
                 self.register_new_def_point(arguments[3], "VARIABLE")
-            return self.generic_visit(node_data)
+            return
 
         if operation == "JSON":
             self.register_new_def_point(arguments[1], "VARIABLE")
             if self.ast.unparse(arguments[2]).upper() == "ERROR_VARIABLE":
                 self.register_new_def_point(arguments[3], "VARIABLE")
-            return self.generic_visit(node_data)
+            return
 
         current_target_operations = [
             "APPEND",
@@ -1190,17 +1193,17 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[1], "VARIABLE")
-            return self.generic_visit(node_data)
+            return
 
         current_target_operations = ["JOIN", "CONFIGURE"]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[2], "VARIABLE")
-            return self.generic_visit(node_data)
+            return
 
         current_target_operations = ["FIND", "REPLACE"]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[3], "VARIABLE")
-            return self.generic_visit(node_data)
+            return
 
         current_target_operations = [
             "TOLOWER",
@@ -1218,36 +1221,34 @@ class DefUseChains(cm.DefUseChains):
         ]
         if operation in current_target_operations:
             self.register_new_def_point(arguments[-1], "VARIABLE")
-            return self.generic_visit(node_data)
-
-        return self.generic_visit(node_data)
+            return
 
     def visit_UNSET(self, node_data):
-        arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
+        self.generic_visit(node_data)
 
-        if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            print(
-                f"Support needed for PARENT_SCOPE keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-            )
+        arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
 
         self.register_new_use_point(arguments[0], "VARIABLE")
         self.register_new_def_point(arguments[0], "VARIABLE")
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            pass
-
-        return self.generic_visit(node_data)
+            def_point = self.def_points[arguments[0]["id"]]
+            self.register_def_point_to_parent_scope(def_point)
 
     def visit_VARIABLE_WATCH(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "VARIABLE_WATCH")
+
         self.register_new_use_point(arguments[0], "VARIABLE")
         if len(arguments) == 2:
             self.register_new_use_point(arguments[-1], "COMMAND")
-        return self.generic_visit(node_data)
 
     ########## Project Commands:
 
     def visit_ADD_COMPILE_DEFINITIONS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "ADD_COMPILE_DEFINITIONS"
         )
@@ -1257,12 +1258,12 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_COMPILE_OPTIONS(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
         if self.ast.unparse(arguments[0]).upper() == "TARGET":
@@ -1306,9 +1307,9 @@ class DefUseChains(cm.DefUseChains):
         #             ):
         #                 self.register_new_use_point(arg, "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_CUSTOM_TARGET(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
 
         self.register_new_def_point(arguments[0], "TARGET")
@@ -1317,9 +1318,9 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_DEFINITIONS(self, node_data):
+        self.generic_visit(node_data)
+
         # try:
         #     arguments = self.get_sorted_arguments_data_list(
         #         node_data, "ADD_DEFINITIONS"
@@ -1331,17 +1332,15 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_DEPENDENCIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
 
         for argument in arguments:
             self.register_new_use_point(argument, "TARGET")
 
         self.register_new_use_point(arguments[0], "TARGET")
-
-        return self.generic_visit(node_data)
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -1350,6 +1349,8 @@ class DefUseChains(cm.DefUseChains):
         or will be variable_ref which will be caught when running generic_visit
         on node_data at the end.
         """
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_EXECUTABLE")
 
         self.register_new_def_point(arguments[0], "TARGET")
@@ -1357,7 +1358,7 @@ class DefUseChains(cm.DefUseChains):
         try:
             operation = self.ast.unparse(arguments[1]).upper()
         except IndexError:
-            return self.generic_visit(node_data)
+            return
 
         if operation == "IMPORTED":
             # TODO: After Scoping is implemented, consider if GLOBAL keyword exists?
@@ -1365,8 +1366,6 @@ class DefUseChains(cm.DefUseChains):
         elif operation == "ALIAS":
             assert len(arguments) == 3
             self.register_new_use_point(arguments[-1], "TARGET")
-
-        return self.generic_visit(node_data)
 
     def visit_ADD_LIBRARY(self, node_data):
         """
@@ -1376,6 +1375,8 @@ class DefUseChains(cm.DefUseChains):
         TODO: See object library and check object reference
         TODO: See imported library and check global with scoping
         """
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_LIBRARY")
 
         self.register_new_def_point(arguments[0], "TARGET")
@@ -1383,16 +1384,14 @@ class DefUseChains(cm.DefUseChains):
         try:
             operation = self.ast.unparse(arguments[1]).upper()
         except IndexError:
-            return self.generic_visit(node_data)
+            return
 
         if operation == "ALIAS":
             assert len(arguments) == 3
             self.register_new_use_point(arguments[-1], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_LINK_OPTIONS(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_ADD_SUBDIRECTORY(self, node_data):
         """
@@ -1402,11 +1401,13 @@ class DefUseChains(cm.DefUseChains):
             https://stackoverflow.com/a/49989597
             https://stackoverflow.com/a/48510440
         """
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
 
         # For file-level analysis (No system provided)
         if self.sysdiff is None:
-            return self.generic_visit(node_data)
+            return
 
         (
             resolution_success,
@@ -1419,7 +1420,7 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # For files that do not exist in the project
             # or files that are refered to using a variable
@@ -1427,7 +1428,7 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
         if isinstance(added_file, str):
             # For manaully skipped files
@@ -1435,12 +1436,12 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # For files with GumTree error
             if self.sysdiff.file_data[added_file]["diff"] is None:
                 print(f"Parser error for {self.ast.unparse(node_data)}")
-                return self.generic_visit(node_data)
+                return
 
             # Recursive resolution
             if (added_file == self.ast.file_path) or (
@@ -1452,14 +1453,14 @@ class DefUseChains(cm.DefUseChains):
                 print(
                     f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             # Resolving to entry point
             if added_file == ROOT_FILE:
                 print(
                     f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return self.generic_visit(node_data)
+                return
 
             added_file = [added_file]
 
@@ -1485,9 +1486,9 @@ class DefUseChains(cm.DefUseChains):
             )
             # Finished working on added file
 
-        return self.generic_visit(node_data)
-
     def visit_ADD_TEST(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         if self.ast.unparse(arguments[0]).upper() == "NAME":
@@ -1499,18 +1500,18 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed for command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "AUX_SOURCE_DIRECTORY"
         )
 
         self.register_new_def_point(arguments[-1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_BUILD_COMMAND(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "BUILD_COMMAND")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
@@ -1520,12 +1521,12 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_use_point(arguments[i + 1], "TARGET")
                 break
 
-        return self.generic_visit(node_data)
-
     def visit_CMAKE_FILE_API(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_CREATE_TEST_SOURCELIST(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CREATE_TEST_SOURCELIST"
         )
@@ -1536,9 +1537,9 @@ class DefUseChains(cm.DefUseChains):
             if self.ast.unparse(argument).upper() in ["EXTRA_INCLUDE", "FUNCTION"]:
                 self.register_new_use_point(argument, "TEST")
 
-        return self.generic_visit(node_data)
-
     def visit_DEFINE_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
 
         self.register_new_def_point(arguments[2], "PROPERTY")
@@ -1546,15 +1547,15 @@ class DefUseChains(cm.DefUseChains):
         if self.ast.unparse(arguments[-2]).upper() == "INITIALIZE_FROM_VARIABLE":
             self.register_new_def_point(arguments[-1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_ENABLE_LANGUAGE(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_ENABLE_TESTING(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_EXPORT(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "EXPORT")
 
         operation = self.ast.unparse(arguments[0]).upper()
@@ -1579,16 +1580,16 @@ class DefUseChains(cm.DefUseChains):
                 f"Support needed for PACKAGE & EXPORT keywords in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
             )
 
-        return self.generic_visit(node_data)
-
     def visit_FLTK_WRAP_UI(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "FLTK_WRAP_UI")
 
         self.register_new_def_point(arguments[0], "VARIABLE", suffix="_FLTK_UI_SRCS")
 
-        return self.generic_visit(node_data)
-
     def visit_GET_SOURCE_FILE_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_SOURCE_FILE_PROPERTY"
         )
@@ -1601,9 +1602,9 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_use_point(arguments[i + 1], "TARGET")
                 break
 
-        return self.generic_visit(node_data)
-
     def visit_GET_TARGET_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_TARGET_PROPERTY"
         )
@@ -1612,21 +1613,21 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[1], "TARGET")
         self.register_new_use_point(arguments[-1], "PROPERTY")
 
-        return self.generic_visit(node_data)
-
     def visit_GET_TEST_PROPERTY(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_TEST_PROPERTY")
 
         self.register_new_use_point(arguments[0], "TEST")
         self.register_new_use_point(arguments[1], "PROPERTY")
         self.register_new_def_point(arguments[-1], "VARIABLE")
 
-        return self.generic_visit(node_data)
-
     def visit_INCLUDE_DIRECTORIES(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_INCLUDE_EXTERNAL_MSPROJECT(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "INCLUDE_EXTERNAL_MSPROJECT"
         )
@@ -1645,12 +1646,12 @@ class DefUseChains(cm.DefUseChains):
                         self.register_new_use_point(arg, "TARGET")
                     break
 
-        return self.generic_visit(node_data)
-
     def visit_INCLUDE_REGULAR_EXPRESSION(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_INSTALL(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
 
         all_keywords = [  # Alphabetically ordered
@@ -1720,42 +1721,42 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed (partial) for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_LINK_DIRECTORIES(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_LINK_LIBRARIES(self, node_data):
+        self.generic_visit(node_data)
+
         # arguments = self.get_sorted_arguments_data_list(node_data, "LINK_LIBRARIES")
 
         print(
             f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_LOAD_CACHE(self, node_data):
+        self.generic_visit(node_data)
+
         # arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
 
         print(
             f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_PROJECT(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
+        self.generic_visit(node_data)
+
         # arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
 
         print(
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_SOURCE_FILES_PROPERTIES"
         )
@@ -1782,9 +1783,9 @@ class DefUseChains(cm.DefUseChains):
                         break
                 break
 
-        return self.generic_visit(node_data)
-
     def visit_SET_TARGET_PROPERTIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_TARGET_PROPERTIES"
         )
@@ -1803,9 +1804,9 @@ class DefUseChains(cm.DefUseChains):
                         break
                 break
 
-        return self.generic_visit(node_data)
-
     def visit_SET_TESTS_PROPERTIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_TESTS_PROPERTIES"
         )
@@ -1824,12 +1825,12 @@ class DefUseChains(cm.DefUseChains):
                         break
                 break
 
-        return self.generic_visit(node_data)
-
     def visit_SOURCE_GROUP(self, node_data):
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_DEFINITIONS"
         )
@@ -1841,9 +1842,9 @@ class DefUseChains(cm.DefUseChains):
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_COMPILE_FEATURES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_FEATURES"
         )
@@ -1851,9 +1852,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_COMPILE_OPTIONS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_OPTIONS"
         )
@@ -1861,9 +1862,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_INCLUDE_DIRECTORIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_INCLUDE_DIRECTORIES"
         )
@@ -1871,9 +1872,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_DIRECTORIES"
         )
@@ -1881,9 +1882,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_LINK_LIBRARIES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_LIBRARIES"
         )
@@ -1910,9 +1911,9 @@ class DefUseChains(cm.DefUseChains):
                 ):
                     self.register_new_use_point(argument, "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_LINK_OPTIONS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_OPTIONS"
         )
@@ -1920,9 +1921,9 @@ class DefUseChains(cm.DefUseChains):
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_PRECOMPILE_HEADERS(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_PRECOMPILE_HEADERS"
         )
@@ -1933,17 +1934,17 @@ class DefUseChains(cm.DefUseChains):
         if self.ast.unparse(arguments[1]).upper() == "REUSE_FROM":
             self.register_new_use_point(arguments[2], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TARGET_SOURCES(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "TARGET_SOURCES")
 
         self.register_new_use_point(arguments[0], "TARGET")
         self.register_new_def_point(arguments[0], "TARGET")
 
-        return self.generic_visit(node_data)
-
     def visit_TRY_COMPILE(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_COMPILE")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
@@ -1962,9 +1963,9 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_def_point(arguments[i + 1], "VARIABLE")
                 continue
 
-        return self.generic_visit(node_data)
-
     def visit_TRY_RUN(self, node_data):
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_RUN")
 
         self.register_new_def_point(arguments[0], "VARIABLE")
@@ -1990,53 +1991,53 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_def_point(arguments[i + 1], "VARIABLE")
                 continue
 
-        return self.generic_visit(node_data)
-
     ########## CTesgt Commands:
 
     def visit_CTEST_BUILD(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_CONFIGURE(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_COVERAGE(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_EMPTY_BINARY_DIRECTORY(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_MEMCHECK(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_READ_CUSTOM_FILES(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_RUN_SCRIPT(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_SLEEP(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_START(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_SUBMIT(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_TEST(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_UPDATE(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_UPLOAD(self, node_data):
-        return self.visit_CTEST_CMDs(node_data)
+        self.visit_CTEST_CMDs(node_data)
 
     def visit_CTEST_CMDs(self, node_data):
         """
         All CTEST_* commands are redirected to this method.
         """
+        self.generic_visit(node_data)
+
         arguments = self.get_sorted_arguments_data_list(node_data, "CTEST_BUILD")
 
         current_target_keywords = [
@@ -2056,8 +2057,6 @@ class DefUseChains(cm.DefUseChains):
                 self.register_new_def_point(arguments[i + 1], "VARIABLE")
                 continue
 
-        return self.generic_visit(node_data)
-
     ############################
     #### CMake Commands End ####
     ############################
@@ -2076,16 +2075,17 @@ class DefUseChains(cm.DefUseChains):
         # TODO
         # when it's def point
         # when it's use point
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_unquoted_argument(self, node_data):
         # TODO
         # when it's def point
         # when it's use point
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data)
 
     def visit_variable_ref(self, node_data):
+        self.generic_visit(node_data)
+
         # TODO (High)
         self.register_new_use_point(node_data, "VARIABLE")
         # For nested variable references
-        return self.generic_visit(node_data)
