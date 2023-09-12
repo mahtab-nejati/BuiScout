@@ -15,7 +15,8 @@ class DefUseChains(cm.DefUseChains):
 
     def compare_reachability_conditions(self, def_point, use_point):
         """
-        Consumes the def_point and use_point objects and returns:
+        Consumes the def_point (or the def reachability stack) and
+        the use_point (or the use reachability stack) objects and returns:
                     "=" (equal reachability condition)
                     "<" (def reachability is subset of use reachability)
                     ">" (use reachability is subset of def reachability)
@@ -24,11 +25,15 @@ class DefUseChains(cm.DefUseChains):
 
         The comparison is NAIVE.
         """
-        if def_point.type == "PROPERTY" or use_point.type == "PROPERTY":
-            return "?"
+        if isinstance(def_point, list) and isinstance(use_point, list):
+            def_conditions = def_point
+            use_conditions = def_point
+        else:
+            if def_point.type == "PROPERTY" or use_point.type == "PROPERTY":
+                return "?"
 
-        def_conditions = set(def_point.actor_point.reachability)
-        use_conditions = set(use_point.actor_point.reachability)
+            def_conditions = set(def_point.actor_point.reachability)
+            use_conditions = set(use_point.actor_point.reachability)
 
         if def_conditions == use_conditions:
             return "="
@@ -268,7 +273,7 @@ class DefUseChains(cm.DefUseChains):
         print(f"Function definition {self.ast.get_name(node_data)}")
         self.register_new_def_point(node_data, "FUNCTION")
 
-        return self.process_callable_definition_scope(node_data, "function")
+        return self.process_callable_definition_location(node_data, "function")
 
     def visit_function_header(self, node_data):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
@@ -288,7 +293,7 @@ class DefUseChains(cm.DefUseChains):
         print(f"Macro definition {self.ast.get_name(node_data)}")
         self.register_new_def_point(node_data, "MACRO")
 
-        return self.process_callable_definition_scope(node_data, "macro")
+        return self.process_callable_definition_location(node_data, "macro")
 
     def visit_macro_header(self, node_data):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
@@ -304,7 +309,7 @@ class DefUseChains(cm.DefUseChains):
             )
         return
 
-    def process_callable_definition_scope(self, node_data, callable_type):
+    def process_callable_definition_location(self, node_data, callable_type):
         """
         This method only analyzes the definition of a function/macro
         so that changes to a callable that has never been used also get analyzed
@@ -328,6 +333,53 @@ class DefUseChains(cm.DefUseChains):
         if body_data:
             child_scope.visit(body_data)
         return
+
+    def process_callable_call_location(self, node_data, def_point):
+        self.register_new_use_point(node_data, def_point.type)
+        self.generic_visit(node_data)
+        if def_point.type == "FUNCTION":
+            print(
+                f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id']}"
+            )
+            target_ast = def_point.ast
+            child_scope = self.sysdiff.DefUseChains(
+                target_ast,
+                scope=node_data["id"],
+                parent=self,
+                sysdiff=self.sysdiff,
+            )
+            self.children.append(child_scope)
+            self.sysdiff.append_to_chains(child_scope)
+
+            definer_node = def_point.node_data
+            header_data = child_scope.ast.get_data(
+                child_scope.ast.get_children_by_type(definer_node, "function_header")
+            )
+            child_scope.visit(header_data)
+            body_data = child_scope.ast.get_data(
+                child_scope.ast.get_children_by_type(definer_node, "body")
+            )
+            if body_data:
+                child_scope.visit(body_data)
+        elif def_point.type == "MACRO":
+            print(
+                f"Support needed for callable variable translation for macro {def_point.name}, scope {node_data['id'].replace(':','_')}"
+            )
+            self.ast_stack.append(self.ast)
+
+            self.ast = def_point.ast
+
+            definer_node = def_point.node_data
+            header_data = self.ast.get_data(
+                self.ast.get_children_by_type(definer_node, "macro_header")
+            )
+            self.visit(header_data)
+            body_data = self.ast.get_data(
+                self.ast.get_children_by_type(definer_node, "body")
+            )
+            self.visit(body_data)
+
+            self.ast = self.ast_stack.pop()
 
     def visit_block_definition(self, node_data):
         header_data = self.ast.get_data(
@@ -529,52 +581,32 @@ class DefUseChains(cm.DefUseChains):
         def_points = self.get_definitions_by_name(node_data, True)
         # self.parent_names_available = temp_flag
         if len(def_points) > 0:
-            def_point = def_points[-1]
-            self.register_new_use_point(node_data, def_point.type)
-            self.generic_visit(node_data)
-
-            if def_point.type == "FUNCTION":
-                print(
-                    f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id'].replace(':','_')}"
-                )
-                target_ast = def_point.ast
-                child_scope = self.sysdiff.DefUseChains(
-                    target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
-                )
-                self.children.append(child_scope)
-                self.sysdiff.append_to_chains(child_scope)
-
-                definer_node = def_point.node_data
-                header_data = child_scope.ast.get_data(
-                    child_scope.ast.get_children_by_type(
-                        definer_node, "function_header"
+            reachability_checker = getattr(
+                self, "compare_reachability_conditions", None
+            )
+            if reachability_checker is None:
+                list(
+                    map(
+                        lambda def_point: self.process_callable_call_location(
+                            node_data, def_point
+                        ),
+                        def_points,
                     )
                 )
-                child_scope.visit(header_data)
-                body_data = child_scope.ast.get_data(
-                    child_scope.ast.get_children_by_type(definer_node, "body")
+                return
+            for def_point in reversed(def_points):
+                reachability_status = reachability_checker(
+                    def_point.actor_point.reachability.copy(),
+                    self.reachability_stack.copy(),
                 )
-                child_scope.visit(body_data)
-
-            elif def_point.type == "MACRO":
-                print(
-                    f"Support needed for callable variable translation for macro {def_point.name}, scope {node_data['id'].replace(':','_')}"
-                )
-                self.ast_stack.append(self.ast)
-
-                self.ast = def_point.ast
-
-                definer_node = def_point.node_data
-                header_data = self.ast.get_data(
-                    self.ast.get_children_by_type(definer_node, "macro_header")
-                )
-                self.visit(header_data)
-                body_data = self.ast.get_data(
-                    self.ast.get_children_by_type(definer_node, "body")
-                )
-                self.visit(body_data)
-
-                self.ast = self.ast_stack.pop()
+                if reachability_status in ["=", "<"]:
+                    self.process_callable_call_location(node_data, def_point)
+                    break
+                if reachability_status in ["!"]:
+                    continue
+                if reachability_status in [">", "?"]:
+                    self.process_callable_call_location(node_data, def_point)
+                    continue
         elif not self.parent_names_available:
             self.register_new_use_point(node_data, "SOME_COMMAND")
             self.generic_visit(node_data)
