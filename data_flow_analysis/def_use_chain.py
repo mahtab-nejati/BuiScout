@@ -23,9 +23,9 @@ class DefUseChains(NodeVisitor):
         self.ast = ast
 
         if scope:
-            self.scope = scope.replace(":", "_")
+            self.scope = scope
         else:
-            self.scope = self.ast.get_data(self.ast.root)["id"].replace(":", "_")
+            self.scope = self.ast.get_data(self.ast.root)["id"]
 
         # The DefUseChains object of the parent scope
         self.parent = parent
