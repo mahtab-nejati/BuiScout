@@ -22,36 +22,39 @@ class Actor(object):
         # Storing reachability condition
         self.reachability = reachability.copy()
 
-        # Storing the id of all def_node defined by this actor
-        self.def_point_ids = []
-        # Storing the id of all use_node used by this actor
-        self.use_point_ids = []
+        # Storing the dict of {node_id: Def}
+        self.def_points = {}
+        # Storing the dict of {node_id: Use}
+        self.use_points = {}
 
-    def add_def_point_id(self, def_node_id):
-        """
-        Add def_node_id (id of the def_node) to the list of defs if it's not already added
-        """
-        if not self.is_listed_def_point(def_node_id):
-            self.def_point_ids.append(def_node_id)
+    def set_contamination(self):
+        self.contaminated = True
 
-    def is_listed_def_point(self, def_node_id, *args, **kwargs):
-        return def_node_id in self.def_point_ids
-
-    def add_use_point_id(self, use_point_id):
+    def add_def_point(self, def_point):
         """
-        Add use_node_id (id of the use_node) to the list of uses if it's not already added
+        Add def_point (Def object) to the list of defs if it's not already added
         """
-        if not self.is_listed_use_point(use_point_id):
-            self.use_point_ids.append(use_point_id)
+        if not self.is_listed_def_point(def_point):
+            self.def_points[def_point.node_data["id"]] = def_point
 
-    def is_listed_use_point(self, use_point_id, *args, **kwargs):
-        return use_point_id in self.use_point_ids
+    def is_listed_def_point(self, def_point, *args, **kwargs):
+        return def_point.node_data["id"] in self.def_points
+
+    def add_use_point(self, use_point):
+        """
+        Add use_point (Use object) to the list of uses if it's not already added
+        """
+        if not self.is_listed_use_point(use_point):
+            self.use_points[use_point.node_data["id"]] = use_point
+
+    def is_listed_use_point(self, use_point, *args, **kwargs):
+        return use_point.node_data["id"] in self.use_points
 
     def to_json(self):
         return {
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
             "reachability": " ^ ".join(self.reachability),
-            "def_node_ids": self.def_point_ids,
-            "use_node_ids": self.use_point_ids,
+            "def_node_ids": list(self.def_points.keys()),
+            "use_node_ids": list(self.use_points.keys()),
         }

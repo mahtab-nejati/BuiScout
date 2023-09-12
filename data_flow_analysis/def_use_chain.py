@@ -174,13 +174,15 @@ class DefUseChains(NodeVisitor):
 
     def create_and_get_def_point(self, def_node, def_type, suffix=None):
         actor_point = self.get_or_create_actor_point(def_node)
-        actor_point.add_def_point_id(def_node["id"])
-        return Def(def_node, def_type, actor_point, self.ast, suffix=suffix)
+        def_point = Def(def_node, def_type, actor_point, self.ast, suffix=suffix)
+        actor_point.add_def_point(def_point)
+        return def_point
 
     def create_and_get_use_point(self, use_node, use_type="VAR"):
         actor_point = self.get_or_create_actor_point(use_node)
-        actor_point.add_use_point_id(use_node["id"])
-        return Use(use_node, use_type, actor_point, self.ast)
+        use_point = Use(use_node, use_type, actor_point, self.ast)
+        actor_point.add_use_point(use_point)
+        return use_point
 
     def get_or_create_actor_point(self, node_data):
         actor_node_data = self.ast.get_actor(node_data)
