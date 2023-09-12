@@ -236,6 +236,7 @@ class DefUseChains(NodeVisitor):
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
             "scope": self.scope,
+            "parent_scopes": self.parent.scope,
             "def_points": list(
                 map(
                     lambda def_point: def_point.to_json(),
@@ -289,6 +290,7 @@ class DefUseChains(NodeVisitor):
         def_points_df = pd.DataFrame(data["def_points"])
         cols = list(def_points_df.columns)
         def_points_df["scope"] = self.scope
+        def_points_df["parent_scopes"] = self.parent.scope
         def_points_df = def_points_df[["scope", *cols]]
 
         use_points_df = pd.DataFrame(data["use_points"])
