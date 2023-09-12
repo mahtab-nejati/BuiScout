@@ -10,10 +10,7 @@ from .actor_model import Actor
 
 class DefUseChains(NodeVisitor):
     """
-    Module visitor that gathers two kinds of informations:
-        - local_chains: {'node_id': List[Def]}, a mapping between a node and the list
-          of variables defined in this node,
-        - chains: {'node_id': Def}, a mapping between def nodes and their chains.
+    NOTE: Reach the comments inside __init__() to understand attributes.
     """
 
     def __init__(self, ast, scope=None, parent=None, sysdiff=None):
@@ -52,14 +49,6 @@ class DefUseChains(NodeVisitor):
         # Stores a mapping between actor nodes and their object (Actor)
         # in the form of {'node_id': Actor}
         self.actor_points = defaultdict(list)
-
-        # Stores a mapping between a node and the list of
-        # variables defined in the subtree under the node
-        # in the form of {'node_id': List[Def]}
-        # NOTE: Usefull for scoping and name spaces
-        # TODO (Low): FIX for system level
-        # (does not update beyond include node in CMake)
-        self.local_chains = defaultdict(list)
 
         # Stores a mapping of the name to its definition points {'name': [Def]}
         self.defined_names = defaultdict(list)
@@ -159,7 +148,6 @@ class DefUseChains(NodeVisitor):
         )
         self.def_points[def_point.node_data["id"]] = def_point
         self.defined_names[def_point.name].append(def_point)
-        self.update_local_chains(def_point)
         return def_point
 
     def register_def_point_to_parent_scope(self, def_point):
@@ -192,25 +180,6 @@ class DefUseChains(NodeVisitor):
             actor_point = Actor(actor_node_data, self.reachability_stack, self.ast)
             self.actor_points[actor_node_data["id"]] = actor_point
         return actor_point
-
-    def _add_to_local_chains(self, def_point, local_node_data=None):
-        if local_node_data is None:
-            self.local_chains[def_point.node_data["id"]].append(def_point)
-        else:
-            self.local_chains[local_node_data["id"]].append(def_point)
-
-    def update_local_chains(self, def_point):
-        self._add_to_local_chains(def_point)
-        ancestors = self.ast.get_ancestors(def_point.node_data)
-        # TODO (low): Get rid of the for loop.
-        # Use something like the map function commented out below
-        # TODO (low): Fix for included files... It should happen in system_diff_model.SystemDiff
-        for node_data in ancestors.values():
-            self._add_to_local_chains(def_point, node_data)
-        # map(
-        #     lambda node_data: self.add_to_local_chains(def_point, node_data),
-        #     ancestors.values(),
-        # )
 
     def add_condition_to_reachability_stack(self, condition_node_data):
         self.reachability_stack.append(
@@ -332,3 +301,11 @@ class DefUseChains(NodeVisitor):
         undefined_names_df.to_csv(
             save_path / f"{self.ast.name}_undefined_names_{self.scope}.csv", index=False
         )
+
+    def get_affected_slices(self):
+        """
+        This method must be implemented in the language support subclass. As the result,
+        Def/Use/Actor objects that are affected have their .contaminated attribute set to True.
+        Use the .set_contamination() method to set the .contaminated attribute to True.
+        """
+        pass
