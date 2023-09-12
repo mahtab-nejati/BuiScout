@@ -376,12 +376,10 @@ class SystemDiff(object):
         )
 
     def get_affected_slices(self):
-        source_slices = list(
-            map(lambda chain: chain.get_affected_slices(), self.source_du_chains)
-        )
-        destination_slices = list(
-            map(lambda chain: chain.get_affected_slices(), self.destination_du_chains)
-        )
+        source_slices = [chain.get_affected_slices() for chain in self.source_du_chains]
+        destination_slices = [
+            chain.get_affected_slices() for chain in self.destination_du_chains
+        ]
         return (source_slices, destination_slices)
 
 

@@ -307,7 +307,7 @@ class DefUseChains(NodeVisitor):
     def get_affected_slices(self):
         """
         This method must be implemented in the language support subclass. As the result,
-        Def/Use/Actor objects that are affected have their .contaminated attribute set to True.
-        Use the .set_contamination() method to set the .contaminated attribute to True.
+        Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.
+        Use the .set_contamination() method to set the .is_contaminated attribute to True.
         """
         pass
