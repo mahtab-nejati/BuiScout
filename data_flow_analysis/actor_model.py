@@ -18,6 +18,7 @@ class Actor(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+        self.contaminated = node_data["operation"] != "no-op"
 
         # Storing reachability condition
         self.reachability = reachability.copy()

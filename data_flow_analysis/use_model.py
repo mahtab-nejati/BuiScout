@@ -19,9 +19,13 @@ class Use(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+        self.contaminated = node_data["operation"] != "no-op"
 
         # Storing actor_point
         self.actor_point = actor_point
+
+    def set_contamination(self):
+        self.contaminated = True
 
     def is_user_of(self, def_point):
         """

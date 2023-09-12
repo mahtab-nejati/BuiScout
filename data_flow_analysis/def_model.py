@@ -21,6 +21,7 @@ class Def(object):
             )
         if suffix:
             self.name = self.name + suffix
+        self.contaminated = node_data["operation"] != "no-op"
 
         # Storing actor_point
         self.actor_point = actor_point
@@ -31,6 +32,9 @@ class Def(object):
 
         # Storing use_points
         self.use_points = []
+
+    def set_contamination(self):
+        self.contaminated = True
 
     def add_use_point(self, use_point):
         """

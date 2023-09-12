@@ -375,6 +375,14 @@ class SystemDiff(object):
             )
         )
 
+    def get_affected_slices(self):
+        source_slices = list(
+            map(lambda chain: chain.get_affected_slices(), self.source_du_chains)
+        )
+        destination_slices = list(
+            map(lambda chain: chain.get_affected_slices(), self.destination_du_chains)
+        )
+
 
 class SystemDiffShortcut(SystemDiff):
     def set_file_data_modified_only(self):
