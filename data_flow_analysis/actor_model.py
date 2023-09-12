@@ -18,7 +18,7 @@ class Actor(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
-        self.contaminated = node_data["operation"] != "no-op"
+        self.is_contaminated = node_data["operation"] != "no-op"
 
         # Storing reachability condition
         self.reachability = reachability.copy()
@@ -29,7 +29,7 @@ class Actor(object):
         self.use_points = {}
 
     def set_contamination(self):
-        self.contaminated = True
+        self.is_contaminated = True
 
     def add_def_point(self, def_point):
         """
@@ -56,7 +56,7 @@ class Actor(object):
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
             "actor_node_operation": self.node_data["operation"],
-            "actor_node_contamination": self.contaminated,
+            "actor_node_contamination": self.is_contaminated,
             "reachability": " ^ ".join(self.reachability),
             "def_node_ids": list(self.def_points.keys()),
             "use_node_ids": list(self.use_points.keys()),
