@@ -39,5 +39,7 @@ class Use(object):
             "use_type": self.type,
             "use_name": self.name,
             "use_node_id": self.node_data["id"],
+            "use_node_operation": self.node_data["operation"],
+            "use_node_contamination": self.contaminated,
             "actor_node_id": self.actor_point.node_data["id"],
         }

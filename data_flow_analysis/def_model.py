@@ -61,6 +61,8 @@ class Def(object):
             "def_type": self.type,
             "def_name": self.name,
             "def_node_id": self.node_data["id"],
+            "def_node_operation": self.node_data["operation"],
+            "def_node_contamination": self.contaminated,
             "actor_node_id": self.actor_point.node_data["id"],
             "use_node_ids": list(
                 map(lambda use_point: use_point.node_data["id"], self.use_points)

@@ -55,6 +55,8 @@ class Actor(object):
         return {
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
+            "actor_node_operation": self.node_data["operation"],
+            "actor_node_contamination": self.contaminated,
             "reachability": " ^ ".join(self.reachability),
             "def_node_ids": list(self.def_points.keys()),
             "use_node_ids": list(self.use_points.keys()),

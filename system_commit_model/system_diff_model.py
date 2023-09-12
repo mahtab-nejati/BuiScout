@@ -382,6 +382,7 @@ class SystemDiff(object):
         destination_slices = list(
             map(lambda chain: chain.get_affected_slices(), self.destination_du_chains)
         )
+        return (source_slices, destination_slices)
 
 
 class SystemDiffShortcut(SystemDiff):
