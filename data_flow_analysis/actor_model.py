@@ -52,11 +52,22 @@ class Actor(object):
     def is_listed_use_point(self, use_point, *args, **kwargs):
         return use_point.node_data["id"] in self.use_points
 
-    def to_json(self):
+    def to_json(self, propagation_slice_mode=False):
+        if propagation_slice_mode:
+            return {
+                "actor_name": self.name,
+                "actor_node_id": self.node_data["id"],
+                "actor_node_operation": self.node_data["operation"],
+                "actor_node_type": self.node_data["type"],
+                "actor_node_s_pos": self.node_data["s_pos"],
+                "actor_node_e_pos": self.node_data["e_pos"],
+                "actor_node_level": self.node_data["level"],
+                "reachability": " ^ ".join(self.reachability),
+                "code": self.ast.unparse(self.node_data, masked_types=["body"]),
+            }
         return {
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
-            "actor_node_operation": self.node_data["operation"],
             "actor_node_contamination": self.is_contaminated,
             "reachability": " ^ ".join(self.reachability),
             "def_node_ids": list(self.def_points.keys()),

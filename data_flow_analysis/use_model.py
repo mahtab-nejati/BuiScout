@@ -34,12 +34,28 @@ class Use(object):
         """
         return self.name == def_point.name
 
-    def to_json(self):
+    def to_json(self, propagation_slice_mode=False):
+        if propagation_slice_mode:
+            return {
+                "def_type": self.type,
+                "def_name": self.name,
+                "def_node_id": self.node_data["id"],
+                "def_node_operation": self.node_data["operation"],
+                "def_node_type": self.node_data["type"],
+                "def_node_content": self.node_data["content"],
+                "def_node_s_pos": self.node_data["s_pos"],
+                "def_node_e_pos": self.node_data["e_pos"],
+                "def_node_level": self.node_data["level"],
+                "actor_node_id": self.actor_point.node_data["id"],
+                "reachability": " ^ ".join(self.actor_point.reachability),
+                "code": self.actor_point.ast.unparse(
+                    self.actor_point.node_data, masked_types=["body"]
+                ),
+            }
         return {
             "use_type": self.type,
             "use_name": self.name,
             "use_node_id": self.node_data["id"],
-            "use_node_operation": self.node_data["operation"],
             "use_node_contamination": self.is_contaminated,
             "actor_node_id": self.actor_point.node_data["id"],
         }
