@@ -16,6 +16,12 @@ class ActorGetter(NodeVisitor):
         "foreach_clause",
         "endforeach_clause",
     ]
+    conditional_actor_types = [
+        "if_clause",
+        "elseif_clause",
+        "else_clause",
+        "while_clause",
+    ]
 
     def generic_visit(self, node_data):
         return node_data
