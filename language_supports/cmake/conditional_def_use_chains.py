@@ -916,6 +916,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_use_point(arguments[i + 1], "TEST")
             elif keyword == "PROPERTY":
                 self.register_new_use_point(arguments[i + 1], "PROPERTY")
+            elif keyword == "CACHE":
+                self.register_new_use_point(arguments[i + 1], "VARIABLE")
 
     def visit_INCLUDE(self, node_data):
         self.generic_visit(node_data)
@@ -1174,6 +1176,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     if self.ast.unparse(arg).upper() not in keywords:
                         self.register_new_use_point(arg, "TEST")
                         self.register_new_def_point(arg, "TEST")
+                    else:
+                        break
+            if unparsed_argument == "CACHE":
+                for arg in arguments[i + 1 :]:
+                    if self.ast.unparse(arg).upper() not in keywords:
+                        self.register_new_use_point(arg, "VARIABLE")
+                        self.register_new_def_point(arg, "VARIABLE")
                     else:
                         break
             elif unparsed_argument == "PROPERTY":
@@ -1767,13 +1776,22 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_LOAD_CACHE(self, node_data):
+        """
+        No support for the old and discouraged signature.
+        see: https://cmake.org/cmake/help/v3.27/command/load_cache.html
+        """
         self.generic_visit(node_data)
 
-        # arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
+        arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
 
-        print(
-            f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        for i, argument in enumerate(arguments):
+            unparsed_argument = self.ast.unparse(argument).upper()
+            if unparsed_argument == "READ_WITH_PREFIX":
+                prefix = self.ast.unparse(arguments[i + 1])
+                for arg in arguments[i + 2 :]:
+                    self.register_new_use_point(arg, "VARIABLE")
+                    self.register_new_def_point(arg, "VARIABLE", prefix=prefix)
+                break
 
     def visit_PROJECT(self, node_data):
         self.generic_visit(node_data)
