@@ -27,14 +27,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         The comparison is NAIVE.
         """
         if isinstance(def_point, list) and isinstance(use_point, list):
-            def_conditions = def_point
-            use_conditions = def_point
+            def_conditions = set(def_point)
+            use_conditions = set(def_point)
         else:
             if def_point.type == "PROPERTY" or use_point.type == "PROPERTY":
                 return "?"
 
             def_conditions = set(def_point.actor_point.reachability)
             use_conditions = set(use_point.actor_point.reachability)
+
+        def_conditions.difference_update({""})
+        use_conditions.difference_update({""})
 
         if def_conditions == use_conditions:
             return "="
@@ -436,6 +439,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     def visit_if_statement(self, node_data):
         stacked_condition_count = (
             len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
+            + len(list(self.ast.get_children_by_type(node_data, "else_clause").keys()))
             + 1  # For the if_clause
         )
         self.generic_visit(node_data)
@@ -448,7 +452,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "condition")
         )
         self.visit_conditional_expression(condition_node_data)
-        self.add_condition_to_reachability_stack(condition_node_data)
+        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -463,7 +467,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.visit_conditional_expression(
             condition_node_data, negate_last_condition=True
         )
-        self.add_condition_to_reachability_stack(condition_node_data)
+        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -478,6 +482,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.visit_conditional_expression(
             condition_node_data, negate_last_condition=True
         )
+        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -495,7 +500,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "condition")
         )
         self.visit_conditional_expression(condition_node_data)
-        self.add_condition_to_reachability_stack(condition_node_data)
+        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
