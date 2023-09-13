@@ -7,7 +7,7 @@ class Def(object):
     Objects are called def_point
     """
 
-    def __init__(self, node_data, def_type, actor_point, ast, suffix=None):
+    def __init__(self, node_data, def_type, actor_point, ast, prefix=None, suffix=None):
         self.ast = ast
         self.type = def_type
 
@@ -19,6 +19,8 @@ class Def(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+        if prefix:
+            self.name = prefix + self.name
         if suffix:
             self.name = self.name + suffix
         self.is_contaminated = node_data["operation"] != "no-op"
