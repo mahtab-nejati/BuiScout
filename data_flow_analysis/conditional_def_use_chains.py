@@ -37,8 +37,10 @@ class ConditionalDefUseChains(NodeVisitor):
         # Store current reachability conditions based on conditional statements
         if parent is None:
             self.reachability_stack = []
+            self.reachability_actor_id_stack = []
         else:
             self.reachability_stack = parent.reachability_stack.copy()
+            self.reachability_actor_id_stack = parent.reachability_actor_id_stack.copy()
 
         # Stores a mapping between def nodes and their object (Def)
         # in the form of {'node_id': Def}
@@ -177,17 +179,26 @@ class ConditionalDefUseChains(NodeVisitor):
         if actor_node_data["id"] in self.actor_points:
             actor_point = self.actor_points[actor_node_data["id"]]
         else:
-            actor_point = Actor(actor_node_data, self.reachability_stack, self.ast)
+            actor_point = Actor(
+                actor_node_data,
+                self.reachability_stack,
+                self.reachability_actor_id_stack,
+                self.ast,
+            )
             self.actor_points[actor_node_data["id"]] = actor_point
         return actor_point
 
-    def add_condition_to_reachability_stack(self, condition_node_data):
+    def add_condition_to_reachability_stack(
+        self, condition_node_data, condition_actor_id
+    ):
         self.reachability_stack.append(
             self.ast.unparse(condition_node_data).strip("()").strip()
         )
+        self.reachability_actor_id_stack.append(condition_actor_id)
 
     def remove_condition_from_reachability_stack(self, last_n=1):
         del self.reachability_stack[-last_n:]
+        del self.reachability_actor_id_stack[-last_n:]
 
     def negate_last_condition_in_reachability_stack(self, negation_symbol="NOT"):
         # Usefull for else_if structure

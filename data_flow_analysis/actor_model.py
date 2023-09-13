@@ -7,7 +7,7 @@ class Actor(object):
     Objects are called actor_point
     """
 
-    def __init__(self, node_data, reachability, ast):
+    def __init__(self, node_data, reachability, reachability_actor_ids, ast):
         self.ast = ast
 
         # Storing the node_data
@@ -22,6 +22,7 @@ class Actor(object):
 
         # Storing reachability condition
         self.reachability = reachability.copy()
+        self.reachability_actor_ids = reachability_actor_ids.copy()
 
         # Storing the dict of {node_id: Def}
         self.def_points = {}
