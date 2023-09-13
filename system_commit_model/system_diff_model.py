@@ -390,11 +390,11 @@ class SystemDiff(object):
     def get_propagation_slices(self):
         self.perform_data_flow_analysis()
         source_propagetion_slice = [
-            chain.get_affected_slices() for chain in self.source_cdu_chains
+            chain.get_propagation_slices() for chain in self.source_cdu_chains
         ]
         print(source_propagetion_slice)
         destination_propagetion_slice = [
-            chain.get_affected_slices() for chain in self.destination_cdu_chains
+            chain.get_propagation_slices() for chain in self.destination_cdu_chains
         ]
         print(destination_propagetion_slice)
 

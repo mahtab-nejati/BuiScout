@@ -2127,7 +2127,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ###### SLICING THE CDU ######
     #############################
 
-    def get_affected_slices(self):
+    def get_propagation_slices(self):
         """
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.

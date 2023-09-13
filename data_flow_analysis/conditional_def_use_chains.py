@@ -306,7 +306,7 @@ class ConditionalDefUseChains(NodeVisitor):
             save_path / f"{self.ast.name}_undefined_names_{self.scope}.csv", index=False
         )
 
-    def get_affected_slices(self):
+    def get_propagation_slices(self):
         """
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.
