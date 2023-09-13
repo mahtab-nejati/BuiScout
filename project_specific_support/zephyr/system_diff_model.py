@@ -1,5 +1,5 @@
 import time
-from .def_use_chains import DefUseChains as ProjectDefUseChains
+from .def_use_chains import ConditionalDefUseChains as ProjectConditionalDefUseChains
 from .utils import get_settings
 import system_commit_model as scm
 
@@ -34,7 +34,7 @@ class SystemDiff(scm.SystemDiff):
             *args,
             **kwargs,
         )
-        self.DefUseChains = ProjectDefUseChains
+        self.ConditionalDefUseChains = ProjectConditionalDefUseChains
 
     def populate_file_data(self):
         self.git_repository.checkout(self.commit.hash)
@@ -70,21 +70,21 @@ class SystemDiff(scm.SystemDiff):
     #         print("#" * 50)
     #         self.flush_language_specific_info()
 
-    #         self.source_du_chains.append(
-    #             self.DefUseChains(
+    #         self.source_cdu_chains.append(
+    #             self.ConditionalDefUseChains(
     #                 self.file_data[self.root_file]["diff"].source, sysdiff=self
     #             )
     #         )
     #         print(f"{'#'*10} Analyzing source {'#'*10}")
-    #         self.source_du_chains[-1].analyze()
+    #         self.source_cdu_chains[-1].analyze()
 
-    #         self.destination_du_chains.append(
-    #             self.DefUseChains(
+    #         self.destination_cdu_chains.append(
+    #             self.ConditionalDefUseChains(
     #                 self.file_data[self.root_file]["diff"].destination, sysdiff=self
     #             )
     #         )
     #         print(f"{'#'*10} Analyzing destination {'#'*10}")
-    #         self.destination_du_chains[-1].analyze()
+    #         self.destination_cdu_chains[-1].analyze()
 
 
 class SystemDiffShortcut(SystemDiff, scm.SystemDiffShortcut):

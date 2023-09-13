@@ -186,9 +186,8 @@ for commit in tqdm(repo.traverse_commits()):
             #         index=False,
             #     )
 
-            diff.perform_data_flow_analysis()
-
-            diff.export_csv()
+            diff.export_cdu_csv()
+            diff.export_ps_csv()
 
             commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
             commit_build_files_df.drop(

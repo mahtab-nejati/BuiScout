@@ -10,7 +10,7 @@ with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
     CMAKE_MODULES = list(map(lambda entry: entry.strip("\n"), f.readlines()))
 
 
-class DefUseChains(cm.DefUseChains):
+class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     manual_resolution = PATH_RESOLUTIONS
     exclude_resolutions = CMAKE_MODULES
 
@@ -316,7 +316,7 @@ class DefUseChains(cm.DefUseChains):
         so that changes to a callable that has never been used also get analyzed
         """
         target_ast = self.ast
-        child_scope = self.sysdiff.DefUseChains(
+        child_scope = self.sysdiff.ConditionalDefUseChains(
             target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
         )
         child_scope.parent_names_available = False
@@ -343,7 +343,7 @@ class DefUseChains(cm.DefUseChains):
                 f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id']}"
             )
             target_ast = def_point.ast
-            child_scope = self.sysdiff.DefUseChains(
+            child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast,
                 scope=node_data["id"],
                 parent=self,
@@ -408,7 +408,7 @@ class DefUseChains(cm.DefUseChains):
                 break
 
         if new_scope:
-            child_scope = self.sysdiff.DefUseChains(
+            child_scope = self.sysdiff.ConditionalDefUseChains(
                 self.ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
             )
             self.children.append(child_scope)
@@ -1506,7 +1506,7 @@ class DefUseChains(cm.DefUseChains):
             target_ast = getattr(
                 self.sysdiff.file_data[resolution]["diff"], self.ast.name
             )
-            child_scope = self.sysdiff.DefUseChains(
+            child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
             )
             self.children.append(child_scope)
@@ -2181,7 +2181,7 @@ class DefUseChains(cm.DefUseChains):
                             lambda use_point: {
                                 "subject": def_point,
                                 "propagation_rule": "is_directly_used_at"
-                                + str(use_point.set_contamination()),
+                                + ("" if not use_point.set_contamination() else ""),
                                 "object": use_point,
                             },
                             def_point.use_points,
@@ -2198,7 +2198,7 @@ class DefUseChains(cm.DefUseChains):
                             lambda def_point: {
                                 "subject": use_point,
                                 "propagation_rule": "is_used_in_definition_of"
-                                + str(def_point.set_contamination()),
+                                + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
                             },
                             use_point.actor_point.def_points.values(),
@@ -2206,7 +2206,7 @@ class DefUseChains(cm.DefUseChains):
                     )
                 )
 
-            # use_point affects_reachability_of_def/use/scope def_point/use_point/du_chain
+            # use_point affects_reachability_of_def/use/scope def_point/use_point/cdu_chain
             if (
                 use_point.actor_point.node_data["type"]
                 in self.ast.node_actors.conditional_actor_types
@@ -2246,7 +2246,7 @@ class DefUseChains(cm.DefUseChains):
                                 lambda point: {
                                     "subject": use_point,
                                     "propagation_rule": "affects_reachability_of_use"
-                                    + str(point.set_contamination()),
+                                    + ("" if not point.set_contamination() else ""),
                                     "object": point,
                                 },
                                 filter(
@@ -2270,9 +2270,7 @@ class DefUseChains(cm.DefUseChains):
                                 lambda point: {
                                     "subject": use_point,
                                     "propagation_rule": "affects_reachability_of_def"
-                                    + ""
-                                    if point.set_contamination()
-                                    else "",
+                                    + ("" if not point.set_contamination() else ""),
                                     "object": point,
                                 },
                                 filter(
@@ -2299,7 +2297,7 @@ class DefUseChains(cm.DefUseChains):
                     while children:
                         next_children = []
                         for child_chain in children:
-                            # use_point affects_reachability_of_scope du_chain
+                            # use_point affects_reachability_of_scope cdu_chain
                             self.contamination_summary.append(
                                 {
                                     "subject": use_point,
@@ -2314,9 +2312,11 @@ class DefUseChains(cm.DefUseChains):
                                         lambda point: {
                                             "subject": use_point,
                                             "propagation_rule": "affects_reachability_of_use"
-                                            + ""
-                                            if point.set_contamination()
-                                            else "",
+                                            + (
+                                                ""
+                                                if not point.set_contamination()
+                                                else ""
+                                            ),
                                             "object": point,
                                         },
                                         child_chain.use_points.values(),
@@ -2330,7 +2330,11 @@ class DefUseChains(cm.DefUseChains):
                                         lambda point: {
                                             "subject": use_point,
                                             "propagation_rule": "affects_reachability_of_def"
-                                            + point.set_contamination(),
+                                            + (
+                                                ""
+                                                if not point.set_contamination()
+                                                else ""
+                                            ),
                                             "object": point,
                                         },
                                         child_chain.def_points.values(),
@@ -2355,7 +2359,7 @@ class DefUseChains(cm.DefUseChains):
                             lambda def_point: {
                                 "subject": actor_point,
                                 "propagation_rule": "affects_definition_of"
-                                + def_point.set_contamination(),
+                                + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
                             },
                             non_modified_def_points,
@@ -2383,7 +2387,7 @@ class DefUseChains(cm.DefUseChains):
                         lambda def_point: {
                             "subject": def_point,
                             "propagation_rule": "is_directly_used_at"
-                            + def_point.set_contamination(),
+                            + ("" if not def_point.set_contamination() else ""),
                             "object": use_point,
                         },
                         filter(

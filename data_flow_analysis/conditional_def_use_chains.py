@@ -8,7 +8,7 @@ from .use_model import Use
 from .actor_model import Actor
 
 
-class DefUseChains(NodeVisitor):
+class ConditionalDefUseChains(NodeVisitor):
     """
     NOTE: Reach the comments inside __init__() to understand attributes.
     """
@@ -24,10 +24,10 @@ class DefUseChains(NodeVisitor):
         else:
             self.scope = self.ast.get_data(self.ast.root)["id"]
 
-        # The DefUseChains object of the parent scope
+        # The ConditionalDefUseChains object of the parent scope
         self.parent = parent
         self.parent_names_available = True
-        # A list of DefUseChains objects of the children scopes
+        # A list of ConditionalDefUseChains objects of the children scopes
         self.children = []
 
         self.ast_stack = []
@@ -87,7 +87,7 @@ class DefUseChains(NodeVisitor):
         By default, adds the use_point to all applicable def_points defined
         prior to the use_point, REGARDLESS OF REACHABILITY.
 
-        HOWEVER, the subclass of DefUseChains in language support can define a method
+        HOWEVER, the subclass of ConditionalDefUseChains in language support can define a method
         called "compare_reachability_conditions(def_point, use_point)" which consumes
         the def_point and use_point objects and returns:
                     "=" (equal reachability condition)
@@ -201,7 +201,7 @@ class DefUseChains(NodeVisitor):
             self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
 
     def to_json(self):
-        du_chains_output = {
+        cdu_chains_output = {
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
             "scope": self.scope,
@@ -245,13 +245,15 @@ class DefUseChains(NodeVisitor):
             ),
         }
 
-        return du_chains_output
+        return cdu_chains_output
 
-    def export_json(self, save_path):
+    def export_cdu_json(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
         if self.sysdiff is None:
             self.ast.export_json(save_path / "diffs")
-        with open(save_path / f"{self.ast.name}_du_output_{self.scope}.json", "w") as f:
+        with open(
+            save_path / f"{self.ast.name}_cdu_output_{self.scope}.json", "w"
+        ) as f:
             json.dump(self.to_json(), f)
 
     def to_csv(self):
@@ -281,7 +283,7 @@ class DefUseChains(NodeVisitor):
 
         return def_points_df, use_points_df, actor_points_df, undefined_names_df
 
-    def export_csv(self, save_path):
+    def export_cdu_csv(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
         if self.sysdiff is None:
             self.ast.export_csv(save_path / "diffs")

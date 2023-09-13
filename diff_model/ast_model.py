@@ -76,7 +76,7 @@ class AST(nx.DiGraph):
         self.unparser = language_support_tools.Unparser(self)
         self.node_names = language_support_tools.NameGetter(self)
         self.node_actors = language_support_tools.ActorGetter(self)
-        self.du_chains = language_support_tools.DefUseChains(self)
+        self.cdu_chains = language_support_tools.ConditionalDefUseChains(self)
         self.stringifier = language_support_tools.Stringifier(self)
 
     def export_dot(self, path, *args, **kwargs):
@@ -473,7 +473,7 @@ class AST(nx.DiGraph):
         return node_data["id"] in self.summarized_nodes[method]
 
     def analyze_data_flow(self):
-        self.du_chains.analyze()
+        self.cdu_chains.analyze()
 
     def clear_node_operarions(self):
         nx.set_node_attributes(self, "no-op", "operation")
@@ -548,7 +548,7 @@ class ASTSlice(AST):
 
         # Set up language support tools
         self.node_names = language_support_tools.NameGetter(self)
-        self.du_chains = language_support_tools.DefUseChains(self)
+        self.cdu_chains = language_support_tools.ConditionalDefUseChains(self)
         self.stringifier = language_support_tools.Stringifier(self)
 
     def set_slice(self, *args, **kwargs):

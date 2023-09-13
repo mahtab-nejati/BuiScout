@@ -4,7 +4,7 @@ from utils.configurations import ROOT_FILE
 from utils.exceptions import DebugException
 
 
-class DefUseChains(cmake.DefUseChains):
+class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
     """
     ##################################
     #### project-specific support ####
@@ -250,7 +250,7 @@ class DefUseChains(cmake.DefUseChains):
             target_ast = getattr(
                 self.sysdiff.file_data[resolution]["diff"], self.ast.name
             )
-            child_scope = self.sysdiff.DefUseChains(
+            child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
             )
             self.children.append(child_scope)

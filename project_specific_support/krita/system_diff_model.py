@@ -1,5 +1,5 @@
 import time
-from .def_use_chains import DefUseChains as ProjectDefUseChains
+from .def_use_chains import ConditionalDefUseChains as ProjectConditionalDefUseChains
 from .utils import get_settings
 import system_commit_model as scm
 
@@ -34,7 +34,7 @@ class SystemDiff(scm.SystemDiff):
             *args,
             **kwargs,
         )
-        self.DefUseChains = ProjectDefUseChains
+        self.ConditionalDefUseChains = ProjectConditionalDefUseChains
 
     def populate_file_data(self):
         self.git_repository.checkout(self.commit.hash)

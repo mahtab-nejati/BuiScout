@@ -52,9 +52,9 @@ class SystemDiff(object):
         self.root_path = root_path
         self.save_path = save_path
 
-        # Storing lists of du_chains
-        self.source_du_chains = []
-        self.destination_du_chains = []
+        # Storing lists of cdu_chains
+        self.source_cdu_chains = []
+        self.destination_cdu_chains = []
 
         self.set_paths()
 
@@ -67,7 +67,14 @@ class SystemDiff(object):
             f"language_supports.{self.language}"
         )
 
-        self.DefUseChains = language_support_tools.DefUseChains
+        self.ConditionalDefUseChains = language_support_tools.ConditionalDefUseChains
+
+        # Flag to ensure ConditionalDefUseChains are produced
+        self.cdus_extracted = False
+        # Flag to ensure PropagationSlice are produced
+        self.ps_extracted = False
+        # Flag to ensure Diff of PropagationSlice are produced
+        self.diff_ps_extracted = False
 
     def set_paths(self):
         self.commit_dir = self.save_path / "commits" / self.commit.hash
@@ -240,47 +247,50 @@ class SystemDiff(object):
             self.file_data[file_path]["diff"] = self.get_file_diff(file_path)
 
     def perform_data_flow_analysis(self):
+        if self.cdus_extracted:
+            return
         analysis_method = "analyze_" + self.mode
         analyzer = getattr(self, analysis_method, self.analyze_global)
         analyzer()
+        self.cdus_extracted = True
 
     def analyze_change_location(self):
         for file_path, file_data in self.file_data.items():
             if file_data["diff"]:
                 print(f"{'#'*10} {file_path} {'#'*10}")
 
-                self.source_du_chains.append(
-                    self.DefUseChains(file_data["diff"].source)
+                self.source_cdu_chains.append(
+                    self.ConditionalDefUseChains(file_data["diff"].source)
                 )
                 print(f"{'#'*10} Analyzing source {'#'*10}")
-                self.source_du_chains[-1].analyze()
+                self.source_cdu_chains[-1].analyze()
 
-                self.destination_du_chains.append(
-                    self.DefUseChains(file_data["diff"].destination)
+                self.destination_cdu_chains.append(
+                    self.ConditionalDefUseChains(file_data["diff"].destination)
                 )
                 print(f"{'#'*10} Analyzing source {'#'*10}")
-                self.destination_du_chains[-1].analyze()
+                self.destination_cdu_chains[-1].analyze()
 
     def analyze_global(self):
         # Skip if the self.root_file has GumTree error
         if self.file_data[self.root_file]["diff"] is None:
             return
 
-        self.source_du_chains.append(
-            self.DefUseChains(
+        self.source_cdu_chains.append(
+            self.ConditionalDefUseChains(
                 self.file_data[self.root_file]["diff"].source, sysdiff=self
             )
         )
         print(f"{'#'*10} Analyzing source {'#'*10}")
-        self.source_du_chains[-1].analyze()
+        self.source_cdu_chains[-1].analyze()
 
-        self.destination_du_chains.append(
-            self.DefUseChains(
+        self.destination_cdu_chains.append(
+            self.ConditionalDefUseChains(
                 self.file_data[self.root_file]["diff"].destination, sysdiff=self
             )
         )
         print(f"{'#'*10} Analyzing destination {'#'*10}")
-        self.destination_du_chains[-1].analyze()
+        self.destination_cdu_chains[-1].analyze()
 
     def get_file_directory(self, file_path):
         return self.file_data[file_path]["file_dir"]
@@ -288,31 +298,32 @@ class SystemDiff(object):
     def set_data_flow_reach_file(self, file_path, cluster):
         self.file_data[file_path][f"data_flow_{cluster}_reach"] = True
 
-    def append_to_chains(self, du_chains):
+    def append_to_chains(self, cdu_chains):
         chain = getattr(
             self,
-            f"{du_chains.ast.name}_du_chains",
+            f"{cdu_chains.ast.name}_cdu_chains",
         )
-        chain.append(du_chains)
+        chain.append(cdu_chains)
 
-    def export_json(self):
+    def export_cdu_json(self):
+        self.perform_data_flow_analysis()
         save_path = self.commit_dir / "data_flow_output"
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        if self.source_du_chains:
-            sducs = list(map(lambda chain: chain.to_json(), self.source_du_chains))
-            with open(save_path / f"source_du_output.json", "w") as f:
-                json.dump(sducs, f)
+        if self.source_cdu_chains:
+            src_cdus = list(map(lambda chain: chain.to_json(), self.source_cdu_chains))
+            with open(save_path / f"source_cdu_output.json", "w") as f:
+                json.dump(src_cdus, f)
 
-        if self.destination_du_chains:
-            dducs = list(
+        if self.destination_cdu_chains:
+            dst_cdus = list(
                 map(
                     lambda chain: chain.to_json(),
-                    self.destination_du_chains,
+                    self.destination_cdu_chains,
                 )
             )
-            with open(save_path / f"destination_du_output.json", "w") as f:
-                json.dump(dducs, f)
+            with open(save_path / f"destination_cdu_output.json", "w") as f:
+                json.dump(dst_cdus, f)
 
         list(
             map(
@@ -324,17 +335,18 @@ class SystemDiff(object):
             )
         )
 
-    def export_csv(self):
+    def export_cdu_csv(self):
+        self.perform_data_flow_analysis()
         save_path = self.commit_dir / "data_flow_output"
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        if self.source_du_chains:
-            sducs = list(map(lambda chain: chain.to_csv(), self.source_du_chains))
+        if self.source_cdu_chains:
+            src_cdus = list(map(lambda chain: chain.to_csv(), self.source_cdu_chains))
 
-            def_points_df = pd.concat(list(map(lambda row: row[0], sducs)))
-            use_points_df = pd.concat(list(map(lambda row: row[1], sducs)))
-            actor_points_df = pd.concat(list(map(lambda row: row[2], sducs)))
-            undefined_names_df = pd.concat(list(map(lambda row: row[3], sducs)))
+            def_points_df = pd.concat(list(map(lambda row: row[0], src_cdus)))
+            use_points_df = pd.concat(list(map(lambda row: row[1], src_cdus)))
+            actor_points_df = pd.concat(list(map(lambda row: row[2], src_cdus)))
+            undefined_names_df = pd.concat(list(map(lambda row: row[3], src_cdus)))
 
             def_points_df.to_csv(save_path / f"source_def_points.csv", index=False)
             use_points_df.to_csv(save_path / f"source_use_points.csv", index=False)
@@ -343,18 +355,18 @@ class SystemDiff(object):
                 save_path / f"source_undefined_names.csv", index=False
             )
 
-        if self.destination_du_chains:
-            dducs = list(
+        if self.destination_cdu_chains:
+            dst_cdus = list(
                 map(
                     lambda chain: chain.to_csv(),
-                    self.destination_du_chains,
+                    self.destination_cdu_chains,
                 )
             )
 
-            def_points_df = pd.concat(list(map(lambda row: row[0], dducs)))
-            use_points_df = pd.concat(list(map(lambda row: row[1], dducs)))
-            actor_points_df = pd.concat(list(map(lambda row: row[2], dducs)))
-            undefined_names_df = pd.concat(list(map(lambda row: row[3], dducs)))
+            def_points_df = pd.concat(list(map(lambda row: row[0], dst_cdus)))
+            use_points_df = pd.concat(list(map(lambda row: row[1], dst_cdus)))
+            actor_points_df = pd.concat(list(map(lambda row: row[2], dst_cdus)))
+            undefined_names_df = pd.concat(list(map(lambda row: row[3], dst_cdus)))
 
             def_points_df.to_csv(save_path / f"destination_def_points.csv", index=False)
             use_points_df.to_csv(save_path / f"destination_use_points.csv", index=False)
@@ -375,12 +387,19 @@ class SystemDiff(object):
             )
         )
 
-    def get_affected_slices(self):
-        source_slices = [chain.get_affected_slices() for chain in self.source_du_chains]
-        destination_slices = [
-            chain.get_affected_slices() for chain in self.destination_du_chains
+    def get_propagation_slices(self):
+        self.perform_data_flow_analysis()
+        source_propagetion_slice = [
+            chain.get_affected_slices() for chain in self.source_cdu_chains
         ]
-        return (source_slices, destination_slices)
+        print(source_propagetion_slice)
+        destination_propagetion_slice = [
+            chain.get_affected_slices() for chain in self.destination_cdu_chains
+        ]
+        print(destination_propagetion_slice)
+
+    def export_ps_csv(self):
+        self.get_propagation_slices()
 
 
 class SystemDiffShortcut(SystemDiff):

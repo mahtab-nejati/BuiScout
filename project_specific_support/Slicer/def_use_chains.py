@@ -4,7 +4,7 @@ from utils.configurations import ROOT_FILE, REPOSITORY
 from utils.exceptions import DebugException
 
 
-class DefUseChains(cmake.DefUseChains):
+class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
     """
     ##################################
     #### project-specific support ####

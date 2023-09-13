@@ -1,5 +1,5 @@
 from utils.visitors import NodeVisitor
-import data_flow_analysis.chain_model as cm
+import data_flow_analysis as cm
 
 
 ROOT_TYPE = "source_file"
@@ -15,7 +15,7 @@ class NameGetter(NodeVisitor):
     pass
 
 
-class DefUseChains(cm.DefUseChains):
+class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     pass
 
 
