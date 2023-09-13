@@ -2147,7 +2147,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # For nested variable references
 
     #############################
-    ###### SLICING THE CDU ######
+    ##### Propagation Slice #####
     #############################
 
     def get_propagation_slices(self):
@@ -2161,7 +2161,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.slice_upwards()
         return self.contamination_summary
 
-    def updatecontamination_summary(self, entries):
+    def update_contamination_summary(self, entries):
         for entry in entries:
             if list(
                 filter(
@@ -2190,7 +2190,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         modified_actor_points = list(
             filter(
-                lambda point: point.is_contaminated,
+                lambda point: point.node_data["operation"] != "no-op",
                 self.actor_points.values(),
             )
         )
@@ -2198,14 +2198,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # def_point is_directly_used_at use_point
         for def_point in modified_def_points:
             if def_point.use_points:
-                self.updatecontamination_summary(
+                self.update_contamination_summary(
                     list(
                         map(
                             lambda use_point: {
                                 "subject": def_point,
+                                "subject_type": "def",
                                 "propagation_rule": "is_directly_used_at"
                                 + ("" if not use_point.set_contamination() else ""),
                                 "object": use_point,
+                                "object_type": "use",
                             },
                             def_point.use_points,
                         )
@@ -2215,14 +2217,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for use_point in modified_use_points:
             # use_point is_used_in_definition_of def_point
             if use_point.actor_point.def_points:
-                self.updatecontamination_summary(
+                self.update_contamination_summary(
                     list(
                         map(
                             lambda def_point: {
                                 "subject": use_point,
+                                "subject_type": "use",
                                 "propagation_rule": "is_used_in_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
+                                "object_type": "def",
                             },
                             use_point.actor_point.def_points.values(),
                         )
@@ -2234,82 +2238,86 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 use_point.actor_point.node_data["type"]
                 in self.ast.node_actors.conditional_actor_types
             ):
-                ast = use_point.ast
-                actor_node = use_point.actor_point.node_data
-                actor_parent = ast.get_data(ast.get_parent(actor_node))
-                actor_siblings = sorted(
-                    ast.get_children(actor_parent).values(),
-                    key=lambda child_node_data: child_node_data["s_pos"],
-                )
-                index = actor_siblings.index(actor_node)
-                actor_siblings = actor_siblings[index + 1 :]
-                affected_nodes_this_scope = ast.get_subtree_nodes(
-                    ast.get_data(ast.get_children_by_type(actor_node, "body"))
-                )
-                affected_nodes_this_scope.update(
-                    reduce(
-                        lambda a, b: {**a, **b},
-                        map(
-                            lambda sibling: ast.get_subtree_nodees(sibling),
-                            actor_siblings,
+                affected_actor_points = list(
+                    filter(
+                        lambda actor_point: (
+                            use_point.actor_point.node_data["id"]
+                            in actor_point.reachability_actor_ids
                         ),
-                        {},
+                        self.actor_points,
+                    )
+                )
+                list(
+                    map(
+                        lambda actor_point: actor_point.set_contamination(),
+                        affected_actor_points,
                     )
                 )
 
-                affected_use_point_ids = set(
-                    affected_nodes_this_scope.keys()
-                ).intersection(set(self.use_points.keys()))
+                affected_use_points = reduce(
+                    lambda a, b: [*a, *b],
+                    map(
+                        lambda actor_point: list(actor_point.use_points.values()),
+                        affected_actor_points,
+                    ),
+                    [],
+                )
 
-                if affected_use_point_ids:
+                affected_def_points = reduce(
+                    lambda a, b: [*a, *b],
+                    map(
+                        lambda actor_point: list(actor_point.def_points.values()),
+                        affected_actor_points,
+                    ),
+                    [],
+                )
+
+                if affected_use_points:
                     # use_point affects_reachability_of_use use_point
-                    self.updatecontamination_summary(
+                    self.update_contamination_summary(
                         list(
                             map(
                                 lambda point: {
                                     "subject": use_point,
-                                    "propagation_rule": "affects_reachability_of_use"
+                                    "subject_type": "use",
+                                    "propagation_rule": "affects_reachability_of"
                                     + ("" if not point.set_contamination() else ""),
                                     "object": point,
+                                    "object_type": "use",
                                 },
-                                filter(
-                                    lambda point: point.node_data["id"]
-                                    in affected_use_point_ids,
-                                    self.use_points.values(),
-                                ),
+                                affected_use_points,
                             )
                         )
                     )
 
-                affected_def_point_ids = set(
-                    affected_nodes_this_scope.keys()
-                ).intersection(set(self.def_points.keys()))
-
-                if affected_def_point_ids:
+                if affected_def_points:
                     # use_point affects_reachability_of_def def_point
-                    self.updatecontamination_summary(
+                    self.update_contamination_summary(
                         list(
                             map(
                                 lambda point: {
                                     "subject": use_point,
-                                    "propagation_rule": "affects_reachability_of_def"
+                                    "subject_type": "use",
+                                    "propagation_rule": "affects_reachability_of"
                                     + ("" if not point.set_contamination() else ""),
                                     "object": point,
+                                    "object_type": "def",
                                 },
-                                filter(
-                                    lambda point: point.node_data["id"]
-                                    in affected_def_point_ids,
-                                    self.def_points.values(),
-                                ),
+                                affected_def_points,
                             )
                         )
                     )
 
-                affected_children_scopes = set(
-                    affected_nodes_this_scope.keys()
-                ).intersection(
-                    set(map(lambda child_chain: child_chain.scope, self.children))
+                affected_children_scopes = list(
+                    filter(
+                        lambda cdu: (
+                            use_point.actor_point.node_data["id"]
+                            in cdu.reachability_actor_id_stack
+                        ),
+                        self.children,
+                    )
                 )
+
                 if affected_children_scopes:
                     children = [
                         child
@@ -2324,44 +2332,57 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             self.contamination_summary.append(
                                 {
                                     "subject": use_point,
-                                    "propagation_rule": "affects_reachability_of_scope",
+                                    "subject_type": "use",
+                                    "propagation_rule": "affects_reachability_of",
                                     "object": child_chain,
+                                    "object_type": "scope",
                                 }
                             )
                             # use_point affects_reachability_of_use use_point
-                            self.updatecontamination_summary(
+                            self.update_contamination_summary(
                                 list(
                                     map(
                                         lambda point: {
                                             "subject": use_point,
-                                            "propagation_rule": "affects_reachability_of_use"
+                                            "subject_type": "use",
+                                            "propagation_rule": "affects_reachability_of"
                                             + (
                                                 ""
                                                 if not point.set_contamination()
                                                 else ""
                                             ),
                                             "object": point,
+                                            "object_type": "use",
                                         },
                                         child_chain.use_points.values(),
                                     )
                                 )
                             )
                             # use_point affects_reachability_of_def def_point
-                            self.updatecontamination_summary(
+                            self.update_contamination_summary(
                                 list(
                                     map(
                                         lambda point: {
                                             "subject": use_point,
-                                            "propagation_rule": "affects_reachability_of_def"
+                                            "subject_type": "use",
+                                            "propagation_rule": "affects_reachability_of"
                                             + (
                                                 ""
                                                 if not point.set_contamination()
                                                 else ""
                                             ),
                                             "object": point,
+                                            "object_type": "def",
                                         },
                                         child_chain.def_points.values(),
                                     )
+                                )
+                            )
+
+                            list(
+                                map(
+                                    lambda point: point.set_contamination(),
+                                    child_chain.actor_points.values(),
                                 )
                             )
                             next_children += child_chain.children
@@ -2376,14 +2397,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
             )
             if non_modified_def_points:
-                self.updatecontamination_summary(
+                self.update_contamination_summary(
                     list(
                         map(
                             lambda def_point: {
                                 "subject": actor_point,
+                                "subject_type": "def",
                                 "propagation_rule": "affects_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
+                                "object_type": "def",
                             },
                             non_modified_def_points,
                         )
@@ -2409,9 +2432,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     map(
                         lambda def_point: {
                             "subject": def_point,
+                            "subject_type": "def",
                             "propagation_rule": "is_directly_used_at"
                             + ("" if not def_point.set_contamination() else ""),
                             "object": use_point,
+                            "object_type": "use",
                         },
                         filter(
                             lambda def_point: use_point in def_point.use_points,
