@@ -463,7 +463,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return
 
     def visit_if_statement(self, node_data, *args, **kwargs):
-        print(self.ast.unparse(node_data))
         stacked_condition_count = (
             len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
             + len(list(self.ast.get_children_by_type(node_data, "else_clause").keys()))
