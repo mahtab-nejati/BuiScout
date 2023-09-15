@@ -74,6 +74,9 @@ class Def(object):
                 "code": self.actor_point.ast.unparse(
                     self.actor_point.node_data, masked_types=["body"]
                 ),
+                "use_node_ids": list(
+                    map(lambda use_point: use_point.node_data["id"], self.use_points)
+                ),
                 "non_contaminated_use_nodes": len(
                     list(
                         map(

@@ -43,13 +43,28 @@ class ConditionalDefUseChains(NodeVisitor):
             self.reachability_actor_id_stack = parent.reachability_actor_id_stack.copy()
 
         # Stores a mapping between def nodes and their object (Def)
-        # in the form of {'node_id': Def}
+        # in the form of {'node_id': [Def]}
+        # We store a list of Def objects for each node
+        # because a Callable body can be processed multiple
+        # times at call location and in case the callable
+        # does not create a new scope, points will get overwritten.
+        # Examples of such cases are macros or the include command in CMake.
         self.def_points = defaultdict(list)
         # Stores a mapping between use nodes and their object (Use)
-        # in the form of {'node_id': Use}
+        # in the form of {'node_id': [Use]}
+        # We store a list of Use objects for each node
+        # because a Callable body can be processed multiple
+        # times at call location and in case the callable
+        # does not create a new scope, points will get overwritten.
+        # Examples of such cases are macros or the include command in CMake.
         self.use_points = defaultdict(list)
         # Stores a mapping between actor nodes and their object (Actor)
-        # in the form of {'node_id': Actor}
+        # in the form of {'node_id': [Actor]}
+        # We store a list of Actor objects for each node
+        # because a Callable body can be processed multiple
+        # times at call location and in case the callable
+        # does not create a new scope, points will get overwritten.
+        # Examples of such cases are macros or the include command in CMake.
         self.actor_points = defaultdict(list)
 
         # Stores a mapping of the name to its definition points {'name': [Def]}
@@ -58,17 +73,6 @@ class ConditionalDefUseChains(NodeVisitor):
         self.used_names = defaultdict(list)
         # Stores a mapping of the name to undefined users {'name': [Use]}
         self.undefined_names = defaultdict(list)
-
-    # def process_undefineds(self):
-    #     """
-    #     # TODO: Needs more work with scoping.
-    #     """
-    #     for undefined_name, undefined_user in self.undefined_names.items():
-    #         if undefined_name in self.defined_names:
-    #             for newdef in self.defined_names[undefined_name]:
-    #                 for user in undefined_user:
-    #                     newdef.add_use_node(user)
-    #         del self.undefined_names[undefined_name]
 
     def get_definitions_by_name(self, node_data, get_from_parent_scopes=True):
         """
@@ -84,7 +88,7 @@ class ConditionalDefUseChains(NodeVisitor):
                 parent = parent.parent
         return defined_names
 
-    def register_new_use_point(self, use_node_data, use_type="VAR"):
+    def register_new_use_point(self, use_node_data, actor_point, use_type="VAR"):
         """
         By default, adds the use_point to all applicable def_points defined
         prior to the use_point, REGARDLESS OF REACHABILITY.
@@ -114,8 +118,9 @@ class ConditionalDefUseChains(NodeVisitor):
                     prior def_points are stil considered.
 
         """
-        use_point = self.create_and_get_use_point(use_node_data, use_type)
-        self.use_points[use_point.node_data["id"]] = use_point
+        use_point = Use(use_node_data, use_type, actor_point, self.ast)
+        actor_point.add_use_point(use_point)
+        self.use_points[use_point.node_data["id"]].append(use_point)
         self.used_names[use_point.name].append(use_point)
         defined_names = self.get_definitions_by_name(use_point.node_data)
         if defined_names:
@@ -144,49 +149,37 @@ class ConditionalDefUseChains(NodeVisitor):
             self.undefined_names[use_point.name].append(use_point)
         return use_point
 
-    def register_new_def_point(self, def_node_data, def_type="VAR", suffix=None):
-        def_point = self.create_and_get_def_point(
-            def_node_data, def_type, suffix=suffix
+    def register_new_def_point(
+        self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
+    ):
+        def_point = Def(
+            def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
         )
-        self.def_points[def_point.node_data["id"]] = def_point
+        actor_point.add_def_point(def_point)
+        self.def_points[def_point.node_data["id"]].append(def_point)
         self.defined_names[def_point.name].append(def_point)
         return def_point
+
+    def register_and_get_new_actor_point(self, node_data):
+        actor_node_data = self.ast.get_actor(node_data)
+        actor_point = Actor(
+            actor_node_data,
+            self.reachability_stack,
+            self.reachability_actor_id_stack,
+            self.ast,
+        )
+        self.actor_points[actor_node_data["id"]].append(actor_point)
+        return actor_point
 
     def register_def_point_to_parent_scope(self, def_point):
         """
         Consumes a Def object and registers it to the parent scope.
         """
         self.parent.defined_names[def_point.name].append(def_point)
-        self.parent.def_points[def_point.node_data["id"]] = def_point
-        self.parent.actor_points[
-            def_point.actor_point.node_data["id"]
-        ] = def_point.actor_point
-
-    def create_and_get_def_point(self, def_node, def_type, suffix=None):
-        actor_point = self.get_or_create_actor_point(def_node)
-        def_point = Def(def_node, def_type, actor_point, self.ast, suffix=suffix)
-        actor_point.add_def_point(def_point)
-        return def_point
-
-    def create_and_get_use_point(self, use_node, use_type="VAR"):
-        actor_point = self.get_or_create_actor_point(use_node)
-        use_point = Use(use_node, use_type, actor_point, self.ast)
-        actor_point.add_use_point(use_point)
-        return use_point
-
-    def get_or_create_actor_point(self, node_data):
-        actor_node_data = self.ast.get_actor(node_data)
-        if actor_node_data["id"] in self.actor_points:
-            actor_point = self.actor_points[actor_node_data["id"]]
-        else:
-            actor_point = Actor(
-                actor_node_data,
-                self.reachability_stack,
-                self.reachability_actor_id_stack,
-                self.ast,
-            )
-            self.actor_points[actor_node_data["id"]] = actor_point
-        return actor_point
+        self.parent.def_points[def_point.node_data["id"]].append(def_point)
+        self.parent.actor_points[def_point.actor_point.node_data["id"]].append(
+            def_point.actor_point
+        )
 
     def add_condition_to_reachability_stack(
         self, condition_node_data, condition_actor_id
@@ -211,7 +204,30 @@ class ConditionalDefUseChains(NodeVisitor):
         if self.sysdiff:
             self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
 
-    def to_json(self):
+    def get_all_def_points(self):
+        return reduce(lambda a, b: [*a, *b], self.def_points.values(), [])
+
+    def get_all_use_points(self):
+        return reduce(lambda a, b: [*a, *b], self.use_points.values(), [])
+
+    def get_all_actor_points(self):
+        return reduce(lambda a, b: [*a, *b], self.actor_points.values(), [])
+
+    def to_json(self, propagation_slice_mode=False):
+        if propagation_slice_mode:
+            def_points = filter(
+                lambda point: point.is_contaminated, self.get_all_def_points()
+            )
+            use_points = filter(
+                lambda point: point.is_contaminated, self.get_all_use_points()
+            )
+            actor_points = filter(
+                lambda point: point.is_contaminated, self.get_all_actor_points()
+            )
+        else:
+            def_points = self.get_all_def_points()
+            use_points = self.get_all_use_points()
+            actor_points = self.get_all_actor_points()
         cdu_chains_output = {
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
@@ -219,22 +235,22 @@ class ConditionalDefUseChains(NodeVisitor):
             "parent_scopes": None if self.parent is None else self.parent.scope,
             "def_points": list(
                 map(
-                    lambda def_point: def_point.to_json(),
-                    self.def_points.values(),
+                    lambda def_point: def_point.to_json(propagation_slice_mode),
+                    def_points,
                 )
             ),
             "use_points": list(
                 map(
-                    lambda use_point: use_point.to_json(),
-                    self.use_points.values(),
+                    lambda use_point: use_point.to_json(propagation_slice_mode),
+                    use_points,
                 )
             ),
             "actor_points": list(
                 map(
-                    lambda actor_point: actor_point.to_json(),
-                    self.actor_points.values(),
+                    lambda actor_point: actor_point.to_json(propagation_slice_mode),
+                    actor_points,
                 )
-            ),  # TODO CONTINUE HERE
+            ),
             "undefined_names": reduce(
                 lambda a, b: [*a, *b],
                 reduce(
@@ -267,30 +283,42 @@ class ConditionalDefUseChains(NodeVisitor):
         ) as f:
             json.dump(self.to_json(), f)
 
-    def to_csv(self):
-        data = self.to_json()
-        def_points_df = pd.DataFrame(data["def_points"])
-        cols = list(def_points_df.columns)
-        def_points_df["scope"] = self.scope
-        def_points_df["parent_scopes"] = (
-            None if self.parent is None else self.parent.scope
-        )
-        def_points_df = def_points_df[["scope", *cols]]
+    def to_csv(self, propagation_slice_mode=False):
+        data = self.to_json(propagation_slice_mode)
+        if data["def_points"]:
+            def_points_df = pd.DataFrame(data["def_points"])
+            cols = list(def_points_df.columns)
+            def_points_df["scope"] = self.scope
+            def_points_df["parent_scopes"] = (
+                None if self.parent is None else self.parent.scope
+            )
+            def_points_df = def_points_df[["scope", *cols]]
+        else:
+            def_points_df = pd.DataFrame()
 
-        use_points_df = pd.DataFrame(data["use_points"])
-        cols = list(use_points_df.columns)
-        use_points_df["scope"] = self.scope
-        use_points_df = use_points_df[["scope", *cols]]
+        if data["use_points"]:
+            use_points_df = pd.DataFrame(data["use_points"])
+            cols = list(use_points_df.columns)
+            use_points_df["scope"] = self.scope
+            use_points_df = use_points_df[["scope", *cols]]
+        else:
+            use_points_df = pd.DataFrame()
 
-        actor_points_df = pd.DataFrame(data["actor_points"])
-        cols = list(actor_points_df.columns)
-        actor_points_df["scope"] = self.scope
-        actor_points_df = actor_points_df[["scope", *cols]]
+        if data["actor_points"]:
+            actor_points_df = pd.DataFrame(data["actor_points"])
+            cols = list(actor_points_df.columns)
+            actor_points_df["scope"] = self.scope
+            actor_points_df = actor_points_df[["scope", *cols]]
+        else:
+            actor_points_df = pd.DataFrame()
 
-        undefined_names_df = pd.DataFrame(data["undefined_names"])
-        cols = list(undefined_names_df.columns)
-        undefined_names_df["scope"] = self.scope
-        undefined_names_df = undefined_names_df[["scope", *cols]]
+        if propagation_slice_mode:
+            undefined_names_df = None
+        else:
+            undefined_names_df = pd.DataFrame(data["undefined_names"])
+            cols = list(undefined_names_df.columns)
+            undefined_names_df["scope"] = self.scope
+            undefined_names_df = undefined_names_df[["scope", *cols]]
 
         return def_points_df, use_points_df, actor_points_df, undefined_names_df
 
@@ -321,6 +349,37 @@ class ConditionalDefUseChains(NodeVisitor):
         """
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.
-        Use the .set_contamination() method to set the .is_contaminated attribute to True.
+
+        NOTE: Make sure you uss the .set_contamination() method to set the .is_contaminated attribute to True
+        for all contaminated Def/Use/Actor objects.
+
+        Each propagation slice is a list of dictionaries representing the
+        propagation relationships in the form of a Knowledge Graph (KD).
+        Each entry of the list is one relationship stored as a dictionary.
+        The dictionaries have the following structure:
+            {
+                'subject': some_object (Def,Use,Actor),
+                'subject_id': 'str_id',
+                'subject_type': the_class,
+                'propagation_rule': 'str_rule',
+                'object': some_object (Def,Use,Actor),
+                'object_id': 'str_id',
+                'object_type': the_class,
+            }
+
+        NOTE: When exporting the output, the "subject" and "object" keys are dropped as it is expected to export
+        them in a different file and refer to them with their id.
         """
         pass
+
+    def get_contaminated_points(self):
+        def_points = list(
+            filter(lambda point: point.is_contaminated, self.get_all_def_points())
+        )
+        use_points = list(
+            filter(lambda point: point.is_contaminated, self.get_all_use_points())
+        )
+        actor_points = list(
+            filter(lambda point: point.is_contaminated, self.get_all_actor_points())
+        )
+        return def_points + use_points + actor_points

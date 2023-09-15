@@ -24,33 +24,39 @@ class Actor(object):
         self.reachability = reachability.copy()
         self.reachability_actor_ids = reachability_actor_ids.copy()
 
-        # Storing the dict of {node_id: Def}
-        self.def_points = {}
-        # Storing the dict of {node_id: Use}
-        self.use_points = {}
+        # Storing the list of [Defs]
+        self.def_points = []
+        # Storing the list of [Uses]
+        self.use_points = []
 
     def set_contamination(self):
         self.is_contaminated = True
 
     def add_def_point(self, def_point):
         """
-        Add def_point (Def object) to the list of defs if it's not already added
+        Add def_point (Def object) to the list of defs.
+        Allows for multiple def_points for the same node
+        for reachability reasons. Reachability is stored
+        in the actor_point and same actor can be reached
+        under different reachability conditions in the
+        same scope if callables don't start a new scope.
+        Examples of such cases are macros or the include
+        command in CMake.
         """
-        if not self.is_listed_def_point(def_point):
-            self.def_points[def_point.node_data["id"]] = def_point
-
-    def is_listed_def_point(self, def_point, *args, **kwargs):
-        return def_point.node_data["id"] in self.def_points
+        self.def_points.append(def_point)
 
     def add_use_point(self, use_point):
         """
-        Add use_point (Use object) to the list of uses if it's not already added
+        Add use_point (Use object) to the list of uses.
+        Allows for multiple def_points for the same node
+        for reachability reasons. Reachability is stored
+        in the actor_point and same actor can be reached
+        under different reachability conditions in the
+        same scope if callables don't start a new scope.
+        Examples of such cases are macros or the include
+        command in CMake.
         """
-        if not self.is_listed_use_point(use_point):
-            self.use_points[use_point.node_data["id"]] = use_point
-
-    def is_listed_use_point(self, use_point, *args, **kwargs):
-        return use_point.node_data["id"] in self.use_points
+        self.use_points.append(use_point)
 
     def to_json(self, propagation_slice_mode=False):
         if propagation_slice_mode:
@@ -64,12 +70,22 @@ class Actor(object):
                 "actor_node_level": self.node_data["level"],
                 "reachability": " ^ ".join(self.reachability),
                 "code": self.ast.unparse(self.node_data, masked_types=["body"]),
+                "def_node_ids": list(
+                    map(lambda point: point.node_data["id"], self.def_points)
+                ),
+                "use_node_ids": list(
+                    map(lambda point: point.node_data["id"], self.use_points)
+                ),
             }
         return {
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
             "actor_node_contamination": self.is_contaminated,
             "reachability": " ^ ".join(self.reachability),
-            "def_node_ids": list(self.def_points.keys()),
-            "use_node_ids": list(self.use_points.keys()),
+            "def_node_ids": list(
+                map(lambda point: point.node_data["id"], self.def_points)
+            ),
+            "use_node_ids": list(
+                map(lambda point: point.node_data["id"], self.use_points)
+            ),
         }

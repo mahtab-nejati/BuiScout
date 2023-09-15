@@ -24,27 +24,9 @@ class ActorGetter(NodeVisitor):
     ]
 
     def generic_visit(self, node_data):
-        return node_data
+        if node_data["type"] in self.argument_actor_types:
+            return node_data
 
-    def visit_function_definition(self, node_data):
-        return self.generic_visit(node_data)
-
-    def visit_macro_definition(self, node_data):
-        return self.generic_visit(node_data)
-
-    def visit_bracket_argument(self, node_data):
-        return self.visit_argument(node_data)
-
-    def visit_quoted_argument(self, node_data):
-        return self.visit_argument(node_data)
-
-    def visit_unquoted_argument(self, node_data):
-        return self.visit_argument(node_data)
-
-    def visit_variable_ref(self, node_data):
-        return self.visit_argument(node_data)
-
-    def visit_argument(self, node_data):
         return max(
             filter(
                 lambda ancestor_data: ancestor_data["type"]

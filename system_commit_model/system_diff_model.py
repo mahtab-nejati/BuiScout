@@ -56,6 +56,25 @@ class SystemDiff(object):
         self.source_cdu_chains = []
         self.destination_cdu_chains = []
 
+        """
+        Each propagation slice is a list of dictionaries representing the 
+        propagation relationships in the form of a Knowledge Graph (KD). 
+        Each entry of the list is one relationship stored as a dictionary. 
+        The dictionaries have the following structure:
+            {
+                'subject': some_object (Def,Use,Actor,CondtionalDefUseChains),
+                'subject_id': 'str_id',
+                'subject_type': the_class,
+                'propagation_rule': 'str_rule',
+                'object': some_object (Def,Use,Actor,CondtionalDefUseChains),
+                'object_id': 'str_id',
+                'object_type': the_class,
+            }
+        """
+        # Storing merged propagation slices
+        self.source_propagetion_slice = []
+        self.destination_propagetion_slice = []
+
         self.set_paths()
 
         self.file_data = {}.copy()
@@ -335,30 +354,134 @@ class SystemDiff(object):
             )
         )
 
-    def export_cdu_csv(self):
+    def compute_propagation_slices(self):
         self.perform_data_flow_analysis()
-        save_path = self.commit_dir / "data_flow_output"
-        Path(save_path).mkdir(parents=True, exist_ok=True)
+
+        source_propagetion_slice = [
+            chain.get_propagation_slices() for chain in self.source_cdu_chains
+        ]
+        self.source_propagetion_slice = reduce(
+            lambda a, b: [*a, *b], source_propagetion_slice, []
+        )
+        contaminated_source_nodes = list(
+            map(
+                lambda point: point.node_data["id"],
+                reduce(
+                    lambda a, b: [*a, *b],
+                    map(
+                        lambda chain: chain.get_contaminated_points(),
+                        self.source_cdu_chains,
+                    ),
+                    [],
+                ),
+            )
+        )
+
+        destination_propagetion_slice = [
+            chain.get_propagation_slices() for chain in self.destination_cdu_chains
+        ]
+        self.destination_propagetion_slice = reduce(
+            lambda a, b: [*a, *b], destination_propagetion_slice, []
+        )
+        contaminated_destination_nodes = list(
+            map(
+                lambda point: point.node_data["id"],
+                reduce(
+                    lambda a, b: [*a, *b],
+                    map(
+                        lambda chain: chain.get_contaminated_points(),
+                        self.destination_cdu_chains,
+                    ),
+                    [],
+                ),
+            )
+        )
+
+        matches = reduce(
+            lambda a, b: ([*a[0], *b[0]], [*a[1], *b[1]]),
+            map(
+                lambda file_data: (
+                    list(
+                        filter(
+                            lambda match: match[0] in contaminated_source_nodes,
+                            file_data["diff"].source_match.items(),
+                        )
+                    ),
+                    list(
+                        filter(
+                            lambda match: match[0] in contaminated_destination_nodes,
+                            file_data["diff"].destination_match.items(),
+                        )
+                    ),
+                ),
+                self.file_data.values(),
+            ),
+            ([], []),
+        )
+        self.source_propagetion_slice_matches = dict(matches[0])
+        self.destination_propagetion_slice_matches = dict(matches[1])
+
+        self.ps_extracted = True
+
+    def export_csv(self, propagation_slice_mode=True):
+        if propagation_slice_mode:
+            self.compute_propagation_slices()
+            save_path = self.commit_dir / "change_propagation_output"
+            Path(save_path).mkdir(parents=True, exist_ok=True)
+
+            source_propagation_rules_df = pd.DataFrame(self.source_propagetion_slice)
+            if len(source_propagation_rules_df):
+                source_propagation_rules_df.drop(
+                    columns=["subject", "object"], inplace=True
+                )
+            source_propagation_rules_df.to_csv(
+                save_path / f"source_propagation_rules.csv", index=False
+            )
+
+            destination_propagation_rules_df = pd.DataFrame(
+                self.destination_propagetion_slice
+            )
+            if len(destination_propagation_rules_df):
+                destination_propagation_rules_df.drop(
+                    columns=["subject", "object"], inplace=True
+                )
+            destination_propagation_rules_df.to_csv(
+                save_path / f"destination_propagation_rules.csv", index=False
+            )
+
+        else:
+            self.perform_data_flow_analysis()
+            save_path = self.commit_dir / "data_flow_output"
+            Path(save_path).mkdir(parents=True, exist_ok=True)
 
         if self.source_cdu_chains:
-            src_cdus = list(map(lambda chain: chain.to_csv(), self.source_cdu_chains))
+            src_cdus = list(
+                map(
+                    lambda chain: chain.to_csv(propagation_slice_mode),
+                    self.source_cdu_chains,
+                )
+            )
 
             def_points_df = pd.concat(list(map(lambda row: row[0], src_cdus)))
             use_points_df = pd.concat(list(map(lambda row: row[1], src_cdus)))
             actor_points_df = pd.concat(list(map(lambda row: row[2], src_cdus)))
-            undefined_names_df = pd.concat(list(map(lambda row: row[3], src_cdus)))
+            if propagation_slice_mode:
+                undefined_names_df = None
+            else:
+                undefined_names_df = pd.concat(list(map(lambda row: row[3], src_cdus)))
 
             def_points_df.to_csv(save_path / f"source_def_points.csv", index=False)
             use_points_df.to_csv(save_path / f"source_use_points.csv", index=False)
             actor_points_df.to_csv(save_path / f"source_actor_points.csv", index=False)
-            undefined_names_df.to_csv(
-                save_path / f"source_undefined_names.csv", index=False
-            )
+            if undefined_names_df:
+                undefined_names_df.to_csv(
+                    save_path / f"source_undefined_names.csv", index=False
+                )
 
         if self.destination_cdu_chains:
             dst_cdus = list(
                 map(
-                    lambda chain: chain.to_csv(),
+                    lambda chain: chain.to_csv(propagation_slice_mode),
                     self.destination_cdu_chains,
                 )
             )
@@ -366,40 +489,54 @@ class SystemDiff(object):
             def_points_df = pd.concat(list(map(lambda row: row[0], dst_cdus)))
             use_points_df = pd.concat(list(map(lambda row: row[1], dst_cdus)))
             actor_points_df = pd.concat(list(map(lambda row: row[2], dst_cdus)))
-            undefined_names_df = pd.concat(list(map(lambda row: row[3], dst_cdus)))
+            if propagation_slice_mode:
+                undefined_names_df = None
+            else:
+                undefined_names_df = pd.concat(list(map(lambda row: row[3], dst_cdus)))
 
             def_points_df.to_csv(save_path / f"destination_def_points.csv", index=False)
             use_points_df.to_csv(save_path / f"destination_use_points.csv", index=False)
             actor_points_df.to_csv(
                 save_path / f"destination_actor_points.csv", index=False
             )
-            undefined_names_df.to_csv(
-                save_path / f"destination_undefined_names.csv", index=False
+            if undefined_names_df:
+                undefined_names_df.to_csv(
+                    save_path / f"destination_undefined_names.csv", index=False
+                )
+
+        if propagation_slice_mode:
+            source_matches_df = pd.DataFrame(
+                list(
+                    map(
+                        lambda pair: {"source": pair[0], "destination": pair[1]},
+                        self.source_propagetion_slice_matches.items(),
+                    )
+                )
             )
-
-        list(
-            map(
-                lambda file_data: file_data["diff"].export_csv(save_path),
-                filter(
-                    lambda file_data: (file_data["diff"] is not None),
-                    self.file_data.values(),
-                ),
+            destination_matches_df = pd.DataFrame(
+                list(
+                    map(
+                        lambda pair: {"source": pair[1], "destination": pair[0]},
+                        self.destination_propagetion_slice_matches.items(),
+                    )
+                )
             )
-        )
-
-    def get_propagation_slices(self):
-        self.perform_data_flow_analysis()
-        source_propagetion_slice = [
-            chain.get_propagation_slices() for chain in self.source_cdu_chains
-        ]
-        print(source_propagetion_slice)
-        destination_propagetion_slice = [
-            chain.get_propagation_slices() for chain in self.destination_cdu_chains
-        ]
-        print(destination_propagetion_slice)
-
-    def export_ps_csv(self):
-        self.get_propagation_slices()
+            matches_df = pd.concat([source_matches_df, destination_matches_df])
+            matches_df.drop_duplicates(inplace=True)
+            matches_df.to_csv(
+                save_path / f"node_matches.csv",
+                index=False,
+            )
+        else:
+            list(
+                map(
+                    lambda file_data: file_data["diff"].export_csv(save_path),
+                    filter(
+                        lambda file_data: (file_data["diff"] is not None),
+                        self.file_data.values(),
+                    ),
+                )
+            )
 
 
 class SystemDiffShortcut(SystemDiff):

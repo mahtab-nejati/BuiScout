@@ -273,13 +273,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def visit_function_definition(self, node_data):
+    def visit_function_definition(self, node_data, *args, **kwargs):
         print(f"Function definition {self.ast.get_name(node_data)}")
-        self.register_new_def_point(node_data, "FUNCTION")
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.register_new_def_point(node_data, actor_point, "FUNCTION")
 
-        return self.process_callable_definition_location(node_data, "function")
+        return self.process_callable_definition_location(
+            node_data, "function", actor_point
+        )
 
-    def visit_function_header(self, node_data):
+    def visit_function_header(self, node_data, actor_point, *args, **kwargs):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
         if arguments_node:
             arguments = self.ast.get_children(
@@ -287,19 +290,23 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             ).values()
             list(
                 map(
-                    lambda argument: self.register_new_def_point(argument, "VARIABLE"),
+                    lambda argument: self.register_new_def_point(
+                        argument, actor_point, "VARIABLE"
+                    ),
                     arguments,
                 )
             )
         return
 
-    def visit_macro_definition(self, node_data):
+    def visit_macro_definition(self, node_data, *args, **kwargs):
         print(f"Macro definition {self.ast.get_name(node_data)}")
-        self.register_new_def_point(node_data, "MACRO")
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.register_new_def_point(node_data, actor_point, "MACRO")
+        return self.process_callable_definition_location(
+            node_data, "macro", actor_point
+        )
 
-        return self.process_callable_definition_location(node_data, "macro")
-
-    def visit_macro_header(self, node_data):
+    def visit_macro_header(self, node_data, actor_point, *args, **kwargs):
         arguments_node = self.ast.get_children_by_type(node_data, "arguments")
         if arguments_node:
             arguments = self.ast.get_children(
@@ -307,13 +314,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             ).values()
             list(
                 map(
-                    lambda argument: self.register_new_def_point(argument, "VARIABLE"),
+                    lambda argument: self.register_new_def_point(
+                        argument, actor_point, "VARIABLE"
+                    ),
                     arguments,
                 )
             )
         return
 
-    def process_callable_definition_location(self, node_data, callable_type):
+    def process_callable_definition_location(
+        self, node_data, callable_type, actor_point
+    ):
         """
         This method only analyzes the definition of a function/macro
         so that changes to a callable that has never been used also get analyzed
@@ -330,7 +341,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         header_data = child_scope.ast.get_data(
             child_scope.ast.get_children_by_type(node_data, f"{callable_type}_header")
         )
-        child_scope.visit(header_data)
+        child_scope.visit(header_data, actor_point)
         body_data = child_scope.ast.get_data(
             child_scope.ast.get_children_by_type(node_data, "body")
         )
@@ -339,8 +350,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return
 
     def process_callable_call_location(self, node_data, def_point):
-        self.register_new_use_point(node_data, def_point.type)
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.register_new_use_point(node_data, actor_point, def_point.type)
+        self.generic_visit(node_data, actor_point)
+
+        # Calls have an impact on the reachability of the content.
+        self.add_condition_to_reachability_stack(node_data, node_data["id"])
         if def_point.type == "FUNCTION":
             print(
                 f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id']}"
@@ -359,7 +374,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             header_data = child_scope.ast.get_data(
                 child_scope.ast.get_children_by_type(definer_node, "function_header")
             )
-            child_scope.visit(header_data)
+            child_scope.visit(header_data, actor_point)
             body_data = child_scope.ast.get_data(
                 child_scope.ast.get_children_by_type(definer_node, "body")
             )
@@ -377,15 +392,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             header_data = self.ast.get_data(
                 self.ast.get_children_by_type(definer_node, "macro_header")
             )
-            self.visit(header_data)
+            self.visit(header_data, actor_point)
             body_data = self.ast.get_data(
                 self.ast.get_children_by_type(definer_node, "body")
             )
             self.visit(body_data)
 
             self.ast = self.ast_stack.pop()
+        # Remove from reachability condition
+        self.remove_condition_from_reachability_stack
 
-    def visit_block_definition(self, node_data):
+    def visit_block_definition(self, node_data, *args, **kwargs):
         header_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "block_header")
         )
@@ -428,26 +445,24 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         )
                         for def_point in def_points:
                             self.defined_names[var_name].append(def_point)
-                            self.def_points[def_point.node_data["id"]] = def_point
+                            self.def_points[def_point.node_data["id"]].append(def_point)
                             self.actor_points[
                                 def_point.actor_point.node_data["id"]
-                            ] = def_point.actor_point
+                            ].append(def_point.actor_point)
 
         else:
-            return self.generic_visit(node_data)
+            return self.generic_visit(node_data, *args, **kwargs)
 
-    def visit_if_statement(self, node_data):
+    def visit_if_statement(self, node_data, *args, **kwargs):
         stacked_condition_count = (
             len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
             + len(list(self.ast.get_children_by_type(node_data, "else_clause").keys()))
             + 1  # For the if_clause
         )
-        self.generic_visit(node_data)
-
+        self.generic_visit(node_data, *args, **kwargs)
         self.remove_condition_from_reachability_stack(last_n=stacked_condition_count)
-        return
 
-    def visit_if_clause(self, node_data):
+    def visit_if_clause(self, node_data, *args, **kwargs):
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
         )
@@ -458,9 +473,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "body")
         )
         if body_node_data:
-            return self.generic_visit(body_node_data)
+            return self.generic_visit(body_node_data, *args, **kwargs)
 
-    def visit_elseif_clause(self, node_data):
+    def visit_elseif_clause(self, node_data, *args, **kwargs):
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
         )
@@ -475,7 +490,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if body_node_data:
             return self.generic_visit(body_node_data)
 
-    def visit_else_clause(self, node_data):
+    def visit_else_clause(self, node_data, *args, **kwargs):
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
         )
@@ -490,12 +505,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if body_node_data:
             return self.generic_visit(body_node_data)
 
-    def visit_while_statement(self, node_data):
-        self.generic_visit(node_data)
+    def visit_while_statement(self, node_data, *args, **kwargs):
+        self.generic_visit(node_data, *args, **kwargs)
         self.remove_condition_from_reachability_stack(last_n=1)
         return
 
-    def visit_while_clause(self, node_data):
+    def visit_while_clause(self, node_data, *args, **kwargs):
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
         )
@@ -506,9 +521,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "body")
         )
         if body_node_data:
-            return self.generic_visit(body_node_data)
+            return self.generic_visit(body_node_data, *args, **kwargs)
 
     def visit_conditional_expression(self, node_data, negate_last_condition=False):
+        actor_point = self.register_and_get_new_actor_point(node_data)
         if negate_last_condition:
             self.negate_last_condition_in_reachability_stack(negation_symbol="NOT")
 
@@ -545,16 +561,20 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         for argument in arguments:
             if self.ast.unparse(argument).upper() not in operators:
-                self.register_new_use_point(argument, "VARIABLE")
+                self.register_new_use_point(argument, actor_point, "VARIABLE")
 
-        return self.generic_visit(node_data)
+        self.generic_visit(node_data, actor_point)
 
-    def visit_foreach_clause(self, node_data):
+    def visit_foreach_clause(self, node_data, *args, **kwargs):
         """
         # TODO (High): Look into the scoping.
         """
+        actor_point = self.register_and_get_new_actor_point(node_data)
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
+        )
+        body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(node_data, "body")
         )
         arguments = sorted(
             filter(
@@ -564,13 +584,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             key=lambda data: data["s_pos"],
         )
         def_node = arguments.pop(0)
-        self.register_new_def_point(def_node, "VARIABLE")
+        self.register_new_def_point(def_node, actor_point, "VARIABLE")
+        def_point = self.def_points[def_node["id"]][-1]
 
-        self.generic_visit(node_data)
+        self.generic_visit(condition_node_data, actor_point)
+        self.generic_visit(body_node_data, *args, **kwargs)
 
-        self.def_points[def_node["id"]].lock = True
+        def_point.lock = True
 
-    def visit_normal_command(self, node_data):
+    def visit_normal_command(self, node_data, *args, **kwargs):
         command_identifier = self.ast.unparse(
             self.ast.get_data(self.ast.get_children_by_type(node_data, "identifier"))
         ).upper()
@@ -614,11 +636,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     self.process_callable_call_location(node_data, def_point)
                     continue
         elif not self.parent_names_available:
-            self.register_new_use_point(node_data, "SOME_COMMAND")
-            self.generic_visit(node_data)
+            actor_point = self.register_and_get_new_actor_point(node_data)
+            self.register_new_use_point(node_data, actor_point, "SOME_COMMAND")
+            self.generic_visit(node_data, actor_point)
         elif self.parent_names_available:
-            self.register_new_use_point(node_data, "UNKNOWN_COMMAND")
-            self.generic_visit(node_data)
+            actor_point = self.register_and_get_new_actor_point(node_data)
+            self.register_new_use_point(node_data, actor_point, "UNKNOWN_COMMAND")
+            self.generic_visit(node_data, actor_point)
         return
 
     ############################
@@ -631,26 +655,29 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ########## Scripting Commands:
 
     def visit_BREAK(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_HOST_SYSTEM_INFORMATION(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CMAKE_HOST_SYSTEM_INFORMATION"
         )
 
-        self.register_new_def_point(arguments[1], "VARIABLE")
+        self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_CMAKE_LANGUAGE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_LANGUAGE")
 
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET_MESSAGE_LOG_LEVEL":
-            self.register_new_def_point(arguments[1], "VARIABLE")
+            self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in [
@@ -658,7 +685,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 "GET_CALL_IDS",
                 "GET_CALL",
             ]:
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() == "CALL":
                 print(
@@ -667,13 +694,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
     def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PATH(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_PATH")
 
@@ -681,11 +711,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         current_target_operations = ["COMPARE", "CONVERT"]
         if not operation in current_target_operations:
-            self.register_new_use_point(arguments[1], "VARIABLE")
+            self.register_new_use_point(arguments[1], actor_point, "VARIABLE")
 
         if operation == "CONVERT":
-            self.register_new_def_point(arguments[3], "VARIABLE")
-            return self.generic_visit(node_data)
+            self.register_new_def_point(arguments[3], actor_point, "VARIABLE")
+            return self.generic_visit(node_data, actor_point)
 
         current_target_operations = [
             "GET",
@@ -703,8 +733,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             "HASH",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1], "VARIABLE")
-            return self.generic_visit(node_data)
+            self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
+            return self.generic_visit(node_data, actor_point)
 
         current_target_operations = [
             "APPEND",
@@ -720,27 +750,33 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if operation in current_target_operations:
             for i, argument in enumerate(arguments):
                 if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
-                    self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                    self.register_new_def_point(
+                        arguments[i + 1], actor_point, "VARIABLE"
+                    )
                     break
 
     def visit_CMAKE_POLICY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_POLICY")
 
         operation = self.ast.unparse(arguments[0]).upper()
 
         if operation == "GET":
-            self.register_new_def_point(arguments[-1], "VARIABLE")
+            self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_CONFIGURE_FILE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_CONTINUE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_EXECUTE_PROCESS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "EXECUTE_PROCESS")
 
@@ -753,10 +789,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
 
     def visit_FILE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
 
@@ -764,8 +801,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         current_target_operations = ["GLOB", "GLOB_RECURSE", "RELATIVE_PATH"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1], "VARIABLE")
-            return self.generic_visit(node_data)
+            self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
+            return self.generic_visit(node_data, actor_point)
 
         current_target_operations = [
             "READ",
@@ -788,24 +825,27 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             "SHA3_512",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[2], "VARIABLE")
+            self.register_new_def_point(arguments[2], actor_point, "VARIABLE")
 
     def visit_FIND_FILE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_FILE")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_LIBRARY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_LIBRARY")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PACKAGE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PACKAGE")
         print(
@@ -848,57 +888,62 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in keywords:
                         break
-                    self.register_new_def_point(arg, "VARIABLE")
-                return self.generic_visit(node_data)
+                    self.register_new_def_point(arg, actor_point, "VARIABLE")
+                return
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PATH(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PATH")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PROGRAM(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PROGRAM")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_GET_CMAKE_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_CMAKE_PROPERTY")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
-        self.register_new_use_point(arguments[1], "PROPERTY")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        self.register_new_use_point(arguments[1], actor_point, "PROPERTY")
 
     def visit_GET_DIRECTORY_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_DIRECTORY_PROPERTY"
         )
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "DEFINITION":
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
-                return self.generic_visit(node_data)
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
+                return
 
-        self.register_new_use_point(arguments[-1], "PROPERTY")
+        self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
     def visit_GET_FILENAME_COMPONENT(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_FILENAME_COMPONENT"
         )
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
@@ -907,31 +952,38 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
 
     def visit_GET_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_PROPERTY")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             keyword = self.ast.unparse(argument).upper()
             if keyword in ["TARGET", "TARGET_DIRECTORY"]:
-                self.register_new_use_point(arguments[i + 1], "TARGET")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
             elif keyword == "TEST":
-                self.register_new_use_point(arguments[i + 1], "TEST")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TEST")
             elif keyword == "PROPERTY":
-                self.register_new_use_point(arguments[i + 1], "PROPERTY")
+                self.register_new_use_point(arguments[i + 1], actor_point, "PROPERTY")
             elif keyword == "CACHE":
-                self.register_new_use_point(arguments[i + 1], "VARIABLE")
+                self.register_new_use_point(arguments[i + 1], actor_point, "VARIABLE")
 
     def visit_INCLUDE(self, node_data):
-        self.generic_visit(node_data)
+        # Because this command imoprts other commands at this location,
+        # the actor must be taken as a reachability condition.
+        # This happens when the resolution is successful and right before
+        # the analysis of the resolved file. The condition is removed from
+        # the reachability stack after the resolved file is processed.
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "INCLUDE")
 
         for i, argument in enumerate(arguments[1:]):
             if self.ast.unparse(argument).upper() == "RESULT_VARIABLE":
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 break
 
         # For file-level analysis (No system provided)
@@ -1004,6 +1056,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             included_file = [included_file]
 
+        self.add_condition_to_reachability_stack(node_data, node_data["id"])
         self.ast_stack.append(self.ast)
 
         for resolution in included_file:
@@ -1020,22 +1073,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Finished working on included file
 
         self.ast = self.ast_stack.pop()
+        self.remove_condition_from_reachability_stack()
 
     def visit_INCLUDE_GUARD(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_LIST(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
 
         operation = self.ast.unparse(arguments[0]).upper()
 
-        self.register_new_use_point(arguments[1], "VARIABLE")
+        self.register_new_use_point(arguments[1], actor_point, "VARIABLE")
 
         current_target_operations = ["LENGTH", "GET", "JOIN", "SUBLIST", "FIND"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1], "VARIABLE")
+            self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
         current_target_operations = [
             "POP_BACK",
@@ -1044,7 +1100,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if operation in current_target_operations:
             if len(arguments) > 2:
                 for def_node in arguments[2:]:
-                    self.register_new_def_point(def_node, "VARIABLE")
+                    self.register_new_def_point(def_node, actor_point, "VARIABLE")
 
         # TODO (Decision): The following commented operations modify the list
         # but do not change the content (only reordering and cleaning).
@@ -1062,10 +1118,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             "SORT",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1], "VARIABLE")
+            self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_MARK_AS_ADVANCED(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "MARK_AS_ADVANCED")
 
@@ -1075,28 +1132,32 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             start_index = 1
 
         for argument in arguments[start_index:]:
-            self.register_new_use_point(argument, "VARIABLE")
-            self.register_new_def_point(argument, "VARIABLE")
+            self.register_new_use_point(argument, actor_point, "VARIABLE")
+            self.register_new_def_point(argument, actor_point, "VARIABLE")
 
     def visit_MATH(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "MATH")
 
-        self.register_new_def_point(arguments[1], "VARIABLE")
+        self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_MESSAGE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_OPTION(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "OPTION")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_RETURN(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         try:
             arguments = self.get_sorted_arguments_data_list(node_data, "RETURN")
@@ -1110,15 +1171,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # for i, argument in enumerate(arguments):
         #     if self.ast.unparse(argument).upper() == "PROPAGATE":
         #         for arg in argument[i + 1 :]:
-        #             self.register_new_use_point(arg, "VARIABLE")
-        #             self.register_new_def_point(arg, "VARIABLE")
+        #             self.register_new_use_point(arg, actor_point, "VARIABLE")
+        #             self.register_new_def_point(arg, actor_point, "VARIABLE")
 
     def visit_SEPARATE_ARGUMENTS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for argument in arguments:
             if self.ast.unparse(argument).upper() == "PROGRAM":
@@ -1127,18 +1189,20 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
 
     def visit_SET(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SET")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            def_point = self.def_points[arguments[0]["id"]]
+            def_point = self.def_points[arguments[0]["id"]][-1]
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_SET_DIRECTORY_PROPERTIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_DIRECTORY_PROPERTIES"
@@ -1146,10 +1210,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if (i % 2) == 1:
-                self.register_new_def_point(argument, "PROPERTY")
+                self.register_new_def_point(argument, actor_point, "PROPERTY")
 
     def visit_SET_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
 
@@ -1172,36 +1237,38 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if unparsed_argument == "TARGET":
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() not in keywords:
-                        self.register_new_use_point(arg, "TARGET")
-                        self.register_new_def_point(arg, "TARGET")
+                        self.register_new_use_point(arg, actor_point, "TARGET")
+                        self.register_new_def_point(arg, actor_point, "TARGET")
                     else:
                         break
             elif unparsed_argument == "TEST":
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() not in keywords:
-                        self.register_new_use_point(arg, "TEST")
-                        self.register_new_def_point(arg, "TEST")
+                        self.register_new_use_point(arg, actor_point, "TEST")
+                        self.register_new_def_point(arg, actor_point, "TEST")
                     else:
                         break
             if unparsed_argument == "CACHE":
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() not in keywords:
-                        self.register_new_use_point(arg, "VARIABLE")
-                        self.register_new_def_point(arg, "VARIABLE")
+                        self.register_new_use_point(arg, actor_point, "VARIABLE")
+                        self.register_new_def_point(arg, actor_point, "VARIABLE")
                     else:
                         break
             elif unparsed_argument == "PROPERTY":
-                self.register_new_def_point(arguments[i + 1], "PROPERTY")
+                self.register_new_def_point(arguments[i + 1], actor_point, "PROPERTY")
 
     def visit_SITE_NAME(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SITE_NAME")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_STRING(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
 
@@ -1210,15 +1277,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if operation == "REGEX":
             sub_operation = self.ast.unparse(arguments[1])
             if sub_operation == "REPLACE":
-                self.register_new_def_point(arguments[4], "VARIABLE")
+                self.register_new_def_point(arguments[4], actor_point, "VARIABLE")
             else:
-                self.register_new_def_point(arguments[3], "VARIABLE")
+                self.register_new_def_point(arguments[3], actor_point, "VARIABLE")
             return
 
         if operation == "JSON":
-            self.register_new_def_point(arguments[1], "VARIABLE")
+            self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
             if self.ast.unparse(arguments[2]).upper() == "ERROR_VARIABLE":
-                self.register_new_def_point(arguments[3], "VARIABLE")
+                self.register_new_def_point(arguments[3], actor_point, "VARIABLE")
             return
 
         current_target_operations = [
@@ -1239,17 +1306,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             "SHA3_512",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[1], "VARIABLE")
+            self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
             return
 
         current_target_operations = ["JOIN", "CONFIGURE"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[2], "VARIABLE")
+            self.register_new_def_point(arguments[2], actor_point, "VARIABLE")
             return
 
         current_target_operations = ["FIND", "REPLACE"]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[3], "VARIABLE")
+            self.register_new_def_point(arguments[3], actor_point, "VARIABLE")
             return
 
         current_target_operations = [
@@ -1267,34 +1334,37 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             "RANDOM",
         ]
         if operation in current_target_operations:
-            self.register_new_def_point(arguments[-1], "VARIABLE")
+            self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
             return
 
     def visit_UNSET(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
 
-        self.register_new_use_point(arguments[0], "VARIABLE")
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_use_point(arguments[0], actor_point, "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            def_point = self.def_points[arguments[0]["id"]]
+            def_point = self.def_points[arguments[0]["id"]][-1]
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_VARIABLE_WATCH(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "VARIABLE_WATCH")
 
-        self.register_new_use_point(arguments[0], "VARIABLE")
+        self.register_new_use_point(arguments[0], actor_point, "VARIABLE")
         if len(arguments) == 2:
-            self.register_new_use_point(arguments[-1], "COMMAND")
+            self.register_new_use_point(arguments[-1], actor_point, "COMMAND")
 
     ########## Project Commands:
 
     def visit_ADD_COMPILE_DEFINITIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "ADD_COMPILE_DEFINITIONS"
@@ -1306,15 +1376,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_ADD_COMPILE_OPTIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
         if self.ast.unparse(arguments[0]).upper() == "TARGET":
-            self.register_new_use_point(arguments[1], "TARGET")
+            self.register_new_use_point(arguments[1], actor_point, "TARGET")
 
         print(
             f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -1352,21 +1424,23 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         #                     lambda def_point: def_point.type == "TARGET", defined_names
         #                 )
         #             ):
-        #                 self.register_new_use_point(arg, "TARGET")
+        #                 self.register_new_use_point(arg,actor_point, "TARGET")
 
     def visit_ADD_CUSTOM_TARGET(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
 
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         print(
             f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
     def visit_ADD_DEFINITIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         # try:
         #     arguments = self.get_sorted_arguments_data_list(
@@ -1380,14 +1454,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_ADD_DEPENDENCIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
 
         for argument in arguments:
-            self.register_new_use_point(argument, "TARGET")
+            self.register_new_use_point(argument, actor_point, "TARGET")
 
-        self.register_new_use_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -1396,11 +1471,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         or will be variable_ref which will be caught when running generic_visit
         on node_data at the end.
         """
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_EXECUTABLE")
 
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         try:
             operation = self.ast.unparse(arguments[1]).upper()
@@ -1412,7 +1488,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             pass
         elif operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1], "TARGET")
+            self.register_new_use_point(arguments[-1], actor_point, "TARGET")
 
     def visit_ADD_LIBRARY(self, node_data):
         """
@@ -1422,11 +1498,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         TODO: See object library and check object reference
         TODO: See imported library and check global with scoping
         """
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_LIBRARY")
 
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         try:
             operation = self.ast.unparse(arguments[1]).upper()
@@ -1435,10 +1512,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         if operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1], "TARGET")
+            self.register_new_use_point(arguments[-1], actor_point, "TARGET")
 
     def visit_ADD_LINK_OPTIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_ADD_SUBDIRECTORY(self, node_data):
         """
@@ -1448,7 +1526,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             https://stackoverflow.com/a/49989597
             https://stackoverflow.com/a/48510440
         """
-        self.generic_visit(node_data)
+        # Because this command imoprts other commands at this location,
+        # the actor must be taken as a reachability condition.
+        # This happens when the resolution is successful and right before
+        # the analysis of the resolved file. The condition is removed from
+        # the reachability stack after the resolved file is processed.
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
 
@@ -1512,6 +1596,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             added_file = [added_file]
 
         # Successful resolution
+        # Add to reachability stack
+        self.add_condition_to_reachability_stack(node_data, node_data["id"])
         for resolution in added_file:
             self.sysdiff.file_data[resolution]["language_specific_info"][
                 "importers"
@@ -1532,76 +1618,87 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 child_scope.ast.file_path, child_scope.ast.name
             )
             # Finished working on added file
+        # Remove from reachability stack
+        self.remove_condition_from_reachability_stack()
 
     def visit_ADD_TEST(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
 
         if self.ast.unparse(arguments[0]).upper() == "NAME":
-            self.register_new_def_point(arguments[1], "TEST")
+            self.register_new_def_point(arguments[1], actor_point, "TEST")
         else:
-            self.register_new_def_point(arguments[0], "TEST")
+            self.register_new_def_point(arguments[0], actor_point, "TEST")
 
         print(
             f"Support needed for command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "AUX_SOURCE_DIRECTORY"
         )
 
-        self.register_new_def_point(arguments[-1], "VARIABLE")
+        self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_BUILD_COMMAND(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "BUILD_COMMAND")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], "TARGET")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
                 break
 
     def visit_CMAKE_FILE_API(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_CREATE_TEST_SOURCELIST(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "CREATE_TEST_SOURCELIST"
         )
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for argument in arguments[2:]:
             if self.ast.unparse(argument).upper() in ["EXTRA_INCLUDE", "FUNCTION"]:
-                self.register_new_use_point(argument, "TEST")
+                self.register_new_use_point(argument, actor_point, "TEST")
 
     def visit_DEFINE_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
 
-        self.register_new_def_point(arguments[2], "PROPERTY")
+        self.register_new_def_point(arguments[2], actor_point, "PROPERTY")
 
         if self.ast.unparse(arguments[-2]).upper() == "INITIALIZE_FROM_VARIABLE":
-            self.register_new_def_point(arguments[-1], "VARIABLE")
+            self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_ENABLE_LANGUAGE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_ENABLE_TESTING(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_EXPORT(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "EXPORT")
 
@@ -1620,7 +1717,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 if self.ast.unparse(argument).upper() in keywords:
                     break
                 else:
-                    self.register_new_use_point(argument, "TARGET")
+                    self.register_new_use_point(argument, actor_point, "TARGET")
 
         if operation in ["EXPORT", "PACKAGE"]:
             print(
@@ -1628,58 +1725,66 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
 
     def visit_FLTK_WRAP_UI(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FLTK_WRAP_UI")
 
-        self.register_new_def_point(arguments[0], "VARIABLE", suffix="_FLTK_UI_SRCS")
+        self.register_new_def_point(
+            arguments[0], actor_point, "VARIABLE", suffix="_FLTK_UI_SRCS"
+        )
 
     def visit_GET_SOURCE_FILE_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_SOURCE_FILE_PROPERTY"
         )
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
-        self.register_new_use_point(arguments[-1], "PROPERTY")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET_DIRECTORY":
-                self.register_new_use_point(arguments[i + 1], "TARGET")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
                 break
 
     def visit_GET_TARGET_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "GET_TARGET_PROPERTY"
         )
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
-        self.register_new_use_point(arguments[1], "TARGET")
-        self.register_new_use_point(arguments[-1], "PROPERTY")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        self.register_new_use_point(arguments[1], actor_point, "TARGET")
+        self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
     def visit_GET_TEST_PROPERTY(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_TEST_PROPERTY")
 
-        self.register_new_use_point(arguments[0], "TEST")
-        self.register_new_use_point(arguments[1], "PROPERTY")
-        self.register_new_def_point(arguments[-1], "VARIABLE")
+        self.register_new_use_point(arguments[0], actor_point, "TEST")
+        self.register_new_use_point(arguments[1], actor_point, "PROPERTY")
+        self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_INCLUDE_DIRECTORIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_INCLUDE_EXTERNAL_MSPROJECT(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "INCLUDE_EXTERNAL_MSPROJECT"
         )
 
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         keywrods = ["GUID", "PLATFORM", "TYPE"]
 
@@ -1690,14 +1795,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     i += 2
                 else:
                     for arg in arguments[i:]:
-                        self.register_new_use_point(arg, "TARGET")
+                        self.register_new_use_point(arg, actor_point, "TARGET")
                     break
 
     def visit_INCLUDE_REGULAR_EXPRESSION(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_INSTALL(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
 
@@ -1762,17 +1869,19 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in all_keywords:
                         break
-                    self.register_new_use_point(arg, "TARGET")
+                    self.register_new_use_point(arg, actor_point, "TARGET")
 
         print(
             f"Support needed (partial) for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
     def visit_LINK_DIRECTORIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_LINK_LIBRARIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "LINK_LIBRARIES")
 
@@ -1785,7 +1894,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         No support for the old and discouraged signature.
         see: https://cmake.org/cmake/help/v3.27/command/load_cache.html
         """
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
 
@@ -1794,15 +1904,19 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if unparsed_argument == "READ_WITH_PREFIX":
                 prefix = self.ast.unparse(arguments[i + 1])
                 for arg in arguments[i + 2 :]:
-                    self.register_new_use_point(arg, "VARIABLE")
-                    self.register_new_def_point(arg, "VARIABLE", prefix=prefix)
+                    self.register_new_use_point(arg, actor_point, "VARIABLE")
+                    self.register_new_def_point(
+                        arg, actor_point, "VARIABLE", prefix=prefix
+                    )
                 break
 
     def visit_PROJECT(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
 
@@ -1811,7 +1925,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_SOURCE_FILES_PROPERTIES"
@@ -1828,19 +1943,22 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in current_target_keywords:
                         break
-                    self.register_new_use_point(arg, "TARGET")
+                    self.register_new_use_point(arg, actor_point, "TARGET")
             elif self.ast.unparse(argument).upper() == "PROPERTIES":
                 j = i + 1
                 while True:
                     if len(arguments) > j:
-                        self.register_new_def_point(arguments[j], "PROPERTY")
+                        self.register_new_def_point(
+                            arguments[j], actor_point, "PROPERTY"
+                        )
                         j += 2
                     else:
                         break
                 break
 
     def visit_SET_TARGET_PROPERTIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_TARGET_PROPERTIES"
@@ -1848,20 +1966,23 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() != "PROPERTIES":
-                self.register_new_use_point(argument, "TARGET")
-                self.register_new_def_point(argument, "TARGET")
+                self.register_new_use_point(argument, actor_point, "TARGET")
+                self.register_new_def_point(argument, actor_point, "TARGET")
             else:
                 j = i + 1
                 while True:
                     if len(arguments) > j:
-                        self.register_new_def_point(arguments[j], "PROPERTY")
+                        self.register_new_def_point(
+                            arguments[j], actor_point, "PROPERTY"
+                        )
                         j += 2
                     else:
                         break
                 break
 
     def visit_SET_TESTS_PROPERTIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "SET_TESTS_PROPERTIES"
@@ -1869,84 +1990,93 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() != "PROPERTIES":
-                self.register_new_use_point(argument, "TEST")
-                self.register_new_def_point(argument, "TEST")
+                self.register_new_use_point(argument, actor_point, "TEST")
+                self.register_new_def_point(argument, actor_point, "TEST")
             else:
                 j = i + 1
                 while True:
                     if len(arguments) > j:
-                        self.register_new_def_point(arguments[j], "PROPERTY")
+                        self.register_new_def_point(
+                            arguments[j], actor_point, "PROPERTY"
+                        )
                         j += 2
                     else:
                         break
                 break
 
     def visit_SOURCE_GROUP(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_DEFINITIONS"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         print(
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
         )
 
     def visit_TARGET_COMPILE_FEATURES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_FEATURES"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_COMPILE_OPTIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_COMPILE_OPTIONS"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_INCLUDE_DIRECTORIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_INCLUDE_DIRECTORIES"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_DIRECTORIES"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_LINK_LIBRARIES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_LIBRARIES"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         keywords = [
             "PRIVATE",
@@ -1965,67 +2095,72 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 if list(
                     filter(lambda def_point: def_point.type == "TARGET", defined_names)
                 ):
-                    self.register_new_use_point(argument, "TARGET")
+                    self.register_new_use_point(argument, actor_point, "TARGET")
 
     def visit_TARGET_LINK_OPTIONS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_LINK_OPTIONS"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_PRECOMPILE_HEADERS(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
             node_data, "TARGET_PRECOMPILE_HEADERS"
         )
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
         if self.ast.unparse(arguments[1]).upper() == "REUSE_FROM":
-            self.register_new_use_point(arguments[2], "TARGET")
+            self.register_new_use_point(arguments[2], actor_point, "TARGET")
 
     def visit_TARGET_SOURCES(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TARGET_SOURCES")
 
-        self.register_new_use_point(arguments[0], "TARGET")
-        self.register_new_def_point(arguments[0], "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TRY_COMPILE(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_COMPILE")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], "TARGET")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
                 continue
             if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
-                self.register_new_use_point(arguments[i + 2], "VARIABLE")
+                self.register_new_use_point(arguments[i + 2], actor_point, "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() == "OUTPUT_VARIABLE":
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() == "COPY_FILE_ERROR":
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
 
     def visit_TRY_RUN(self, node_data):
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_RUN")
 
-        self.register_new_def_point(arguments[0], "VARIABLE")
-        self.register_new_def_point(arguments[1], "VARIABLE")
+        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
         current_target_keywords = [
             "COMPILE_OUTPUT_VARIABLE",
@@ -2041,10 +2176,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 "SOURCE_FROM_VAR",
                 "WORKING_DIRECTORY",
             ]:
-                self.register_new_use_point(arguments[i + 2], "VARIABLE")
+                self.register_new_use_point(arguments[i + 2], actor_point, "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
 
     ########## CTesgt Commands:
@@ -2092,7 +2227,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         All CTEST_* commands are redirected to this method.
         """
-        self.generic_visit(node_data)
+        actor_point = self.register_and_get_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CTEST_BUILD")
 
@@ -2107,43 +2243,43 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], "TARGET")
+                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
                 continue
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1], "VARIABLE")
+                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
 
     ############################
     #### CMake Commands End ####
     ############################
 
-    def visit_bracket_argument(self, node_data):
+    def visit_bracket_argument(self, node_data, *args, **kwargs):
         # TODO
         # when it's def point
         # when it's use point
         # # NOTE: No generic_visit required
         # # as the inner scape sequnces, regex,
         # # and variable refs are not evaluated.
-        # self.generic_visit(node_data)
+        # self.generic_visit(node_data, actor_point)
         return
 
-    def visit_quoted_argument(self, node_data):
+    def visit_quoted_argument(self, node_data, *args, **kwargs):
         # TODO
         # when it's def point
         # when it's use point
-        self.generic_visit(node_data)
+        self.generic_visit(node_data, *args, **kwargs)
 
-    def visit_unquoted_argument(self, node_data):
+    def visit_unquoted_argument(self, node_data, *args, **kwargs):
         # TODO
         # when it's def point
         # when it's use point
-        self.generic_visit(node_data)
+        self.generic_visit(node_data, *args, **kwargs)
 
-    def visit_variable_ref(self, node_data):
-        self.generic_visit(node_data)
+    def visit_variable_ref(self, node_data, actor_point):
+        self.generic_visit(node_data, actor_point)
 
         # TODO (High)
-        self.register_new_use_point(node_data, "VARIABLE")
+        self.register_new_use_point(node_data, actor_point, "VARIABLE")
         # For nested variable references
 
     #############################
@@ -2174,24 +2310,199 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
             self.contamination_summary.append(entry)
 
+    def process_reachability_propagation(self, point):
+        if isinstance(point, cm.Use):
+            actor_nid = point.actor_point.node_data["id"]
+            point_type = "use"
+        elif isinstance(point, cm.Actor):
+            actor_nid = point.node_data["id"]
+            point_type = "actor"
+
+        affected_actor_points = list(
+            filter(
+                lambda actor_point: (actor_nid in actor_point.reachability_actor_ids),
+                self.get_all_actor_points(),
+            )
+        )
+        list(
+            map(
+                lambda actor_point: actor_point.set_contamination(),
+                affected_actor_points,
+            )
+        )
+
+        no_effect_affected_actor_points = filter(
+            lambda actor_point: (
+                (not actor_point.def_points) and (not actor_point.use_points)
+            ),
+            affected_actor_points,
+        )
+        if no_effect_affected_actor_points:
+            # point affects_reachability_of actor
+            self.update_contamination_summary(
+                list(
+                    map(
+                        lambda actor_point: {
+                            "subject": point,
+                            "subject_id": point.node_data["id"],
+                            "subject_type": point_type,
+                            "propagation_rule": "affects_reachability_of"
+                            + ("" if not actor_point.set_contamination() else ""),
+                            "object": actor_point,
+                            "object_id": actor_point.node_data["id"],
+                            "object_type": "actor",
+                        },
+                        no_effect_affected_actor_points,
+                    )
+                )
+            )
+
+        affected_def_points = reduce(
+            lambda a, b: [*a, *b],
+            map(
+                lambda actor_point: actor_point.def_points,
+                affected_actor_points,
+            ),
+            [],
+        )
+        if affected_def_points:
+            # point affects_reachability_of def_point
+            self.update_contamination_summary(
+                list(
+                    map(
+                        lambda def_point: {
+                            "subject": point,
+                            "subject_id": point.node_data["id"],
+                            "subject_type": point_type,
+                            "propagation_rule": "affects_reachability_of"
+                            + ("" if not def_point.set_contamination() else ""),
+                            "object": def_point,
+                            "object_id": def_point.node_data["id"],
+                            "object_type": "def",
+                        },
+                        affected_def_points,
+                    )
+                )
+            )
+
+        affected_use_points = reduce(
+            lambda a, b: [*a, *b],
+            map(
+                lambda actor_point: actor_point.use_points,
+                affected_actor_points,
+            ),
+            [],
+        )
+        if affected_use_points:
+            # point affects_reachability_of use_point
+            self.update_contamination_summary(
+                list(
+                    map(
+                        lambda use_point: {
+                            "subject": point,
+                            "subject_id": point.node_data["id"],
+                            "subject_type": point_type,
+                            "propagation_rule": "affects_reachability_of"
+                            + ("" if not use_point.set_contamination() else ""),
+                            "object": use_point,
+                            "object_id": use_point.node_data["id"],
+                            "object_type": "use",
+                        },
+                        affected_use_points,
+                    )
+                )
+            )
+
+        affected_children_scopes = list(
+            filter(
+                lambda cdu: (actor_nid in cdu.reachability_actor_id_stack),
+                self.children,
+            )
+        )
+        if affected_children_scopes:
+            children = [
+                child
+                for child in self.children
+                if child.scope in affected_children_scopes
+            ]
+
+            while children:
+                next_children = []
+                for child_chain in children:
+                    # point affects_reachability_of def_point
+                    self.update_contamination_summary(
+                        list(
+                            map(
+                                lambda def_point: {
+                                    "subject": point,
+                                    "subject_id": point.node_data["id"],
+                                    "subject_type": point_type,
+                                    "propagation_rule": "affects_reachability_of"
+                                    + ("" if not def_point.set_contamination() else ""),
+                                    "object": def_point,
+                                    "object_id": def_point.node_data["id"],
+                                    "object_type": "def",
+                                },
+                                child_chain.get_all_def_points(),
+                            )
+                        )
+                    )
+                    # point affects_reachability_of use_point
+                    self.update_contamination_summary(
+                        list(
+                            map(
+                                lambda use_point: {
+                                    "subject": point,
+                                    "subject_id": point.node_data["id"],
+                                    "subject_type": point_type,
+                                    "propagation_rule": "affects_reachability_of"
+                                    + ("" if not use_point.set_contamination() else ""),
+                                    "object": use_point,
+                                    "object_id": use_point.node_data["id"],
+                                    "object_type": "use",
+                                },
+                                child_chain.get_all_use_points(),
+                            )
+                        )
+                    )
+
+                    list(
+                        map(
+                            lambda point: point.set_contamination(),
+                            child_chain.get_all_actor_points(),
+                        )
+                    )
+                    next_children += child_chain.children
+                children = next_children
+
     def slice_downwards(self):
         previous_summary_length = len(self.contamination_summary)
         modified_def_points = list(
             filter(
                 lambda point: point.is_contaminated,
-                self.def_points.values(),
+                self.get_all_def_points(),
+            )
+        )
+        list(
+            map(
+                lambda point: point.actor_point.set_contamination(), modified_def_points
             )
         )
         modified_use_points = list(
             filter(
                 lambda point: point.is_contaminated,
-                self.use_points.values(),
+                self.get_all_use_points(),
+            )
+        )
+        list(
+            map(
+                lambda point: point.actor_point.set_contamination(), modified_use_points
             )
         )
         modified_actor_points = list(
             filter(
-                lambda point: point.node_data["operation"] != "no-op",
-                self.actor_points.values(),
+                lambda point: point.is_contaminated,
+                self.get_all_actor_points(),
             )
         )
 
@@ -2203,10 +2514,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda use_point: {
                                 "subject": def_point,
+                                "subject_id": def_point.node_data["id"],
                                 "subject_type": "def",
                                 "propagation_rule": "is_directly_used_at"
                                 + ("" if not use_point.set_contamination() else ""),
                                 "object": use_point,
+                                "object_id": use_point.node_data["id"],
                                 "object_type": "use",
                             },
                             def_point.use_points,
@@ -2222,178 +2535,31 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda def_point: {
                                 "subject": use_point,
+                                "subject_id": use_point.node_data["id"],
                                 "subject_type": "use",
                                 "propagation_rule": "is_used_in_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
+                                "object_id": def_point.node_data["id"],
                                 "object_type": "def",
                             },
-                            use_point.actor_point.def_points.values(),
+                            use_point.actor_point.def_points,
                         )
                     )
                 )
 
-            # use_point affects_reachability_of_def/use/scope def_point/use_point/cdu_chain
-            if (
-                use_point.actor_point.node_data["type"]
-                in self.ast.node_actors.conditional_actor_types
+            # use_point affects_reachability_of def_point/use_point/cdu_chain
+            if use_point.actor_point.node_data["type"] in (
+                self.ast.node_actors.conditional_actor_types + ["FUNCTION", "MACRO"]
             ):
-                affected_actor_points = list(
-                    filter(
-                        lambda actor_point: (
-                            use_point.actor_point.node_data["id"]
-                            in actor_point.reachability_actor_ids
-                        ),
-                        self.actor_points,
-                    )
-                )
-                list(
-                    map(
-                        lambda actor_point: actor_point.set_contamination(),
-                        affected_actor_points,
-                    )
-                )
+                self.process_reachability_propagation(use_point)
 
-                affected_use_points = reduce(
-                    lambda a, b: [*a, *b],
-                    map(
-                        lambda actor_point: list(actor_point.use_points.values()),
-                        affected_actor_points,
-                    ),
-                    [],
-                )
-
-                affected_def_points = reduce(
-                    lambda a, b: [*a, *b],
-                    map(
-                        lambda actor_point: list(actor_point.def_points.values()),
-                        affected_actor_points,
-                    ),
-                    [],
-                )
-
-                if affected_use_points:
-                    # use_point affects_reachability_of_use use_point
-                    self.update_contamination_summary(
-                        list(
-                            map(
-                                lambda point: {
-                                    "subject": use_point,
-                                    "subject_type": "use",
-                                    "propagation_rule": "affects_reachability_of"
-                                    + ("" if not point.set_contamination() else ""),
-                                    "object": point,
-                                    "object_type": "use",
-                                },
-                                affected_use_points,
-                            )
-                        )
-                    )
-
-                if affected_def_points:
-                    # use_point affects_reachability_of_def def_point
-                    self.update_contamination_summary(
-                        list(
-                            map(
-                                lambda point: {
-                                    "subject": use_point,
-                                    "subject_type": "use",
-                                    "propagation_rule": "affects_reachability_of"
-                                    + ("" if not point.set_contamination() else ""),
-                                    "object": point,
-                                    "object_type": "def",
-                                },
-                                affected_def_points,
-                            )
-                        )
-                    )
-
-                affected_children_scopes = list(
-                    filter(
-                        lambda cdu: (
-                            use_point.actor_point.node_data["id"]
-                            in cdu.reachability_actor_id_stack
-                        ),
-                        self.children,
-                    )
-                )
-
-                if affected_children_scopes:
-                    children = [
-                        child
-                        for child in self.children
-                        if child.scope in affected_children_scopes
-                    ]
-
-                    while children:
-                        next_children = []
-                        for child_chain in children:
-                            # use_point affects_reachability_of_scope cdu_chain
-                            self.contamination_summary.append(
-                                {
-                                    "subject": use_point,
-                                    "subject_type": "use",
-                                    "propagation_rule": "affects_reachability_of",
-                                    "object": child_chain,
-                                    "object_type": "scope",
-                                }
-                            )
-                            # use_point affects_reachability_of_use use_point
-                            self.update_contamination_summary(
-                                list(
-                                    map(
-                                        lambda point: {
-                                            "subject": use_point,
-                                            "subject_type": "use",
-                                            "propagation_rule": "affects_reachability_of"
-                                            + (
-                                                ""
-                                                if not point.set_contamination()
-                                                else ""
-                                            ),
-                                            "object": point,
-                                            "object_type": "use",
-                                        },
-                                        child_chain.use_points.values(),
-                                    )
-                                )
-                            )
-                            # use_point affects_reachability_of_def def_point
-                            self.update_contamination_summary(
-                                list(
-                                    map(
-                                        lambda point: {
-                                            "subject": use_point,
-                                            "subject_type": "use",
-                                            "propagation_rule": "affects_reachability_of"
-                                            + (
-                                                ""
-                                                if not point.set_contamination()
-                                                else ""
-                                            ),
-                                            "object": point,
-                                            "object_type": "def",
-                                        },
-                                        child_chain.def_points.values(),
-                                    )
-                                )
-                            )
-
-                            list(
-                                map(
-                                    lambda point: point.set_contamination(),
-                                    child_chain.actor_points.values(),
-                                )
-                            )
-                            next_children += child_chain.children
-                        children = next_children
-
-        # actor_point affects_definition_of use_point
         for actor_point in modified_actor_points:
+            # actor_point affects_definition_of use_point
             non_modified_def_points = list(
                 filter(
                     lambda def_point: def_point.node_data["operation"] == "no-op",
-                    actor_point.def_points.values(),
+                    actor_point.def_points,
                 )
             )
             if non_modified_def_points:
@@ -2402,16 +2568,22 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda def_point: {
                                 "subject": actor_point,
-                                "subject_type": "def",
+                                "subject_id": actor_point.node_data["id"],
+                                "subject_type": "actor",
                                 "propagation_rule": "affects_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
+                                "object_id": def_point.node_data["id"],
                                 "object_type": "def",
                             },
                             non_modified_def_points,
                         )
                     )
                 )
+
+            # actor_point affects_reachability_of def_point/use_point/cdu_chain
+            if actor_point.name == "<CMD>INCLUDE":
+                self.process_reachability_propagation(actor_point)
 
         if len(self.contamination_summary) != previous_summary_length:
             self.slice_downwards()
@@ -2420,7 +2592,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         modified_use_points = list(
             filter(
                 lambda point: point.node_data["operation"] != "no-op",
-                self.use_points.values(),
+                self.get_all_use_points(),
             )
         )
 
@@ -2428,20 +2600,24 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         while chain:
             for use_point in modified_use_points:
-                self.contamination_summary += list(
-                    map(
-                        lambda def_point: {
-                            "subject": def_point,
-                            "subject_type": "def",
-                            "propagation_rule": "is_directly_used_at"
-                            + ("" if not def_point.set_contamination() else ""),
-                            "object": use_point,
-                            "object_type": "use",
-                        },
-                        filter(
-                            lambda def_point: use_point in def_point.use_points,
-                            chain.def_points.values(),
-                        ),
+                self.update_contamination_summary(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject": def_point,
+                                "subject_id": def_point.node_data["id"],
+                                "subject_type": "def",
+                                "propagation_rule": "is_directly_used_at"
+                                + ("" if not def_point.set_contamination() else ""),
+                                "object": use_point,
+                                "object_id": use_point.node_data["id"],
+                                "object_type": "use",
+                            },
+                            filter(
+                                lambda def_point: use_point in def_point.use_points,
+                                chain.get_all_def_points(),
+                            ),
+                        )
                     )
                 )
 
