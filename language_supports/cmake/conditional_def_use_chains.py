@@ -298,6 +298,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         return
 
+    def visit_endfunction_clause(self, node_data, *args, **kwargs):
+        return
+
     def visit_macro_definition(self, node_data, *args, **kwargs):
         print(f"Macro definition {self.ast.get_name(node_data)}")
         actor_point = self.register_and_get_new_actor_point(node_data)
@@ -320,6 +323,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     arguments,
                 )
             )
+        return
+
+    def visit_endmacro_clause(self, node_data, *args, **kwargs):
         return
 
     def process_callable_definition_location(
@@ -453,7 +459,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         else:
             return self.generic_visit(node_data, *args, **kwargs)
 
+    def visit_endblock(self, node_data, *args, **kwargs):
+        return
+
     def visit_if_statement(self, node_data, *args, **kwargs):
+        print(self.ast.unparse(node_data))
         stacked_condition_count = (
             len(list(self.ast.get_children_by_type(node_data, "elseif_clause").keys()))
             + len(list(self.ast.get_children_by_type(node_data, "else_clause").keys()))
@@ -505,6 +515,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if body_node_data:
             return self.generic_visit(body_node_data)
 
+    def visit_endif_clause(self, node_data, *args, **kwargs):
+        return
+
     def visit_while_statement(self, node_data, *args, **kwargs):
         self.generic_visit(node_data, *args, **kwargs)
         self.remove_condition_from_reachability_stack(last_n=1)
@@ -522,6 +535,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         if body_node_data:
             return self.generic_visit(body_node_data, *args, **kwargs)
+
+    def visit_endwhile_clause(self, node_data, *args, **kwargs):
+        return
 
     def visit_conditional_expression(self, node_data, negate_last_condition=False):
         actor_point = self.register_and_get_new_actor_point(node_data)
@@ -591,6 +607,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(body_node_data, *args, **kwargs)
 
         def_point.lock = True
+
+    def visit_endforeach_clause(self, node_data, *args, **kwargs):
+        return
 
     def visit_normal_command(self, node_data, *args, **kwargs):
         command_identifier = self.ast.unparse(
