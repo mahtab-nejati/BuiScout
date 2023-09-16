@@ -414,7 +414,10 @@ class SystemDiff(object):
                         )
                     ),
                 ),
-                self.file_data.values(),
+                filter(
+                    lambda file_data: not (file_data["diff"] is None),
+                    self.file_data.values(),
+                ),
             ),
             ([], []),
         )
