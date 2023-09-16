@@ -88,7 +88,9 @@ class ConditionalDefUseChains(NodeVisitor):
                 parent = parent.parent
         return defined_names
 
-    def register_new_use_point(self, use_node_data, actor_point, use_type="VAR"):
+    def register_new_use_point(
+        self, use_node_data, actor_point, use_type="VAR", preferred_name=None
+    ):
         """
         By default, adds the use_point to all applicable def_points defined
         prior to the use_point, REGARDLESS OF REACHABILITY.
@@ -119,6 +121,8 @@ class ConditionalDefUseChains(NodeVisitor):
 
         """
         use_point = Use(use_node_data, use_type, actor_point, self.ast)
+        if preferred_name:
+            use_point.name = preferred_name
         actor_point.add_use_point(use_point)
         self.use_points[use_point.node_data["id"]].append(use_point)
         self.used_names[use_point.name].append(use_point)

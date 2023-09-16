@@ -544,38 +544,56 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.negate_last_condition_in_reachability_stack(negation_symbol="NOT")
 
         operators = [
-            "NOT",
-            "AND",
-            "OR",
-            "COMMAND",
-            "POLICY",
-            "TARGET",
-            "EXISTS",
-            "IS_NEWER_THAN",
-            "IS_DIRECTORY",
-            "IS_SYMLINK",
-            "IS_ABSOLUTE",
-            "MATCHES",
-            "LESS",
-            "GREATER",
-            "EQUAL",
-            "STRLESS",
-            "STRGREATER",
-            "STREQUAL",
-            "VERSION_LESS",
-            "VERSION_GREATER",
-            "VERSION_EQUAL",
-            "DEFINED",
             "(",
             ")",
+            "AND",
+            "COMMAND",
+            "DEFINED",
+            "EQUAL",
+            "EXISTS",
+            "GREATER",
+            "IS_ABSOLUTE",
+            "IS_DIRECTORY",
+            "IS_NEWER_THAN",
+            "IS_SYMLINK",
+            "LESS",
+            "MATCHES",
+            "NOT",
+            "OR",
+            "POLICY",
+            "STREQUAL",
+            "STRGREATER",
+            "STRLESS",
+            "TARGET",
+            "VERSION_EQUAL",
+            "VERSION_GREATER",
+            "VERSION_LESS",
         ]
 
         arguments = sorted(
             self.ast.get_children_by_type(node_data, "unquoted_argument").values(),
             key=lambda data: data["s_pos"],
         )
-        for argument in arguments:
-            if self.ast.unparse(argument).upper() not in operators:
+        # See https://cmake.org/cmake/help/latest/command/if.html#:~:text=if(DEFINED%20%3Cname%3E%7CCACHE%7B%3Cname%3E%7D%7CENV%7B%3Cname%3E%7D)
+        skip = False
+        for i, argument in enumerate(arguments):
+            if skip:
+                skip = False
+                continue
+            unparsed_argument = self.ast.unparse(argument).upper()
+            if unparsed_argument == "DEFINED":
+                name = self.ast.get_name(arguments[i + 1])
+                if name.upper().startswith(("ENV{", "CACHE{")):
+                    skip = True
+                    self.register_new_use_point(
+                        argument,
+                        actor_point,
+                        "VARIABLE",
+                        preferred_name="}".join(
+                            "{".join(name.split("{")[1:]).split("}")[:-1]
+                        ),
+                    )
+            if not unparsed_argument in operators:
                 self.register_new_use_point(argument, actor_point, "VARIABLE")
 
         self.generic_visit(node_data, actor_point)
