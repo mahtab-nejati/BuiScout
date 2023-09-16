@@ -275,7 +275,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
     def visit_function_definition(self, node_data, *args, **kwargs):
         print(f"Function definition {self.ast.get_name(node_data)}")
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.register_new_def_point(node_data, actor_point, "FUNCTION")
 
         return self.process_callable_definition_location(
@@ -303,7 +303,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
     def visit_macro_definition(self, node_data, *args, **kwargs):
         print(f"Macro definition {self.ast.get_name(node_data)}")
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.register_new_def_point(node_data, actor_point, "MACRO")
         return self.process_callable_definition_location(
             node_data, "macro", actor_point
@@ -356,7 +356,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return
 
     def process_callable_call_location(self, node_data, def_point):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.register_new_use_point(node_data, actor_point, def_point.type)
         self.generic_visit(node_data, actor_point)
 
@@ -539,7 +539,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return
 
     def visit_conditional_expression(self, node_data, negate_last_condition=False):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         if negate_last_condition:
             self.negate_last_condition_in_reachability_stack(negation_symbol="NOT")
 
@@ -584,7 +584,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         # TODO (High): Look into the scoping.
         """
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         condition_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "condition")
         )
@@ -654,11 +654,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     self.process_callable_call_location(node_data, def_point)
                     continue
         elif not self.parent_names_available:
-            actor_point = self.register_and_get_new_actor_point(node_data)
+            actor_point = self.register_new_actor_point(node_data)
             self.register_new_use_point(node_data, actor_point, "SOME_COMMAND")
             self.generic_visit(node_data, actor_point)
         elif self.parent_names_available:
-            actor_point = self.register_and_get_new_actor_point(node_data)
+            actor_point = self.register_new_actor_point(node_data)
             self.register_new_use_point(node_data, actor_point, "UNKNOWN_COMMAND")
             self.generic_visit(node_data, actor_point)
         return
@@ -673,11 +673,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ########## Scripting Commands:
 
     def visit_BREAK(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_HOST_SYSTEM_INFORMATION(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -687,7 +687,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_CMAKE_LANGUAGE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_LANGUAGE")
@@ -712,15 +712,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
     def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PATH(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_PATH")
@@ -774,7 +774,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     break
 
     def visit_CMAKE_POLICY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CMAKE_POLICY")
@@ -785,15 +785,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_CONFIGURE_FILE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_CONTINUE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_EXECUTE_PROCESS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "EXECUTE_PROCESS")
@@ -810,7 +810,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
 
     def visit_FILE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FILE")
@@ -846,7 +846,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_def_point(arguments[2], actor_point, "VARIABLE")
 
     def visit_FIND_FILE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_FILE")
@@ -854,7 +854,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_LIBRARY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_LIBRARY")
@@ -862,7 +862,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PACKAGE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PACKAGE")
@@ -912,7 +912,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PATH(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PATH")
@@ -920,7 +920,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_FIND_PROGRAM(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PROGRAM")
@@ -928,7 +928,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_GET_CMAKE_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_CMAKE_PROPERTY")
@@ -937,7 +937,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_use_point(arguments[1], actor_point, "PROPERTY")
 
     def visit_GET_DIRECTORY_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -954,7 +954,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
     def visit_GET_FILENAME_COMPONENT(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -970,7 +970,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
 
     def visit_GET_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_PROPERTY")
@@ -994,7 +994,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # This happens when the resolution is successful and right before
         # the analysis of the resolved file. The condition is removed from
         # the reachability stack after the resolved file is processed.
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "INCLUDE")
@@ -1094,11 +1094,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.remove_condition_from_reachability_stack()
 
     def visit_INCLUDE_GUARD(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_LIST(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "LIST")
@@ -1139,7 +1139,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_MARK_AS_ADVANCED(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "MARK_AS_ADVANCED")
@@ -1154,7 +1154,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_def_point(argument, actor_point, "VARIABLE")
 
     def visit_MATH(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "MATH")
@@ -1162,11 +1162,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[1], actor_point, "VARIABLE")
 
     def visit_MESSAGE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_OPTION(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "OPTION")
@@ -1174,7 +1174,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_RETURN(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         try:
@@ -1193,7 +1193,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         #             self.register_new_def_point(arg, actor_point, "VARIABLE")
 
     def visit_SEPARATE_ARGUMENTS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SEPARATE_ARGUMENTS")
@@ -1207,7 +1207,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
 
     def visit_SET(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SET")
@@ -1219,7 +1219,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_SET_DIRECTORY_PROPERTIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1231,7 +1231,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(argument, actor_point, "PROPERTY")
 
     def visit_SET_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SET_PROPERTY")
@@ -1277,7 +1277,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(arguments[i + 1], actor_point, "PROPERTY")
 
     def visit_SITE_NAME(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SITE_NAME")
@@ -1285,7 +1285,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
     def visit_STRING(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "STRING")
@@ -1356,7 +1356,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return
 
     def visit_UNSET(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
@@ -1369,7 +1369,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_VARIABLE_WATCH(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "VARIABLE_WATCH")
@@ -1381,7 +1381,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ########## Project Commands:
 
     def visit_ADD_COMPILE_DEFINITIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1394,11 +1394,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_ADD_COMPILE_OPTIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_ADD_CUSTOM_COMMAND(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
@@ -1445,7 +1445,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         #                 self.register_new_use_point(arg,actor_point, "TARGET")
 
     def visit_ADD_CUSTOM_TARGET(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
@@ -1457,7 +1457,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_ADD_DEFINITIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         # try:
@@ -1472,7 +1472,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_ADD_DEPENDENCIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
@@ -1489,7 +1489,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         or will be variable_ref which will be caught when running generic_visit
         on node_data at the end.
         """
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_EXECUTABLE")
@@ -1516,7 +1516,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         TODO: See object library and check object reference
         TODO: See imported library and check global with scoping
         """
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_LIBRARY")
@@ -1533,7 +1533,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_use_point(arguments[-1], actor_point, "TARGET")
 
     def visit_ADD_LINK_OPTIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_ADD_SUBDIRECTORY(self, node_data):
@@ -1549,7 +1549,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # This happens when the resolution is successful and right before
         # the analysis of the resolved file. The condition is removed from
         # the reachability stack after the resolved file is processed.
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
@@ -1640,7 +1640,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.remove_condition_from_reachability_stack()
 
     def visit_ADD_TEST(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_TEST")
@@ -1655,7 +1655,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1665,7 +1665,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_BUILD_COMMAND(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "BUILD_COMMAND")
@@ -1678,11 +1678,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_CMAKE_FILE_API(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_CREATE_TEST_SOURCELIST(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1696,7 +1696,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_use_point(argument, actor_point, "TEST")
 
     def visit_DEFINE_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "DEFINE_PROPERTY")
@@ -1707,15 +1707,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_ENABLE_LANGUAGE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_ENABLE_TESTING(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_EXPORT(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "EXPORT")
@@ -1743,7 +1743,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
 
     def visit_FLTK_WRAP_UI(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FLTK_WRAP_UI")
@@ -1753,7 +1753,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_GET_SOURCE_FILE_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1769,7 +1769,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_GET_TARGET_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1781,7 +1781,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
     def visit_GET_TEST_PROPERTY(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "GET_TEST_PROPERTY")
@@ -1791,11 +1791,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[-1], actor_point, "VARIABLE")
 
     def visit_INCLUDE_DIRECTORIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_INCLUDE_EXTERNAL_MSPROJECT(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1817,11 +1817,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     break
 
     def visit_INCLUDE_REGULAR_EXPRESSION(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_INSTALL(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "INSTALL")
@@ -1894,11 +1894,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_LINK_DIRECTORIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_LINK_LIBRARIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "LINK_LIBRARIES")
@@ -1912,7 +1912,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         No support for the old and discouraged signature.
         see: https://cmake.org/cmake/help/v3.27/command/load_cache.html
         """
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "LOAD_CACHE")
@@ -1929,11 +1929,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_PROJECT(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_REMOVE_DEFINITIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
@@ -1943,7 +1943,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1975,7 +1975,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_SET_TARGET_PROPERTIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -1999,7 +1999,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_SET_TESTS_PROPERTIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2023,11 +2023,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
     def visit_SOURCE_GROUP(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
     def visit_TARGET_COMPILE_DEFINITIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2042,7 +2042,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def visit_TARGET_COMPILE_FEATURES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2053,7 +2053,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_COMPILE_OPTIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2064,7 +2064,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_INCLUDE_DIRECTORIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2075,7 +2075,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2086,7 +2086,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_LINK_LIBRARIES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2116,7 +2116,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     self.register_new_use_point(argument, actor_point, "TARGET")
 
     def visit_TARGET_LINK_OPTIONS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2127,7 +2127,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TARGET_PRECOMPILE_HEADERS(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(
@@ -2141,7 +2141,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.register_new_use_point(arguments[2], actor_point, "TARGET")
 
     def visit_TARGET_SOURCES(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TARGET_SOURCES")
@@ -2150,7 +2150,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_def_point(arguments[0], actor_point, "TARGET")
 
     def visit_TRY_COMPILE(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_COMPILE")
@@ -2172,7 +2172,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
     def visit_TRY_RUN(self, node_data):
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TRY_RUN")
@@ -2245,7 +2245,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         All CTEST_* commands are redirected to this method.
         """
-        actor_point = self.register_and_get_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "CTEST_BUILD")

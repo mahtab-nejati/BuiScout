@@ -160,7 +160,7 @@ class ConditionalDefUseChains(NodeVisitor):
         self.defined_names[def_point.name].append(def_point)
         return def_point
 
-    def register_and_get_new_actor_point(self, node_data):
+    def register_new_actor_point(self, node_data):
         actor_node_data = self.ast.get_actor(node_data)
         actor_point = Actor(
             actor_node_data,
