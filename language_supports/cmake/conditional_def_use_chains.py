@@ -599,8 +599,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             key=lambda data: data["s_pos"],
         )
         def_node = arguments.pop(0)
-        self.register_new_def_point(def_node, actor_point, "VARIABLE")
-        def_point = self.def_points[def_node["id"]][-1]
+        def_point = self.register_new_def_point(def_node, actor_point, "VARIABLE")
 
         self.generic_visit(condition_node_data, actor_point)
         self.generic_visit(body_node_data, *args, **kwargs)
@@ -1212,10 +1211,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "SET")
 
-        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        def_point = self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            def_point = self.def_points[arguments[0]["id"]][-1]
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_SET_DIRECTORY_PROPERTIES(self, node_data):
@@ -1362,10 +1360,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "UNSET")
 
         self.register_new_use_point(arguments[0], actor_point, "VARIABLE")
-        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        def_point = self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
 
         if self.ast.unparse(arguments[-1]).upper() == "PARENT_SCOPE":
-            def_point = self.def_points[arguments[0]["id"]][-1]
             self.register_def_point_to_parent_scope(def_point)
 
     def visit_VARIABLE_WATCH(self, node_data):
