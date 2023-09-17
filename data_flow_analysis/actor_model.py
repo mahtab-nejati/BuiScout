@@ -1,3 +1,4 @@
+import itertools
 from utils.exceptions import DebugException
 
 
@@ -7,7 +8,12 @@ class Actor(object):
     Objects are called actor_point
     """
 
+    # Please make sure to reset this for each commit
+    # (see system_diff_model.py > SystemDiff.__init__())
+    id_generator = itertools.count(start=1)
+
     def __init__(self, node_data, reachability, reachability_actor_ids, ast):
+        self.id = next(Actor.id_generator)
         self.ast = ast
 
         # Storing the node_data
@@ -61,6 +67,7 @@ class Actor(object):
     def to_json(self, propagation_slice_mode=False):
         if propagation_slice_mode:
             return {
+                "actor_id": self.id,
                 "actor_name": self.name,
                 "actor_node_id": self.node_data["id"],
                 "actor_node_operation": self.node_data["operation"],
@@ -68,24 +75,19 @@ class Actor(object):
                 "actor_node_s_pos": self.node_data["s_pos"],
                 "actor_node_e_pos": self.node_data["e_pos"],
                 "actor_node_level": self.node_data["level"],
-                "reachability": " ^ ".join(self.reachability),
+                "reachability": self.reachability,
+                "reachability_actor_ids": self.reachability_actor_ids,
                 "code": self.ast.unparse(self.node_data, masked_types=["body"]),
-                "def_node_ids": list(
-                    map(lambda point: point.node_data["id"], self.def_points)
-                ),
-                "use_node_ids": list(
-                    map(lambda point: point.node_data["id"], self.use_points)
-                ),
+                "def_ids": list(map(lambda point: point.id, self.def_points)),
+                "use_ids": list(map(lambda point: point.id, self.use_points)),
             }
         return {
+            "actor_id": self.id,
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
             "actor_node_contamination": self.is_contaminated,
-            "reachability": " ^ ".join(self.reachability),
-            "def_node_ids": list(
-                map(lambda point: point.node_data["id"], self.def_points)
-            ),
-            "use_node_ids": list(
-                map(lambda point: point.node_data["id"], self.use_points)
-            ),
+            "reachability": self.reachability,
+            "reachability_actor_ids": self.reachability_actor_ids,
+            "def_ids": list(map(lambda point: point.id, self.def_points)),
+            "use_ids": list(map(lambda point: point.id, self.use_points)),
         }

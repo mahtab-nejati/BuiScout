@@ -13,6 +13,10 @@ class ConditionalDefUseChains(NodeVisitor):
     NOTE: Reach the comments inside __init__() to understand attributes.
     """
 
+    Actor = Actor
+    Def = Def
+    Use = Use
+
     def __init__(self, ast, scope=None, parent=None, sysdiff=None):
         """
         ast: ast_model.AST
@@ -120,7 +124,7 @@ class ConditionalDefUseChains(NodeVisitor):
                     prior def_points are stil considered.
 
         """
-        use_point = Use(use_node_data, use_type, actor_point, self.ast)
+        use_point = self.Use(use_node_data, use_type, actor_point, self.ast)
         if preferred_name:
             use_point.name = preferred_name
         actor_point.add_use_point(use_point)
@@ -156,7 +160,7 @@ class ConditionalDefUseChains(NodeVisitor):
     def register_new_def_point(
         self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
     ):
-        def_point = Def(
+        def_point = self.Def(
             def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
         )
         actor_point.add_def_point(def_point)
@@ -166,7 +170,7 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def register_new_actor_point(self, node_data):
         actor_node_data = self.ast.get_actor(node_data)
-        actor_point = Actor(
+        actor_point = self.Actor(
             actor_node_data,
             self.reachability_stack,
             self.reachability_actor_id_stack,
@@ -185,13 +189,11 @@ class ConditionalDefUseChains(NodeVisitor):
             def_point.actor_point
         )
 
-    def add_condition_to_reachability_stack(
-        self, condition_node_data, condition_actor_id
-    ):
+    def add_condition_to_reachability_stack(self, condition_node_data, actor_point):
         self.reachability_stack.append(
             self.ast.unparse(condition_node_data).strip("()").strip()
         )
-        self.reachability_actor_id_stack.append(condition_actor_id)
+        self.reachability_actor_id_stack.append(actor_point.id)
 
     def remove_condition_from_reachability_stack(self, last_n=1):
         del self.reachability_stack[-last_n:]

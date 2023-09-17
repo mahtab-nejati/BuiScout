@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-import subprocess, time, importlib, json
+import subprocess, time, importlib, json, itertools
 from collections import defaultdict
 from functools import reduce
 from utils.helpers import (
@@ -87,6 +87,10 @@ class SystemDiff(object):
         )
 
         self.ConditionalDefUseChains = language_support_tools.ConditionalDefUseChains
+        # To reset Actor/Def/Use point ids for each commit
+        self.ConditionalDefUseChains.Actor.id_generator = itertools.count(start=1)
+        self.ConditionalDefUseChains.Def.id_generator = itertools.count(start=1)
+        self.ConditionalDefUseChains.Use.id_generator = itertools.count(start=1)
 
         # Flag to ensure ConditionalDefUseChains are produced
         self.cdus_extracted = False

@@ -361,7 +361,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
 
         # Calls have an impact on the reachability of the content.
-        self.add_condition_to_reachability_stack(node_data, node_data["id"])
+        self.add_condition_to_reachability_stack(node_data, actor_point)
         if def_point.type == "FUNCTION":
             print(
                 f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id']}"
@@ -476,7 +476,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "condition")
         )
         self.visit_conditional_expression(condition_node_data)
-        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -491,7 +490,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.visit_conditional_expression(
             condition_node_data, negate_last_condition=True
         )
-        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -506,7 +504,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.visit_conditional_expression(
             condition_node_data, negate_last_condition=True
         )
-        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -527,7 +524,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_children_by_type(node_data, "condition")
         )
         self.visit_conditional_expression(condition_node_data)
-        self.add_condition_to_reachability_stack(condition_node_data, node_data["id"])
 
         body_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "body")
@@ -597,6 +593,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_use_point(argument, actor_point, "VARIABLE")
 
         self.generic_visit(node_data, actor_point)
+
+        self.add_condition_to_reachability_stack(node_data, actor_point)
 
     def visit_foreach_clause(self, node_data, *args, **kwargs):
         """
@@ -1091,7 +1089,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             included_file = [included_file]
 
-        self.add_condition_to_reachability_stack(node_data, node_data["id"])
+        self.add_condition_to_reachability_stack(node_data, actor_point)
         self.ast_stack.append(self.ast)
 
         for resolution in included_file:
@@ -1630,7 +1628,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # Successful resolution
         # Add to reachability stack
-        self.add_condition_to_reachability_stack(node_data, node_data["id"])
+        self.add_condition_to_reachability_stack(node_data, actor_point)
         for resolution in added_file:
             self.sysdiff.file_data[resolution]["language_specific_info"][
                 "importers"
@@ -2334,9 +2332,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for entry in entries:
             if list(
                 filter(
-                    lambda recored_entry: (recored_entry["subject"] == entry["subject"])
-                    and (recored_entry["propagation_rule"] == entry["propagation_rule"])
-                    and (recored_entry["object"] == entry["object"]),
+                    lambda recorded_entry: (
+                        recorded_entry["subject"] == entry["subject"]
+                    )
+                    and (
+                        recorded_entry["propagation_rule"] == entry["propagation_rule"]
+                    )
+                    and (recorded_entry["object"] == entry["object"]),
                     self.contamination_summary,
                 )
             ):
@@ -2344,16 +2346,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.contamination_summary.append(entry)
 
     def process_reachability_propagation(self, point):
-        if isinstance(point, cm.Use):
-            actor_nid = point.actor_point.node_data["id"]
+        if isinstance(point, self.Use):
+            actor_id = point.actor_point.id
             point_type = "use"
-        elif isinstance(point, cm.Actor):
-            actor_nid = point.node_data["id"]
+        elif isinstance(point, self.Actor):
+            actor_id = point.id
             point_type = "actor"
 
         affected_actor_points = list(
             filter(
-                lambda actor_point: (actor_nid in actor_point.reachability_actor_ids),
+                lambda actor_point: (actor_id in actor_point.reachability_actor_ids),
                 self.get_all_actor_points(),
             )
         )
@@ -2377,12 +2379,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     map(
                         lambda actor_point: {
                             "subject": point,
-                            "subject_id": point.node_data["id"],
+                            "subject_id": point.id,
                             "subject_type": point_type,
                             "propagation_rule": "affects_reachability_of"
                             + ("" if not actor_point.set_contamination() else ""),
                             "object": actor_point,
-                            "object_id": actor_point.node_data["id"],
+                            "object_id": actor_point.id,
                             "object_type": "actor",
                         },
                         no_effect_affected_actor_points,
@@ -2405,12 +2407,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     map(
                         lambda def_point: {
                             "subject": point,
-                            "subject_id": point.node_data["id"],
+                            "subject_id": point.id,
                             "subject_type": point_type,
                             "propagation_rule": "affects_reachability_of"
                             + ("" if not def_point.set_contamination() else ""),
                             "object": def_point,
-                            "object_id": def_point.node_data["id"],
+                            "object_id": def_point.id,
                             "object_type": "def",
                         },
                         affected_def_points,
@@ -2433,12 +2435,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     map(
                         lambda use_point: {
                             "subject": point,
-                            "subject_id": point.node_data["id"],
+                            "subject_id": point.id,
                             "subject_type": point_type,
                             "propagation_rule": "affects_reachability_of"
                             + ("" if not use_point.set_contamination() else ""),
                             "object": use_point,
-                            "object_id": use_point.node_data["id"],
+                            "object_id": use_point.id,
                             "object_type": "use",
                         },
                         affected_use_points,
@@ -2448,7 +2450,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         affected_children_scopes = list(
             filter(
-                lambda cdu: (actor_nid in cdu.reachability_actor_id_stack),
+                lambda cdu: (actor_id in cdu.reachability_actor_id_stack),
                 self.children,
             )
         )
@@ -2468,12 +2470,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             map(
                                 lambda def_point: {
                                     "subject": point,
-                                    "subject_id": point.node_data["id"],
+                                    "subject_id": point.id,
                                     "subject_type": point_type,
                                     "propagation_rule": "affects_reachability_of"
                                     + ("" if not def_point.set_contamination() else ""),
                                     "object": def_point,
-                                    "object_id": def_point.node_data["id"],
+                                    "object_id": def_point.id,
                                     "object_type": "def",
                                 },
                                 child_chain.get_all_def_points(),
@@ -2486,12 +2488,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             map(
                                 lambda use_point: {
                                     "subject": point,
-                                    "subject_id": point.node_data["id"],
+                                    "subject_id": point.id,
                                     "subject_type": point_type,
                                     "propagation_rule": "affects_reachability_of"
                                     + ("" if not use_point.set_contamination() else ""),
                                     "object": use_point,
-                                    "object_id": use_point.node_data["id"],
+                                    "object_id": use_point.id,
                                     "object_type": "use",
                                 },
                                 child_chain.get_all_use_points(),
@@ -2547,12 +2549,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda use_point: {
                                 "subject": def_point,
-                                "subject_id": def_point.node_data["id"],
+                                "subject_id": def_point.id,
                                 "subject_type": "def",
                                 "propagation_rule": "is_directly_used_at"
                                 + ("" if not use_point.set_contamination() else ""),
                                 "object": use_point,
-                                "object_id": use_point.node_data["id"],
+                                "object_id": use_point.id,
                                 "object_type": "use",
                             },
                             def_point.use_points,
@@ -2568,12 +2570,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda def_point: {
                                 "subject": use_point,
-                                "subject_id": use_point.node_data["id"],
+                                "subject_id": use_point.id,
                                 "subject_type": "use",
                                 "propagation_rule": "is_used_in_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
-                                "object_id": def_point.node_data["id"],
+                                "object_id": def_point.id,
                                 "object_type": "def",
                             },
                             use_point.actor_point.def_points,
@@ -2601,12 +2603,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda def_point: {
                                 "subject": actor_point,
-                                "subject_id": actor_point.node_data["id"],
+                                "subject_id": actor_point.id,
                                 "subject_type": "actor",
                                 "propagation_rule": "affects_definition_of"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": def_point,
-                                "object_id": def_point.node_data["id"],
+                                "object_id": def_point.id,
                                 "object_type": "def",
                             },
                             non_modified_def_points,
@@ -2638,12 +2640,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         map(
                             lambda def_point: {
                                 "subject": def_point,
-                                "subject_id": def_point.node_data["id"],
+                                "subject_id": def_point.id,
                                 "subject_type": "def",
                                 "propagation_rule": "is_directly_used_at"
                                 + ("" if not def_point.set_contamination() else ""),
                                 "object": use_point,
-                                "object_id": use_point.node_data["id"],
+                                "object_id": use_point.id,
                                 "object_type": "use",
                             },
                             filter(

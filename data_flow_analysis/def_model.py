@@ -1,3 +1,4 @@
+import itertools
 from utils.exceptions import DebugException
 
 
@@ -7,7 +8,12 @@ class Def(object):
     Objects are called def_point
     """
 
+    # Please make sure to reset this for each commit
+    # (see system_diff_model.py > SystemDiff.__init__())
+    id_generator = itertools.count(start=1)
+
     def __init__(self, node_data, def_type, actor_point, ast, prefix=None, suffix=None):
+        self.id = next(Def.id_generator)
         self.ast = ast
         self.type = def_type
 
@@ -61,6 +67,7 @@ class Def(object):
     def to_json(self, propagation_slice_mode=False):
         if propagation_slice_mode:
             return {
+                "def_id": self.id,
                 "def_type": self.type,
                 "def_name": self.name,
                 "def_node_id": self.node_data["id"],
@@ -69,18 +76,17 @@ class Def(object):
                 "def_node_s_pos": self.node_data["s_pos"],
                 "def_node_e_pos": self.node_data["e_pos"],
                 "def_node_level": self.node_data["level"],
-                "actor_node_id": self.actor_point.node_data["id"],
-                "reachability": " ^ ".join(self.actor_point.reachability),
+                "actor_id": self.actor_point.id,
+                "reachability": self.actor_point.reachability,
+                "reachability": self.actor_point.reachability_actor_ids,
                 "code": self.actor_point.ast.unparse(
                     self.actor_point.node_data, masked_types=["body"]
                 ),
-                "use_node_ids": list(
-                    map(lambda use_point: use_point.node_data["id"], self.use_points)
-                ),
+                "use_ids": list(map(lambda use_point: use_point.id, self.use_points)),
                 "non_contaminated_use_nodes": len(
                     list(
                         map(
-                            lambda use_point: use_point.node_data["id"],
+                            lambda use_point: use_point.id,
                             filter(
                                 lambda use_point: not use_point.is_contaminated,
                                 self.use_points,
@@ -90,12 +96,11 @@ class Def(object):
                 ),
             }
         return {
+            "def_id": self.id,
             "def_type": self.type,
             "def_name": self.name,
             "def_node_id": self.node_data["id"],
             "def_node_contamination": self.is_contaminated,
-            "actor_node_id": self.actor_point.node_data["id"],
-            "use_node_ids": list(
-                map(lambda use_point: use_point.node_data["id"], self.use_points)
-            ),
+            "actor_id": self.actor_point.id,
+            "use_ids": list(map(lambda use_point: use_point.id, self.use_points)),
         }
