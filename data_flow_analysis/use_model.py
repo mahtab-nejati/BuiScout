@@ -54,7 +54,7 @@ class Use(object):
                 "use_node_level": self.node_data["level"],
                 "actor_id": self.actor_point.id,
                 "reachability": self.actor_point.reachability,
-                "reachability": self.actor_point.reachability_actor_ids,
+                "reachability_actor_ids": self.actor_point.reachability_actor_ids,
                 "code": self.actor_point.ast.unparse(
                     self.actor_point.node_data, masked_types=["body"]
                 ),
