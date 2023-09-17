@@ -292,7 +292,12 @@ class SystemDiff(object):
 
     def analyze_global(self):
         # Skip if the self.root_file has GumTree error
-        if self.file_data[self.root_file]["diff"] is None:
+        try:
+            if self.file_data[self.root_file]["diff"] is None:
+                print("Selected entry file failed due to parser error.")
+                return
+        except KeyError:
+            print("Selected entry file doeas not exist.")
             return
 
         self.source_cdu_chains.append(
