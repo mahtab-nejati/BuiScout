@@ -13,7 +13,7 @@ class Use(object):
     id_generator = itertools.count(start=1)
 
     def __init__(self, node_data, use_type, actor_point, ast):
-        self.id = next(Use.id_generator)
+        self.id = f"{ast.commit_hash}_{ast.name}_{next(Use.id_generator)}"
         self.ast = ast
         self.type = use_type
 

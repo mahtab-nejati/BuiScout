@@ -13,7 +13,7 @@ class Actor(object):
     id_generator = itertools.count(start=1)
 
     def __init__(self, node_data, reachability, reachability_actor_ids, ast):
-        self.id = next(Actor.id_generator)
+        self.id = f"{ast.commit_hash}_{ast.name}_{next(Actor.id_generator)}"
         self.ast = ast
 
         # Storing the node_data

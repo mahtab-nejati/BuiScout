@@ -13,7 +13,7 @@ class Def(object):
     id_generator = itertools.count(start=1)
 
     def __init__(self, node_data, def_type, actor_point, ast, prefix=None, suffix=None):
-        self.id = next(Def.id_generator)
+        self.id = f"{ast.commit_hash}_{ast.name}_{next(Def.id_generator)}"
         self.ast = ast
         self.type = def_type
 
