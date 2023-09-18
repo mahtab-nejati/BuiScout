@@ -567,7 +567,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         ]
 
         arguments = sorted(
-            self.ast.get_children_by_type(node_data, "unquoted_argument").values(),
+            self.ast.get_children(node_data).values(),
             key=lambda data: data["s_pos"],
         )
         # See https://cmake.org/cmake/help/latest/command/if.html#:~:text=if(DEFINED%20%3Cname%3E%7CCACHE%7B%3Cname%3E%7D%7CENV%7B%3Cname%3E%7D)
@@ -590,7 +590,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         ),
                     )
             if not unparsed_argument in operators:
-                self.register_new_use_point(argument, actor_point, "VARIABLE")
+                if argument["type"] == "unquoted_argument":
+                    self.register_new_use_point(argument, actor_point, "VARIABLE")
 
         self.generic_visit(node_data, actor_point)
 
