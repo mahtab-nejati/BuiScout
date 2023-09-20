@@ -2541,7 +2541,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         modified_actor_points = list(
             filter(
-                lambda point: point.is_contaminated,
+                lambda point: point.node_data["operation"] != "no-op",
                 self.get_all_actor_points(),
             )
         )
@@ -2598,7 +2598,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # actor_point affects_definition_of use_point
             non_modified_def_points = list(
                 filter(
-                    lambda def_point: def_point.node_data["operation"] == "no-op",
+                    lambda def_point: (def_point.node_data["operation"] == "no-op")
+                    and (not def_point.is_contaminated),
                     actor_point.def_points,
                 )
             )
