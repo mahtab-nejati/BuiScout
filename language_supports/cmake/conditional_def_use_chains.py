@@ -2326,10 +2326,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.
         Use the .set_contamination() method to set the .is_contaminated attribute to True.
+        TODO: Slicing upwards is excluded. Is there an implication? (LIST APPEND EXAMPLE)
         """
         self.contamination_summary = []
         self.slice_downwards()
-        self.slice_upwards()
+        # self.slice_upwards()
         return self.contamination_summary
 
     def update_contamination_summary(self, entries):
@@ -2627,37 +2628,44 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if len(self.contamination_summary) != previous_summary_length:
             self.slice_downwards()
 
-    def slice_upwards(self):
-        modified_use_points = list(
-            filter(
-                lambda point: point.node_data["operation"] != "no-op",
-                self.get_all_use_points(),
-            )
-        )
+    # def slice_upwards(self):
+    #     modified_use_points = list(
+    #         filter(
+    #             lambda point: point.node_data["operation"] != "no-op",
+    #             self.get_all_use_points(),
+    #         )
+    #     )
 
-        chain = self
+    #     chain = self
 
-        while chain:
-            for use_point in modified_use_points:
-                self.update_contamination_summary(
-                    list(
-                        map(
-                            lambda def_point: {
-                                "subject": def_point,
-                                "subject_id": def_point.id,
-                                "subject_type": "def",
-                                "propagation_rule": "is_directly_used_at"
-                                + ("" if not def_point.set_contamination() else ""),
-                                "object": use_point,
-                                "object_id": use_point.id,
-                                "object_type": "use",
-                            },
-                            filter(
-                                lambda def_point: use_point in def_point.use_points,
-                                chain.get_all_def_points(),
-                            ),
-                        )
-                    )
-                )
+    #     while chain:
+    #         for use_point in modified_use_points:
+    #             self.update_contamination_summary(
+    #                 list(
+    #                     map(
+    #                         lambda def_point: {
+    #                             "subject": def_point,
+    #                             "subject_id": def_point.id,
+    #                             "subject_type": "def",
+    #                             "propagation_rule": "is_directly_used_at"
+    #                             + (
+    #                                 ""
+    #                                 if (
+    #                                     def_point.set_contamination()
+    #                                     or def_point.actor_point.set_contamination()
+    #                                 )
+    #                                 else ""
+    #                             ),
+    #                             "object": use_point,
+    #                             "object_id": use_point.id,
+    #                             "object_type": "use",
+    #                         },
+    #                         filter(
+    #                             lambda def_point: use_point in def_point.use_points,
+    #                             chain.get_all_def_points(),
+    #                         ),
+    #                     )
+    #                 )
+    #             )
 
-            chain = chain.parent
+    #         chain = chain.parent
