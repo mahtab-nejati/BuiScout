@@ -22,7 +22,7 @@ class SystemDiff(object):
     DATA_FLOW_ANALYSIS_MODE can be any of 'CHANGE_LOCATION', 'CHANGE_PROPAGATION', or 'GLOBAL'. Default is 'CHANGE_LOCATION'.
     """
 
-    mode = DATA_FLOW_ANALYSIS_MODE.lower()
+    analysis_mode = DATA_FLOW_ANALYSIS_MODE.lower()
 
     def __init__(
         self,
@@ -117,13 +117,13 @@ class SystemDiff(object):
 
     def populate_file_data(self):
         self.git_repository.checkout(self.commit.hash)
-        time.sleep(5)
+        time.sleep(10)
 
         self.set_file_data()
         self.set_file_data_diffs()
 
         self.git_repository.checkout(self.branch)
-        time.sleep(5)
+        time.sleep(10)
 
     def set_file_data_modified_only(self):
         self.file_data = dict(
@@ -203,7 +203,7 @@ class SystemDiff(object):
 
     def set_file_data(self):
         self.set_file_data_modified_only()
-        if self.mode != "change_location":
+        if self.analysis_mode != "change_location":
             self.set_file_data_non_modified_only()
 
     def write_code_files(self, file_path):
@@ -272,7 +272,7 @@ class SystemDiff(object):
     def perform_data_flow_analysis(self):
         if self.cdus_extracted:
             return
-        analysis_method = "analyze_" + self.mode
+        analysis_method = "analyze_" + self.analysis_mode
         analyzer = getattr(self, analysis_method, self.analyze_global)
         analyzer()
         self.cdus_extracted = True
@@ -283,13 +283,13 @@ class SystemDiff(object):
                 print(f"{'#'*10} {file_path} {'#'*10}")
 
                 self.source_cdu_chains.append(
-                    self.ConditionalDefUseChains(file_data["diff"].source)
+                    self.ConditionalDefUseChains(file_data["diff"].source, self)
                 )
                 print(f"{'#'*10} Analyzing source {'#'*10}")
                 self.source_cdu_chains[-1].analyze()
 
                 self.destination_cdu_chains.append(
-                    self.ConditionalDefUseChains(file_data["diff"].destination)
+                    self.ConditionalDefUseChains(file_data["diff"].destination, self)
                 )
                 print(f"{'#'*10} Analyzing source {'#'*10}")
                 self.destination_cdu_chains[-1].analyze()
@@ -306,7 +306,7 @@ class SystemDiff(object):
 
         self.source_cdu_chains.append(
             self.ConditionalDefUseChains(
-                self.file_data[self.root_file]["diff"].source, sysdiff=self
+                self.file_data[self.root_file]["diff"].source, self
             )
         )
         print(f"{'#'*10} Analyzing source {'#'*10}")
@@ -314,7 +314,7 @@ class SystemDiff(object):
 
         self.destination_cdu_chains.append(
             self.ConditionalDefUseChains(
-                self.file_data[self.root_file]["diff"].destination, sysdiff=self
+                self.file_data[self.root_file]["diff"].destination, self
             )
         )
         print(f"{'#'*10} Analyzing destination {'#'*10}")

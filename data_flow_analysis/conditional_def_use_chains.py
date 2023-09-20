@@ -17,7 +17,7 @@ class ConditionalDefUseChains(NodeVisitor):
     Def = Def
     Use = Use
 
-    def __init__(self, ast, scope=None, parent=None, sysdiff=None):
+    def __init__(self, ast, sysdiff, scope=None, parent=None):
         """
         ast: ast_model.AST
         """
@@ -207,7 +207,7 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
-        if self.sysdiff:
+        if self.sysdiff.analysis_mode != "change_location":
             self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
 
     def get_all_def_points(self):
@@ -282,7 +282,7 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def export_cdu_json(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
-        if self.sysdiff is None:
+        if self.sysdiff.analysis_mode == "change_location":
             self.ast.export_json(save_path / "diffs")
         with open(
             save_path / f"{self.ast.name}_cdu_output_{self.scope}.json", "w"
@@ -330,7 +330,7 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def export_cdu_csv(self, save_path):
         save_path.mkdir(parents=True, exist_ok=True)
-        if self.sysdiff is None:
+        if self.sysdiff.analysis_mode == "change_location":
             self.ast.export_csv(save_path / "diffs")
         (
             def_points_df,

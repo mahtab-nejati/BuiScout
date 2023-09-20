@@ -337,7 +337,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         target_ast = self.ast
         child_scope = self.sysdiff.ConditionalDefUseChains(
-            target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
+            target_ast,
+            self.sysdiff,
+            scope=node_data["id"],
+            parent=self,
         )
         child_scope.parent_names_available = False
 
@@ -369,9 +372,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             target_ast = def_point.ast
             child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast,
+                self.sysdiff,
                 scope=node_data["id"],
                 parent=self,
-                sysdiff=self.sysdiff,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -435,7 +438,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         if new_scope:
             child_scope = self.sysdiff.ConditionalDefUseChains(
-                self.ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
+                self.ast, self.sysdiff, scope=node_data["id"], parent=self
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -1021,7 +1024,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 break
 
         # For file-level analysis (No system provided)
-        if self.sysdiff is None:
+        if self.sysdiff.analysis_mode == "change_location":
             return
 
         included_file_path = self.ast.unparse(arguments[0])
@@ -1569,7 +1572,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
 
         # For file-level analysis (No system provided)
-        if self.sysdiff is None:
+        if self.sysdiff.analysis_mode == "change_location":
             return
 
         (
@@ -1639,7 +1642,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.sysdiff.file_data[resolution]["diff"], self.ast.name
             )
             child_scope = self.sysdiff.ConditionalDefUseChains(
-                target_ast, scope=node_data["id"], parent=self, sysdiff=self.sysdiff
+                target_ast, self.sysdiff, scope=node_data["id"], parent=self
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
