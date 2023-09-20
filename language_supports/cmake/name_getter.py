@@ -1,4 +1,5 @@
 from utils.visitors import NodeVisitor
+from utils.exceptions import MissingArgumentsException
 
 
 class NameGetter(NodeVisitor):
@@ -58,7 +59,10 @@ class NameGetter(NodeVisitor):
         command_identifier = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "identifier")
         )["content"].upper()
-        return f"<CMD>{command_identifier}"
+        visitor = getattr(self, f"visit_{command_identifier}", None)
+        if visitor is None:
+            return f"<CMD>{command_identifier}"
+        return visitor(node_data)
 
     def visit_bracket_argument(self, node_data):
         """
@@ -121,3 +125,92 @@ class NameGetter(NodeVisitor):
         # TODO (Medium): Figure out after the scoping implementation is done
         # return "<CACHE>" + self.generic_visit(variable_node_data)
         return self.generic_visit(variable_node_data)
+
+    ##### Special commands
+
+    # Helpers
+    def get_keyword_argument(self, command_node_data, command_id, position=0):
+        arguments_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(command_node_data, "arguments")
+        )
+        if not arguments_node_data:
+            raise MissingArgumentsException(
+                command_id, self.ast.get_location(command_node_data)
+            )
+        return (
+            self.ast.unparse(
+                self.ast.get_data(self.ast.get_child_by_order(arguments_node_data, 0))
+            )
+            .upper()
+            .strip()
+        )
+
+    def find_keword_argument(self, command_node_data, command_id, keywords=[]):
+        if not keywords:
+            return "UNKNOWN"
+        arguments_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(command_node_data, "arguments")
+        )
+        if not arguments_node_data:
+            raise MissingArgumentsException(
+                command_id, self.ast.get_location(command_node_data)
+            )
+
+        arguments = sorted(
+            self.ast.get_children(arguments_node_data).values(),
+            key=lambda argument_node_data: argument_node_data["s_pos"],
+        )
+
+        for argument in arguments:
+            keyword = self.ast.unparse(argument).upper().strip()
+            if keyword in keywords:
+                return keyword
+
+        return "UNKNOWN"
+
+    # Commands
+    def visit_CMAKE_LANGUAGE(self, node_data):
+        operation = self.get_keyword_argument(node_data, "CMAKE_LANGUAGE")
+        return f"<CMD>CMAKE_LANGUAGE/{operation}"
+
+    def visit_CMAKE_PATH(self, node_data):
+        operation = self.get_keyword_argument(node_data, "CMAKE_PATH", 0)
+        if operation in ["GET", "CONVERT"]:
+            sub_operation = self.get_keyword_argument(node_data, "CMAKE_PATH", 2)
+            return f"<CMD>CMAKE_PATH/{operation}/{sub_operation}"
+
+        return f"<CMD>CMAKE_PATH/{operation}"
+
+    def visit_CMAKE_POLICY(self, node_data):
+        operation = self.get_keyword_argument(node_data, "CMAKE_POLICY", 0)
+        return f"<CMD>CMAKE_POLICY/{operation}"
+
+    def visit_FILE(self, node_data):
+        operation = self.get_keyword_argument(node_data, "FILE", 0)
+        return f"<CMD>FILE/{operation}"
+
+    def visit_LIST(self, node_data):
+        operation = self.get_keyword_argument(node_data, "LIST", 0)
+        return f"<CMD>LIST/{operation}"
+
+    def visit_STRING(self, node_data):
+        operation = self.get_keyword_argument(node_data, "STRING", 0)
+        if operation == "REGEX":
+            sub_operation = self.get_keyword_argument(node_data, "STRING", 2)
+            return f"<CMD>STRING/{operation}/{sub_operation}"
+        if operation == "JSON":
+            sub_operation = self.find_keword_argument(
+                node_data,
+                "STRING",
+                ["GET", "TYPE", "LENGTH", "REMOVE", "MEMBER", "SET", "EQUAL"],
+            )
+            return f"<CMD>STRING/{operation}/{sub_operation}"
+        return f"<CMD>STRING/{operation}"
+
+    def visit_EXPORT(self, node_data):
+        operation = self.get_keyword_argument(node_data, "EXPORT", 0)
+        return f"<CMD>EXPORT/{operation}"
+
+    def visit_INSTALL(self, node_data):
+        operation = self.get_keyword_argument(node_data, "INSTALL", 0)
+        return f"<CMD>INSTALL/{operation}"
