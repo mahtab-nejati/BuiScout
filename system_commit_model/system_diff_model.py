@@ -117,13 +117,15 @@ class SystemDiff(object):
 
     def populate_file_data(self):
         self.git_repository.checkout(self.commit.hash)
-        time.sleep(10)
+        time.sleep(5)
 
         self.set_file_data()
         self.set_file_data_diffs()
 
-        self.git_repository.checkout(self.branch)
-        time.sleep(10)
+        ## Moved to the end of all commits analysis
+        ## in run_* scripts for performance improvement.
+        # self.git_repository.checkout(self.branch)
+        # time.sleep(10)
 
     def set_file_data_modified_only(self):
         self.file_data = dict(

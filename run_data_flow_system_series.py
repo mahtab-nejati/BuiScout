@@ -214,6 +214,11 @@ for commit in tqdm(repo.traverse_commits()):
         SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
     )
 
+# Checkout to head once done.
+# This is currently disabled in
+# system_commit_mode/sustem_diff_mode.py/SystemDiff()
+# for performance improvement.
+git_repo.checkout(BRANCH)
 
 # Clear existing code and gumtree outputs
 to_remove = Path(SAVE_PATH / "code")
