@@ -103,7 +103,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if len(resolved_path_item) == 1:
             return True, resolved_path_item[0]["callee_resolved_path"]
         if len(resolved_path_item) > 1:
-            return True, resolved_path_item
+            raise Exception(
+                "Please make sure you do not provide two MANUAL_PATH_RESOLUTION items with the same caller_file_path and callee_file_path."
+            )
         return False, None
 
     def resolve_included_file_path_best_effort(self, file_path_node):
@@ -154,12 +156,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
@@ -169,12 +167,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
@@ -182,12 +176,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
@@ -195,12 +185,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         return False, None
 
@@ -249,12 +235,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         desparate_list = list(
             filter(
@@ -264,12 +246,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        if len(desparate_list) == 1:
-            return True, desparate_list[0].strip("/")
-        elif len(desparate_list) > 1:
-            return False, list(
-                map(lambda file_key: file_key.strip("/"), desparate_list)
-            )
+        if desparate_list:
+            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
 
         return False, None
 
@@ -1041,13 +1019,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         if not resolution_success:
-            # For failures due to multiple resolutions
-            if isinstance(included_file, list):
-                print(
-                    f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
-                )
-                return
-
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if included_file is None:
@@ -1091,7 +1062,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
                 return
 
-            included_file = [included_file]
+            # For reporting multiple resolutions
+            if isinstance(included_file, list):
+                print(
+                    f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
+                )
+            else:
+                included_file = [included_file]
 
         self.add_condition_to_reachability_stack(node_data, actor_point)
         self.ast_stack.append(self.ast)
@@ -1581,13 +1558,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         ) = self.resolve_added_subdirectory_file_path_best_effort(arguments[0])
 
         if not resolution_success:
-            # For failures due to multiple resolutions
-            if isinstance(added_file, list):
-                print(
-                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
-                )
-                return
-
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if added_file is None:
@@ -1628,7 +1598,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
                 return
 
-            added_file = [added_file]
+            # For reporting multiple resolutions
+            if isinstance(added_file, list):
+                print(
+                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
+                )
+            else:
+                added_file = [added_file]
 
         # Successful resolution
         # Add to reachability stack
