@@ -124,9 +124,9 @@ class ConditionalDefUseChains(NodeVisitor):
                     prior def_points are stil considered.
 
         """
-        use_point = self.Use(use_node_data, use_type, actor_point, self.ast)
-        if preferred_name:
-            use_point.name = preferred_name
+        use_point = self.Use(
+            use_node_data, use_type, actor_point, self.ast, preferred_name
+        )
         actor_point.add_use_point(use_point)
         self.use_points[use_point.node_data["id"]].append(use_point)
         self.used_names[use_point.name].append(use_point)

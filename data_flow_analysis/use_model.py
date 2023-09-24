@@ -12,7 +12,7 @@ class Use(object):
     # (see system_diff_model.py > SystemDiff.__init__())
     id_generator = itertools.count(start=1)
 
-    def __init__(self, node_data, use_type, actor_point, ast):
+    def __init__(self, node_data, use_type, actor_point, ast, preferred_name=None):
         self.id = f"{ast.commit_hash}_{ast.name}_{next(Use.id_generator)}"
         self.ast = ast
         self.type = use_type
@@ -20,11 +20,15 @@ class Use(object):
         # Storing the node_data
         self.node_data = node_data
 
-        self.name = self.ast.get_name(self.node_data)
-        if self.name is None:
+        self.real_name = self.ast.get_name(self.node_data)
+        if self.real_name is None:
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+        if preferred_name:
+            self.name = preferred_name
+        else:
+            self.name = self.real_name
         self.is_contaminated = node_data["operation"] != "no-op"
 
         # Storing actor_point

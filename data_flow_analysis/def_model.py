@@ -20,11 +20,12 @@ class Def(object):
         # Storing the node_data
         self.node_data = node_data
 
-        self.name = self.ast.get_name(self.node_data)
-        if self.name is None:
+        self.real_name = self.ast.get_name(self.node_data)
+        if self.real_namename is None:
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
+        self.name = self.real_name
         if prefix:
             self.name = prefix + self.name
         if suffix:
