@@ -251,6 +251,101 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
+    def include_cmake_file(self, node_data, path_node_data, actor_point, includer):
+        # For file-level analysis (No system provided)
+        if self.sysdiff.analysis_mode == "change_location":
+            return
+
+        included_file_path = self.ast.unparse(path_node_data)
+
+        (
+            resolution_success,
+            included_files,
+        ) = self.resolve_included_file_path_best_effort(path_node_data)
+
+        if not resolution_success:
+            # Exclude CMake module
+            # Done after unsuccessful resoltuion attempt
+            # to allow files with the same name as CMake modules
+            if included_file_path in self.exclude_resolutions:
+                print(
+                    f"{includer.upper()} resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+                )
+                return
+
+            # For files that do not exist in the project
+            # or files that are refered to using a variable
+            if included_files is None:
+                print(
+                    f"{includer.upper()} resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+
+        # Successful resolution
+        if isinstance(included_files, str):
+            # For manaully skipped files
+            if included_files.upper() == "SKIP":
+                print(
+                    f"{includer.upper()} resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+            else:
+                raise Exception(
+                    "File path resolution cannot be a string other than SKIP."
+                )
+
+        # For reporting multiple resolutions
+        if len(included_files) > 1:
+            print(
+                f"{includer.upper()} resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
+            )
+
+        self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.ast_stack.append(self.ast)
+
+        for resolution in included_files:
+            # For files with GumTree error
+            if self.sysdiff.file_data[resolution]["diff"] is None:
+                print(
+                    f"{includer.upper()} resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                )
+                continue
+
+            # Recursive resolution
+            if (resolution == self.ast.file_path) or (
+                node_data["id"]
+                in self.sysdiff.file_data[resolution]["language_specific_info"][
+                    "importers"
+                ]
+            ):
+                print(
+                    f"{includer.upper()} resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                continue
+
+            # Resolving to entry point
+            if resolution == ROOT_FILE:
+                print(
+                    f"{includer.upper()} resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                continue
+
+            # Resolution is valid
+            self.sysdiff.file_data[resolution]["language_specific_info"][
+                "importers"
+            ].append(node_data["id"])
+            self.ast = getattr(
+                self.sysdiff.file_data[resolution]["diff"], self.ast.name
+            )
+
+            # Working on included file
+            self.generic_visit(self.ast.get_data(self.ast.root))
+            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
+            # Finished working on included file
+
+        self.ast = self.ast_stack.pop()
+        self.remove_condition_from_reachability_stack()
+
     def visit_function_definition(self, node_data, *args, **kwargs):
         print(f"Function definition {self.ast.get_name(node_data)}")
         actor_point = self.register_new_actor_point(node_data)
@@ -866,9 +961,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PACKAGE")
-        print(
-            f"Support needed for including modules using {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
 
         keywords = [
             "EXACT",
@@ -909,7 +1001,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     self.register_new_def_point(arg, actor_point, "VARIABLE")
                 return
 
-        self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
+        self.include_cmake_file(node_data, arguments[0], actor_point, "FIND_PACKAGE")
 
     def visit_FIND_PATH(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1004,99 +1096,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 break
 
-        # For file-level analysis (No system provided)
-        if self.sysdiff.analysis_mode == "change_location":
-            return
-
-        included_file_path = self.ast.unparse(arguments[0])
-
-        (
-            resolution_success,
-            included_files,
-        ) = self.resolve_included_file_path_best_effort(arguments[0])
-
-        if not resolution_success:
-            # Exclude CMake module
-            # Done after unsuccessful resoltuion attempt
-            # to allow files with the same name as CMake modules
-            if included_file_path in self.exclude_resolutions:
-                print(
-                    f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
-                )
-                return
-
-            # For files that do not exist in the project
-            # or files that are refered to using a variable
-            if included_files is None:
-                print(
-                    f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                return
-
-        # Successful resolution
-        if isinstance(included_files, str):
-            # For manaully skipped files
-            if included_files.upper() == "SKIP":
-                print(
-                    f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                return
-            else:
-                raise Exception(
-                    "File path resolution cannot be a string other than SKIP."
-                )
-
-        # For reporting multiple resolutions
-        if len(included_files) > 1:
-            print(
-                f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
-            )
-
-        self.add_condition_to_reachability_stack(node_data, actor_point)
-        self.ast_stack.append(self.ast)
-
-        for resolution in included_files:
-            # For files with GumTree error
-            if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"INCLUDE resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
-                )
-                continue
-
-            # Recursive resolution
-            if (resolution == self.ast.file_path) or (
-                node_data["id"]
-                in self.sysdiff.file_data[resolution]["language_specific_info"][
-                    "importers"
-                ]
-            ):
-                print(
-                    f"INCLUDE resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                continue
-
-            # Resolving to entry point
-            if resolution == ROOT_FILE:
-                print(
-                    f"INCLUDE resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                continue
-
-            # Resolution is valid
-            self.sysdiff.file_data[resolution]["language_specific_info"][
-                "importers"
-            ].append(node_data["id"])
-            self.ast = getattr(
-                self.sysdiff.file_data[resolution]["diff"], self.ast.name
-            )
-
-            # Working on included file
-            self.generic_visit(self.ast.get_data(self.ast.root))
-            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
-            # Finished working on included file
-
-        self.ast = self.ast_stack.pop()
-        self.remove_condition_from_reachability_stack()
+        self.include_cmake_file(node_data, arguments[0], actor_point, "INCLUDE")
 
     def visit_INCLUDE_GUARD(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
