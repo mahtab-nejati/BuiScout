@@ -149,6 +149,8 @@ class SystemDiff(object):
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
+                        "data_flow_source_analysis": False,
+                        "data_flow_destination_analysis": False,
                         "data_flow_source_reach": False,
                         "data_flow_destination_reach": False,
                         "language_specific_info": defaultdict(list),
@@ -193,6 +195,8 @@ class SystemDiff(object):
                             ).read_text(),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
+                            "data_flow_source_analysis": False,
+                            "data_flow_destination_analysis": False,
                             "data_flow_source_reach": False,
                             "data_flow_destination_reach": False,
                             "language_specific_info": defaultdict(list),
@@ -306,27 +310,57 @@ class SystemDiff(object):
             print("Selected entry file doeas not exist.")
             return
 
-        self.source_cdu_chains.append(
-            self.ConditionalDefUseChains(
-                self.file_data[self.root_file]["diff"].source, self
-            )
-        )
-        print(f"{'#'*10} Analyzing source {'#'*10}")
-        self.source_cdu_chains[-1].analyze()
+        self.globally_analyze_cluster("source")
+        self.globally_analyze_cluster("destination")
 
-        self.destination_cdu_chains.append(
-            self.ConditionalDefUseChains(
-                self.file_data[self.root_file]["diff"].destination, self
+    def globally_analyze_cluster(self, cluster):
+        chains_stash = getattr(self, f"{cluster}_cdu_chains", None)
+        # Analyze CDUs from entry point
+        ast = getattr(self.file_data[self.root_file]["diff"], cluster, None)
+        chains_stash.append(self.ConditionalDefUseChains(ast, self))
+        print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+        chains_stash[-1].analyze()
+
+        # Set GLOBAL reachability
+        list(
+            map(
+                lambda file_path: self.set_data_flow_file_reach(file_path, cluster),
+                self.file_data.keys(),
             )
         )
-        print(f"{'#'*10} Analyzing destination {'#'*10}")
-        self.destination_cdu_chains[-1].analyze()
+
+        # Analyze the globally unreachable files
+        while True:
+            unreached = sorted(
+                list(
+                    map(
+                        lambda pair: pair[0],
+                        filter(
+                            lambda pair: not pair[1][f"data_flow_{cluster}_analysis"],
+                            self.file_data.items(),
+                        ),
+                    )
+                ),
+                key=lambda file_path: len(file_path.split("/")),
+            )
+            if not unreached:
+                break
+            target_file_path = unreached[0]
+            ast = getattr(self.file_data[target_file_path]["diff"], cluster, None)
+            chains_stash.append(self.ConditionalDefUseChains(ast, self))
+            print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+            chains_stash[-1].analyze()
 
     def get_file_directory(self, file_path):
         return self.file_data[file_path]["file_dir"]
 
-    def set_data_flow_reach_file(self, file_path, cluster):
-        self.file_data[file_path][f"data_flow_{cluster}_reach"] = True
+    def set_data_flow_file_analysis(self, file_path, cluster):
+        self.file_data[file_path][f"data_flow_{cluster}_analysis"] = True
+
+    def set_data_flow_file_reach(self, file_path, cluster):
+        self.file_data[file_path][f"data_flow_{cluster}_reach"] = self.file_data[
+            file_path
+        ][f"data_flow_{cluster}_analysis"]
 
     def append_to_chains(self, cdu_chains):
         chain = getattr(
@@ -572,6 +606,8 @@ class SystemDiffShortcut(SystemDiff):
                         "after_path": modified_file.new_path,
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
+                        "data_flow_source_analysis": False,
+                        "data_flow_destination_analysis": False,
                         "data_flow_source_reach": False,
                         "data_flow_destination_reach": False,
                         "language_specific_info": defaultdict(list),
@@ -612,6 +648,8 @@ class SystemDiffShortcut(SystemDiff):
                             "after_path": build_file_path,
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
+                            "data_flow_source_analysis": False,
+                            "data_flow_destination_analysis": False,
                             "data_flow_source_reach": False,
                             "data_flow_destination_reach": False,
                             "language_specific_info": defaultdict(list),
@@ -682,6 +720,8 @@ class SystemDiffSeries(SystemDiff):
                             "after_path": build_file_path,
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
+                            "data_flow_source_analysis": False,
+                            "data_flow_destination_analysis": False,
                             "data_flow_source_reach": False,
                             "data_flow_destination_reach": False,
                             "language_specific_info": defaultdict(list),

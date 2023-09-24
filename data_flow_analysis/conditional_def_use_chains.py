@@ -207,8 +207,7 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
-        if self.sysdiff.analysis_mode != "change_location":
-            self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
+        self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
 
     def get_all_def_points(self):
         return reduce(lambda a, b: [*a, *b], self.def_points.values(), [])

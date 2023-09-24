@@ -1086,7 +1086,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             # Working on included file
             self.generic_visit(self.ast.get_data(self.ast.root))
-            self.sysdiff.set_data_flow_reach_file(self.ast.file_path, self.ast.name)
+            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
             # Finished working on included file
 
         self.ast = self.ast_stack.pop()
@@ -1631,7 +1631,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             # Working on added file
             child_scope.analyze()
-            self.sysdiff.set_data_flow_reach_file(
+            self.sysdiff.set_data_flow_file_analysis(
                 child_scope.ast.file_path, child_scope.ast.name
             )
             # Finished working on added file

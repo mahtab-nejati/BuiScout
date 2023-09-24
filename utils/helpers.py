@@ -171,6 +171,8 @@ def create_csv_files(summarization_methods, save_path):
         "after_path",
         "saved_as",
         "has_gumtree_error",
+        "data_flow_source_analysis",
+        "data_flow_destination_analysis",
         "data_flow_source_reach",
         "data_flow_destination_reach",
     ]
