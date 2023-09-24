@@ -124,27 +124,32 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         candidate_path = candidate_path.strip("./")
 
         current_directory = (
-            self.sysdiff.get_file_directory(self.ast.file_path).strip("/") + "/"
+            self.sysdiff.get_file_directory(self.ast.file_path, self.ast.name).strip(
+                "/"
+            )
+            + "/"
         )
         if current_directory == "/":
             current_directory = ""
 
-        if current_directory + candidate_path in self.sysdiff.file_data:
-            return True, [current_directory + candidate_path]
+        resolution_map = self.sysdiff.file_path_resolution_map[self.ast.name]
 
-        if current_directory + candidate_path + ".cmake" in self.sysdiff.file_data:
-            return True, [current_directory + candidate_path + ".cmake"]
+        if current_directory + candidate_path in resolution_map:
+            return True, [resolution_map[current_directory + candidate_path]]
 
-        if candidate_path in self.sysdiff.file_data:
-            return True, [candidate_path]
+        if current_directory + candidate_path + ".cmake" in resolution_map:
+            return True, [resolution_map[current_directory + candidate_path + ".cmake"]]
 
-        if candidate_path + ".cmake" in self.sysdiff.file_data:
-            return True, [candidate_path + ".cmake"]
+        if candidate_path in resolution_map:
+            return True, [resolution_map[candidate_path]]
+
+        if candidate_path + ".cmake" in resolution_map:
+            return True, [resolution_map[candidate_path + ".cmake"]]
 
         file_keys = list(
             map(
                 lambda file_key: ("/" + file_key.strip("/")),
-                self.sysdiff.file_data.keys(),
+                resolution_map.keys(),
             )
         )
 
@@ -157,7 +162,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         desparate_list = list(
             filter(
@@ -168,7 +177,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         desparate_list = list(
             filter(
@@ -177,7 +190,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         desparate_list = list(
             filter(
@@ -186,7 +203,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         return False, None
 
@@ -206,24 +227,28 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         candidate_path = candidate_path.strip("./")
 
         current_directory = (
-            self.sysdiff.get_file_directory(self.ast.file_path).strip("/") + "/"
+            self.sysdiff.get_file_directory(self.ast.file_path, self.ast.name).strip(
+                "/"
+            )
+            + "/"
         )
         if current_directory == "/":
             current_directory = ""
 
-        if (
-            current_directory + candidate_path + "/CMakeLists.txt"
-            in self.sysdiff.file_data
-        ):
-            return True, [current_directory + candidate_path + "/CMakeLists.txt"]
+        resolution_map = self.sysdiff.file_path_resolution_map[self.ast.name]
 
-        if candidate_path + "/CMakeLists.txt" in self.sysdiff.file_data:
-            return True, [candidate_path + "/CMakeLists.txt"]
+        if current_directory + candidate_path + "/CMakeLists.txt" in resolution_map:
+            return True, [
+                resolution_map[current_directory + candidate_path + "/CMakeLists.txt"]
+            ]
+
+        if candidate_path + "/CMakeLists.txt" in resolution_map:
+            return True, [resolution_map[candidate_path + "/CMakeLists.txt"]]
 
         file_keys = list(
             map(
                 lambda file_key: ("/" + file_key.strip("/")),
-                self.sysdiff.file_data.keys(),
+                resolution_map.keys(),
             )
         )
 
@@ -236,7 +261,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         desparate_list = list(
             filter(
@@ -247,7 +276,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         )
         if desparate_list:
-            return True, list(map(lambda file_key: file_key.strip("/"), desparate_list))
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
 
         return False, None
 

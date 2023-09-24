@@ -5,7 +5,6 @@ from collections import defaultdict
 from functools import reduce
 from utils.helpers import (
     file_is_target,
-    get_file_dir,
     get_processed_path,
     write_source_code,
     read_dotdiff,
@@ -80,6 +79,21 @@ class SystemDiff(object):
         self.file_data = {}.copy()
         self.populate_file_data()
 
+        self.file_path_resolution_map = {
+            "source": dict(
+                map(
+                    lambda pair: (pair[1]["before_path"], pair[0]),
+                    filter(lambda pair: pair[1]["before_path"], self.file_data.items()),
+                )
+            ),
+            "destination": dict(
+                map(
+                    lambda pair: (pair[1]["after_path"], pair[0]),
+                    filter(lambda pair: pair[1]["after_path"], self.file_data.items()),
+                )
+            ),
+        }
+
         # Import language support tools but not saved as an attribute
         # for pickling reasons
         language_support_tools = importlib.import_module(
@@ -131,20 +145,25 @@ class SystemDiff(object):
         self.file_data = dict(
             map(
                 lambda file_data: (
-                    file_data["file_dir"] + file_data["file_name"],
+                    file_data["before_path"]
+                    if file_data["after_path"] is None
+                    else file_data["after_path"],
                     file_data,
                 ),
                 map(
                     lambda modified_file: {
                         "commit_hash": self.commit.hash,
-                        "file_dir": get_file_dir(modified_file),
                         "file_name": modified_file.filename,
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
-                        "before_path": modified_file.old_path,
+                        "before_path": None
+                        if modified_file.old_path is None
+                        else modified_file.old_path.strip("/"),
                         # code_before will be removed once written to a file
                         "code_before": modified_file.source_code_before,
-                        "after_path": modified_file.new_path,
+                        "after_path": None
+                        if modified_file.new_path is None
+                        else modified_file.new_path.strip("/"),
                         # code_after will be removed once written to a file
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
@@ -183,13 +202,12 @@ class SystemDiff(object):
                         build_file_path,
                         {
                             "commit_hash": self.commit.hash,
-                            "file_dir": "/".join(build_file_path.split("/")[:-1]) + "/",
                             "file_name": build_file_path.split("/")[-1],
                             "build_language": self.language,
                             "file_action": None,
-                            "before_path": build_file_path,
+                            "before_path": build_file_path.strip("/"),
                             "code_before": "",
-                            "after_path": build_file_path,
+                            "after_path": build_file_path.strip("/"),
                             "code_after": Path(
                                 Path(self.repository_path) / build_file_path
                             ).read_text(),
@@ -352,8 +370,13 @@ class SystemDiff(object):
             print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
             chains_stash[-1].analyze()
 
-    def get_file_directory(self, file_path):
-        return self.file_data[file_path]["file_dir"]
+    def get_file_directory(self, file_path, cluster):
+        if cluster == "source":
+            directory = self.file_data[file_path]["before_path"]
+        elif cluster == "destination":
+            directory = self.file_data[file_path]["after_path"]
+
+        return "/".join(directory.split("/")[:-1])
 
     def set_data_flow_file_analysis(self, file_path, cluster):
         self.file_data[file_path][f"data_flow_{cluster}_analysis"] = True
@@ -593,18 +616,23 @@ class SystemDiffShortcut(SystemDiff):
         self.file_data = dict(
             map(
                 lambda file_data: (
-                    file_data["file_dir"] + file_data["file_name"],
+                    file_data["before_path"]
+                    if file_data["after_path"] is None
+                    else file_data["after_path"],
                     file_data,
                 ),
                 map(
                     lambda modified_file: {
                         "commit_hash": self.commit.hash,
-                        "file_dir": get_file_dir(modified_file),
                         "file_name": modified_file.filename,
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
-                        "before_path": modified_file.old_path,
-                        "after_path": modified_file.new_path,
+                        "before_path": None
+                        if modified_file.old_path is None
+                        else modified_file.old_path.strip("/"),
+                        "after_path": None
+                        if modified_file.new_path is None
+                        else modified_file.new_path.strip("/"),
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
                         "data_flow_source_analysis": False,
@@ -641,12 +669,11 @@ class SystemDiffShortcut(SystemDiff):
                         build_file_path,
                         {
                             "commit_hash": self.commit.hash,
-                            "file_dir": "/".join(build_file_path.split("/")[:-1]) + "/",
                             "file_name": build_file_path.split("/")[-1],
                             "build_language": self.language,
                             "file_action": None,
-                            "before_path": build_file_path,
-                            "after_path": build_file_path,
+                            "before_path": build_file_path.strip("/"),
+                            "after_path": build_file_path.strip("/"),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
                             "data_flow_source_analysis": False,
@@ -713,12 +740,11 @@ class SystemDiffSeries(SystemDiff):
                         build_file_path,
                         {
                             "commit_hash": self.commit.hash,
-                            "file_dir": "/".join(build_file_path.split("/")[:-1]) + "/",
                             "file_name": build_file_path.split("/")[-1],
                             "build_language": self.language,
                             "file_action": None,
-                            "before_path": build_file_path,
-                            "after_path": build_file_path,
+                            "before_path": build_file_path.strip("/"),
+                            "after_path": build_file_path.strip("/"),
                             "saved_as": build_file_path.replace("/", "__").strip(),
                             "has_gumtree_error": False,
                             "data_flow_source_analysis": False,

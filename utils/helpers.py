@@ -110,17 +110,6 @@ def file_is_target(modified_file, patterns):
     )
 
 
-def get_file_dir(modified_file):
-    if modified_file.new_path is not None:
-        return modified_file.new_path.replace(modified_file.filename, "")
-    elif modified_file.old_path is not None:
-        return modified_file.old_path.replace(modified_file.filename, "")
-    elif modified_file.filename is not None:
-        return ""
-    else:
-        return None
-
-
 # Prpcess the path to project files
 def get_processed_path(modified_file):
     if modified_file.new_path is not None:
@@ -163,7 +152,6 @@ def create_csv_files(summarization_methods, save_path):
     # Save metadata on build changes
     build_files_columns = [
         "commit_hash",
-        "file_dir",
         "file_name",
         "build_language",
         "file_action",
