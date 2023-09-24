@@ -130,16 +130,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             current_directory = ""
 
         if current_directory + candidate_path in self.sysdiff.file_data:
-            return True, current_directory + candidate_path
+            return True, [current_directory + candidate_path]
 
         if current_directory + candidate_path + ".cmake" in self.sysdiff.file_data:
-            return True, current_directory + candidate_path + ".cmake"
+            return True, [current_directory + candidate_path + ".cmake"]
 
         if candidate_path in self.sysdiff.file_data:
-            return True, candidate_path
+            return True, [candidate_path]
 
         if candidate_path + ".cmake" in self.sysdiff.file_data:
-            return True, candidate_path + ".cmake"
+            return True, [candidate_path + ".cmake"]
 
         file_keys = list(
             map(
@@ -215,10 +215,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             current_directory + candidate_path + "/CMakeLists.txt"
             in self.sysdiff.file_data
         ):
-            return True, current_directory + candidate_path + "/CMakeLists.txt"
+            return True, [current_directory + candidate_path + "/CMakeLists.txt"]
 
         if candidate_path + "/CMakeLists.txt" in self.sysdiff.file_data:
-            return True, candidate_path + "/CMakeLists.txt"
+            return True, [candidate_path + "/CMakeLists.txt"]
 
         file_keys = list(
             map(
@@ -1017,66 +1017,70 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
             return
 
-        resolution_success, included_file = self.resolve_included_file_path_best_effort(
-            arguments[0]
-        )
+        (
+            resolution_success,
+            included_files,
+        ) = self.resolve_included_file_path_best_effort(arguments[0])
 
         if not resolution_success:
             # For files that do not exist in the project
             # or files that are refered to using a variable
-            if included_file is None:
+            if included_files is None:
                 print(
                     f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return
 
         # Successful resolution
-        if isinstance(included_file, str):
+        if isinstance(included_files, str):
             # For manaully skipped files
-            if included_file.upper() == "SKIP":
+            if included_files.upper() == "SKIP":
                 print(
                     f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return
+            else:
+                raise Exception(
+                    "File path resolution cannot be a string other than SKIP."
+                )
 
+        # For reporting multiple resolutions
+        if len(included_files) > 1:
+            print(
+                f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
+            )
+
+        self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.ast_stack.append(self.ast)
+
+        for resolution in included_files:
             # For files with GumTree error
-            if self.sysdiff.file_data[included_file]["diff"] is None:
+            if self.sysdiff.file_data[resolution]["diff"] is None:
                 print(
                     f"INCLUDE resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
                 )
-                return
+                continue
 
             # Recursive resolution
-            if (included_file == self.ast.file_path) or (
+            if (resolution == self.ast.file_path) or (
                 node_data["id"]
-                in self.sysdiff.file_data[included_file]["language_specific_info"][
+                in self.sysdiff.file_data[resolution]["language_specific_info"][
                     "importers"
                 ]
             ):
                 print(
                     f"INCLUDE resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return
+                continue
 
             # Resolving to entry point
-            if included_file == ROOT_FILE:
+            if resolution == ROOT_FILE:
                 print(
                     f"INCLUDE resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return
+                continue
 
-            # For reporting multiple resolutions
-            if isinstance(included_file, list):
-                print(
-                    f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_file)} called from {self.ast.file_path}"
-                )
-            else:
-                included_file = [included_file]
-
-        self.add_condition_to_reachability_stack(node_data, actor_point)
-        self.ast_stack.append(self.ast)
-
-        for resolution in included_file:
+            # Resolution is valid
             self.sysdiff.file_data[resolution]["language_specific_info"][
                 "importers"
             ].append(node_data["id"])
@@ -1557,62 +1561,65 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         (
             resolution_success,
-            added_file,
+            added_files,
         ) = self.resolve_added_subdirectory_file_path_best_effort(arguments[0])
 
         if not resolution_success:
             # For files that do not exist in the project
             # or files that are refered to using a variable
-            if added_file is None:
+            if added_files is None:
                 print(
                     f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return
 
-        if isinstance(added_file, str):
+        if isinstance(added_files, str):
             # For manaully skipped files
-            if added_file.upper() == "SKIP":
+            if added_files.upper() == "SKIP":
                 print(
                     f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
                 return
+            else:
+                raise Exception(
+                    "File path resolution cannot be a string other than SKIP."
+                )
 
+        # For reporting multiple resolutions
+        if len(added_files) > 1:
+            print(
+                f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
+            )
+
+        # Add to reachability stack
+        self.add_condition_to_reachability_stack(node_data, actor_point)
+
+        for resolution in added_files:
             # For files with GumTree error
-            if self.sysdiff.file_data[added_file]["diff"] is None:
+            if self.sysdiff.file_data[resolution]["diff"] is None:
                 print(f"Parser error for {self.ast.unparse(node_data)}")
-                return
+                continue
 
             # Recursive resolution
-            if (added_file == self.ast.file_path) or (
+            if (resolution == self.ast.file_path) or (
                 node_data["id"]
-                in self.sysdiff.file_data[added_file]["language_specific_info"][
+                in self.sysdiff.file_data[resolution]["language_specific_info"][
                     "importers"
                 ]
             ):
                 print(
                     f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return
+                continue
 
             # Resolving to entry point
-            if added_file == ROOT_FILE:
+            if resolution == ROOT_FILE:
                 print(
                     f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )
-                return
+                continue
 
-            # For reporting multiple resolutions
-            if isinstance(added_file, list):
-                print(
-                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_file)} called from {self.ast.file_path}"
-                )
-            else:
-                added_file = [added_file]
-
-        # Successful resolution
-        # Add to reachability stack
-        self.add_condition_to_reachability_stack(node_data, actor_point)
-        for resolution in added_file:
+            # Resolution is valid
             self.sysdiff.file_data[resolution]["language_specific_info"][
                 "importers"
             ].append(node_data["id"])
@@ -1635,6 +1642,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 child_scope.ast.file_path, child_scope.ast.name
             )
             # Finished working on added file
+
         # Remove from reachability stack
         self.remove_condition_from_reachability_stack()
 

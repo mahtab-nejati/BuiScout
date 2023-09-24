@@ -343,6 +343,7 @@ class SystemDiff(object):
                 ),
                 key=lambda file_path: len(file_path.split("/")),
             )
+            print(f"unreached: {len(unreached)}")
             if not unreached:
                 break
             target_file_path = unreached[0]
