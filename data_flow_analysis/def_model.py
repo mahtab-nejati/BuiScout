@@ -21,7 +21,7 @@ class Def(object):
         self.node_data = node_data
 
         self.real_name = self.ast.get_name(self.node_data)
-        if self.real_namename is None:
+        if self.real_name is None:
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
