@@ -1010,19 +1010,21 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         included_file_path = self.ast.unparse(arguments[0])
 
-        # Exclude CMake module
-        if included_file_path in self.exclude_resolutions:
-            print(
-                f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
-            )
-            return
-
         (
             resolution_success,
             included_files,
         ) = self.resolve_included_file_path_best_effort(arguments[0])
 
         if not resolution_success:
+            # Exclude CMake module
+            # Done after unsuccessful resoltuion attempt
+            # to allow files with the same name as CMake modules
+            if included_file_path in self.exclude_resolutions:
+                print(
+                    f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+                )
+                return
+
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if included_files is None:
