@@ -317,7 +317,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         child_scope = self.sysdiff.ConditionalDefUseChains(
             target_ast,
             self.sysdiff,
-            scope=node_data["id"],
+            scope=self.scope + "/" + node_data["id"],
             parent=self,
         )
         child_scope.parent_names_available = False
@@ -351,7 +351,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast,
                 self.sysdiff,
-                scope=node_data["id"],
+                scope=self.scope + "/" + node_data["id"],
                 parent=self,
             )
             self.children.append(child_scope)
@@ -416,7 +416,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         if new_scope:
             child_scope = self.sysdiff.ConditionalDefUseChains(
-                self.ast, self.sysdiff, scope=node_data["id"], parent=self
+                self.ast,
+                self.sysdiff,
+                scope=self.scope + "/" + node_data["id"],
+                parent=self,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -1618,7 +1621,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.sysdiff.file_data[resolution]["diff"], self.ast.name
             )
             child_scope = self.sysdiff.ConditionalDefUseChains(
-                target_ast, self.sysdiff, scope=node_data["id"], parent=self
+                target_ast,
+                self.sysdiff,
+                scope=self.scope + "/" + node_data["id"],
+                parent=self,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
