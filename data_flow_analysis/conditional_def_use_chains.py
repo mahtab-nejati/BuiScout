@@ -221,13 +221,13 @@ class ConditionalDefUseChains(NodeVisitor):
     def to_json(self, propagation_slice_mode=False):
         if propagation_slice_mode:
             def_points = filter(
-                lambda point: point.is_contaminated, self.get_all_def_points()
+                lambda point: point.is_in_propagation_slice, self.get_all_def_points()
             )
             use_points = filter(
-                lambda point: point.is_contaminated, self.get_all_use_points()
+                lambda point: point.is_in_propagation_slice, self.get_all_use_points()
             )
             actor_points = filter(
-                lambda point: point.is_contaminated, self.get_all_actor_points()
+                lambda point: point.is_in_propagation_slice, self.get_all_actor_points()
             )
         else:
             def_points = self.get_all_def_points()
@@ -353,9 +353,9 @@ class ConditionalDefUseChains(NodeVisitor):
     def get_propagation_slices(self):
         """
         This method must be implemented in the language support subclass. As the result,
-        Def/Use/Actor objects that are affected have their .is_contaminated attribute set to True.
+        Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute set to True.
 
-        NOTE: Make sure you uss the .set_contamination() method to set the .is_contaminated attribute to True
+        NOTE: Make sure you uss the .set_contamination() method to set the .is_in_propagation_slice attribute to True
         for all contaminated Def/Use/Actor objects.
 
         Each propagation slice is a list of dictionaries representing the
@@ -379,12 +379,18 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def get_contaminated_points(self):
         def_points = list(
-            filter(lambda point: point.is_contaminated, self.get_all_def_points())
+            filter(
+                lambda point: point.is_in_propagation_slice, self.get_all_def_points()
+            )
         )
         use_points = list(
-            filter(lambda point: point.is_contaminated, self.get_all_use_points())
+            filter(
+                lambda point: point.is_in_propagation_slice, self.get_all_use_points()
+            )
         )
         actor_points = list(
-            filter(lambda point: point.is_contaminated, self.get_all_actor_points())
+            filter(
+                lambda point: point.is_in_propagation_slice, self.get_all_actor_points()
+            )
         )
         return def_points + use_points + actor_points

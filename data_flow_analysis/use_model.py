@@ -29,13 +29,38 @@ class Use(object):
             self.name = preferred_name
         else:
             self.name = self.real_name
-        self.is_contaminated = node_data["operation"] != "no-op"
+        self.is_modified = node_data["operation"] != "no-op"
+        self.is_value_affected = False
+        self.is_reach_affected = False
+        self.is_upstream = False
+        self.is_in_propagation_slice = self.is_modified
+        self.is_processed_for_propagation = False
 
         # Storing actor_point
         self.actor_point = actor_point
 
-    def set_contamination(self):
-        self.is_contaminated = True
+    def set_is_modified(self):
+        self.is_modified = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_value_affected(self):
+        self.is_value_affected = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_reach_affected(self):
+        self.is_reach_affected = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_upstream(self):
+        self.is_upstream = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_processed_for_propagation(self):
+        self.is_processed_for_propagation = True
 
     def is_user_of(self, def_point):
         """
@@ -50,6 +75,10 @@ class Use(object):
                 "use_id": self.id,
                 "use_type": self.type,
                 "use_name": self.name,
+                "is_modified": self.is_modified,
+                "is_value_affected": self.is_value_affected,
+                "is_reach_affected": self.is_reach_affected,
+                "is_upstream": self.is_upstream,
                 "use_node_id": self.node_data["id"],
                 "use_node_operation": self.node_data["operation"],
                 "use_node_type": self.node_data["type"],
@@ -68,6 +97,6 @@ class Use(object):
             "use_type": self.type,
             "use_name": self.name,
             "use_node_id": self.node_data["id"],
-            "use_node_contamination": self.is_contaminated,
+            "use_node_contamination": self.is_in_propagation_slice,
             "actor_id": self.actor_point.id,
         }

@@ -30,7 +30,12 @@ class Def(object):
             self.name = prefix + self.name
         if suffix:
             self.name = self.name + suffix
-        self.is_contaminated = node_data["operation"] != "no-op"
+        self.is_modified = node_data["operation"] != "no-op"
+        self.is_value_affected = False
+        self.is_reach_affected = False
+        self.is_upstream = False
+        self.is_in_propagation_slice = self.is_modified
+        self.is_processed_for_propagation = False
 
         # Storing actor_point
         self.actor_point = actor_point
@@ -42,8 +47,28 @@ class Def(object):
         # Storing use_points
         self.use_points = []
 
-    def set_contamination(self):
-        self.is_contaminated = True
+    def set_is_modified(self):
+        self.is_modified = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_value_affected(self):
+        self.is_value_affected = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_reach_affected(self):
+        self.is_reach_affected = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_upstream(self):
+        self.is_upstream = True
+        self.is_in_propagation_slice = True
+        self.actor_point.is_in_propagation_slice = True
+
+    def set_is_processed_for_propagation(self):
+        self.is_processed_for_propagation = True
 
     def add_use_point(self, use_point):
         """
@@ -71,6 +96,10 @@ class Def(object):
                 "def_id": self.id,
                 "def_type": self.type,
                 "def_name": self.name,
+                "is_modified": self.is_modified,
+                "is_value_affected": self.is_value_affected,
+                "is_reach_affected": self.is_reach_affected,
+                "is_upstream": self.is_upstream,
                 "def_node_id": self.node_data["id"],
                 "def_node_operation": self.node_data["operation"],
                 "def_node_type": self.node_data["type"],
@@ -89,7 +118,7 @@ class Def(object):
                         map(
                             lambda use_point: use_point.id,
                             filter(
-                                lambda use_point: not use_point.is_contaminated,
+                                lambda use_point: not use_point.is_in_propagation_slice,
                                 self.use_points,
                             ),
                         )
@@ -101,7 +130,7 @@ class Def(object):
             "def_type": self.type,
             "def_name": self.name,
             "def_node_id": self.node_data["id"],
-            "def_node_contamination": self.is_contaminated,
+            "def_node_contamination": self.is_in_propagation_slice,
             "actor_id": self.actor_point.id,
             "use_ids": list(map(lambda use_point: use_point.id, self.use_points)),
         }

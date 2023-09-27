@@ -24,7 +24,12 @@ class Actor(object):
             raise DebugException(
                 f"{self.node_data['type']} requires NameGetter revisit"
             )
-        self.is_contaminated = node_data["operation"] != "no-op"
+        self.is_modified = node_data["operation"] != "no-op"
+        self.is_value_affected = False
+        self.is_reach_affected = False
+        self.is_upstream = False
+        self.is_in_propagation_slice = self.is_modified
+        self.is_processed_for_propagation = False
 
         # Storing reachability condition
         self.reachability = reachability.copy()
@@ -35,8 +40,24 @@ class Actor(object):
         # Storing the list of [Uses]
         self.use_points = []
 
-    def set_contamination(self):
-        self.is_contaminated = True
+    def set_is_modified(self):
+        self.is_modified = True
+        self.is_in_propagation_slice = True
+
+    def set_is_value_affected(self):
+        self.is_value_affected = True
+        self.is_in_propagation_slice = True
+
+    def set_is_reach_affected(self):
+        self.is_reach_affected = True
+        self.is_in_propagation_slice = True
+
+    def set_is_upstream(self):
+        self.is_upstream = True
+        self.is_in_propagation_slice = True
+
+    def set_is_processed_for_propagation(self):
+        self.is_processed_for_propagation = True
 
     def add_def_point(self, def_point):
         """
@@ -69,6 +90,10 @@ class Actor(object):
             return {
                 "actor_id": self.id,
                 "actor_name": self.name,
+                "is_modified": self.is_modified,
+                "is_value_affected": self.is_value_affected,
+                "is_reach_affected": self.is_reach_affected,
+                "is_upstream": self.is_upstream,
                 "actor_node_id": self.node_data["id"],
                 "actor_node_operation": self.node_data["operation"],
                 "actor_node_type": self.node_data["type"],
@@ -85,7 +110,7 @@ class Actor(object):
             "actor_id": self.id,
             "actor_name": self.name,
             "actor_node_id": self.node_data["id"],
-            "actor_node_contamination": self.is_contaminated,
+            "actor_node_contamination": self.is_in_propagation_slice,
             "reachability": self.reachability,
             "reachability_actor_ids": self.reachability_actor_ids,
             "def_ids": list(map(lambda point: point.id, self.def_points)),
