@@ -844,6 +844,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
+        print(
+            f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+        )
         actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
