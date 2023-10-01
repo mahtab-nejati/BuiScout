@@ -366,9 +366,10 @@ class SystemDiff(object):
                 break
             target_file_path = unreached[0]
             ast = getattr(self.file_data[target_file_path]["diff"], cluster, None)
-            chains_stash.append(self.ConditionalDefUseChains(ast, self))
-            print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
-            chains_stash[-1].analyze()
+            if ast:
+                chains_stash.append(self.ConditionalDefUseChains(ast, self))
+                print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+                chains_stash[-1].analyze()
 
     def get_file_directory(self, file_path, cluster):
         if cluster == "source":
