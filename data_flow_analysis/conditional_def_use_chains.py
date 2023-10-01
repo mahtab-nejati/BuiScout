@@ -183,6 +183,8 @@ class ConditionalDefUseChains(NodeVisitor):
         """
         Consumes a Def object and registers it to the parent scope.
         """
+        if self.parent is None:
+            return
         self.parent.defined_names[def_point.name].append(def_point)
         self.parent.def_points[def_point.node_data["id"]].append(def_point)
         self.parent.actor_points[def_point.actor_point.node_data["id"]].append(
