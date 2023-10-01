@@ -108,7 +108,300 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
         return False, None
 
-    def resolve_included_file_path_best_effort(self, file_path_node):
+    def resolve_find_package_module_mode_file_path_best_effort(self, file_path_node):
+        """
+        Returns (success_flag, resolution)
+
+        module_mode:
+        Find<PackageName>.cmake
+        """
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
+        candidate_path = file_path.split("}")[-1]
+        if not candidate_path:
+            return False, None
+        candidate_path = candidate_path.strip("./")
+        candidate_path = "Find" + candidate_path + ".cmake"
+
+        current_directory = (
+            self.sysdiff.get_file_directory(self.ast.file_path, self.ast.name).strip(
+                "/"
+            )
+            + "/"
+        )
+        if current_directory == "/":
+            current_directory = ""
+
+        resolution_map = self.sysdiff.file_path_resolution_map[self.ast.name]
+
+        if current_directory + candidate_path in resolution_map:
+            return True, [resolution_map[current_directory + candidate_path]]
+
+        if candidate_path in resolution_map:
+            return True, [resolution_map[candidate_path]]
+
+        file_keys = list(
+            map(
+                lambda file_key: ("/" + file_key.strip("/")),
+                resolution_map.keys(),
+            )
+        )
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    "/" + current_directory + candidate_path
+                ),
+                file_keys,
+            )
+        )
+        if desparate_list:
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith("/" + candidate_path),
+                file_keys,
+            )
+        )
+        if desparate_list:
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
+
+        return False, None
+
+    def resolve_find_package_config_mode_file_path_best_effort(self, file_path_node):
+        """
+        Returns (success_flag, resolution)
+
+        config_mode (multiple package names):
+        <PackageName>Config.cmake
+        <PackageName>ConfigVersion.cmake
+        <lowercasePackageName>-config.cmake
+        <lowercasePackageName>-config-version.cmake
+        """
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
+        candidate_path = file_path.split("}")[-1]
+        if not candidate_path:
+            return False, None
+        candidate_path = candidate_path.strip("./")
+        candidate_paths = [
+            candidate_path + "Config.cmake",
+            candidate_path + "ConfigVersion.cmake",
+            candidate_path.lower() + "-config.cmake",
+            candidate_path.lower() + "-config-version.cmake",
+        ]
+
+        current_directory = (
+            self.sysdiff.get_file_directory(self.ast.file_path, self.ast.name).strip(
+                "/"
+            )
+            + "/"
+        )
+        if current_directory == "/":
+            current_directory = ""
+
+        resolution_map = self.sysdiff.file_path_resolution_map[self.ast.name]
+
+        success = False
+        found_files = []
+        for candidate_path in candidate_paths:
+            if current_directory + candidate_path in resolution_map:
+                success = True
+                found_files.append(resolution_map[current_directory + candidate_path])
+
+            if candidate_path in resolution_map:
+                success = True
+                found_files.append(resolution_map[candidate_path])
+
+            file_keys = list(
+                map(
+                    lambda file_key: ("/" + file_key.strip("/")),
+                    resolution_map.keys(),
+                )
+            )
+
+            desparate_list = list(
+                filter(
+                    lambda file_key: file_key.endswith(
+                        "/" + current_directory + candidate_path
+                    ),
+                    file_keys,
+                )
+            )
+            if desparate_list:
+                success = True
+                found_files = found_files + list(
+                    map(
+                        lambda file_key: resolution_map[file_key.strip("/")],
+                        desparate_list,
+                    )
+                )
+
+            desparate_list = list(
+                filter(
+                    lambda file_key: file_key.endswith("/" + candidate_path),
+                    file_keys,
+                )
+            )
+            if desparate_list:
+                success = True
+                found_files = found_files + list(
+                    map(
+                        lambda file_key: resolution_map[file_key.strip("/")],
+                        desparate_list,
+                    )
+                )
+
+        if success:
+            return True, found_files
+
+        return False, None
+
+    def resolve_find_package_fetch_mode_file_path_best_effort(self, file_path_node):
+        """
+        Returns (success_flag, resolution)
+
+        fetch_mode:
+        <PackageName>.cmake
+        """
+        file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.replace(" ", "")
+        candidate_path = file_path.split("}")[-1]
+        if not candidate_path:
+            return False, None
+        candidate_path = candidate_path.strip("./")
+        candidate_path = candidate_path + ".cmake"
+
+        current_directory = (
+            self.sysdiff.get_file_directory(self.ast.file_path, self.ast.name).strip(
+                "/"
+            )
+            + "/"
+        )
+        if current_directory == "/":
+            current_directory = ""
+
+        resolution_map = self.sysdiff.file_path_resolution_map[self.ast.name]
+
+        if current_directory + candidate_path in resolution_map:
+            return True, [resolution_map[current_directory + candidate_path]]
+
+        if candidate_path in resolution_map:
+            return True, [resolution_map[candidate_path]]
+
+        file_keys = list(
+            map(
+                lambda file_key: ("/" + file_key.strip("/")),
+                resolution_map.keys(),
+            )
+        )
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith(
+                    "/" + current_directory + candidate_path
+                ),
+                file_keys,
+            )
+        )
+        if desparate_list:
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
+
+        desparate_list = list(
+            filter(
+                lambda file_key: file_key.endswith("/" + candidate_path),
+                file_keys,
+            )
+        )
+        if desparate_list:
+            return True, list(
+                map(
+                    lambda file_key: resolution_map[file_key.strip("/")], desparate_list
+                )
+            )
+
+        return False, None
+
+    def resolve_find_package_file_path_best_effort(
+        self, file_path_node, module_mode=True, confi_mode=True, fetch_mode=True
+    ):
+        """
+        Returns (success_flag, resolution)
+
+        module_mode:
+        Find<PackageName>.cmake
+
+        config_mode (multiple package names):
+        <lowercasePackageName>-config.cmake
+        <PackageName>Config.cmake
+        <lowercasePackageName>-config-version.cmake
+        <PackageName>ConfigVersion.cmake
+
+        fetch_mode:
+        <PackageName>.cmake
+        """
+        manual_success, resolution = self.get_manually_resolved_path(file_path_node)
+        if manual_success:
+            return True, resolution
+
+        if module_mode:
+            (
+                m_success,
+                m_resolutions,
+            ) = self.resolve_find_package_module_mode_file_path_best_effort(
+                file_path_node
+            )
+            if not m_success:
+                m_resolutions = []
+        else:
+            m_success = False
+            m_resolutions = []
+
+        if confi_mode:
+            (
+                c_success,
+                c_resolutions,
+            ) = self.resolve_find_package_config_mode_file_path_best_effort(
+                file_path_node
+            )
+            if not c_success:
+                c_resolutions = []
+        else:
+            c_success = False
+            c_resolutions = []
+
+        if fetch_mode:
+            (
+                f_success,
+                f_resolutions,
+            ) = self.resolve_find_package_fetch_mode_file_path_best_effort(
+                file_path_node
+            )
+            if not f_success:
+                f_resolutions = []
+        else:
+            f_success = False
+            f_resolutions = []
+
+        return (
+            m_success or c_success or f_success,
+            m_resolutions + c_resolutions + f_resolutions,
+        )
+
+    def resolve_include_file_path_best_effort(self, file_path_node):
         """
         Returns (success_flag, resolution)
         """
@@ -211,7 +504,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def resolve_added_subdirectory_file_path_best_effort(self, file_path_node):
+    def resolve_add_subdirectory_file_path_best_effort(self, file_path_node):
         """
         Returns (success_flag, resolution)
         """
@@ -283,101 +576,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
 
         return False, None
-
-    def include_cmake_file(self, node_data, path_node_data, actor_point, includer):
-        # For file-level analysis (No system provided)
-        if self.sysdiff.analysis_mode == "change_location":
-            return
-
-        included_file_path = self.ast.unparse(path_node_data)
-
-        (
-            resolution_success,
-            included_files,
-        ) = self.resolve_included_file_path_best_effort(path_node_data)
-
-        if not resolution_success:
-            # Exclude CMake module
-            # Done after unsuccessful resoltuion attempt
-            # to allow files with the same name as CMake modules
-            if included_file_path in self.exclude_resolutions:
-                print(
-                    f"{includer.upper()} resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
-                )
-                return
-
-            # For files that do not exist in the project
-            # or files that are refered to using a variable
-            if included_files is None:
-                print(
-                    f"{includer.upper()} resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                return
-
-        # Successful resolution
-        if isinstance(included_files, str):
-            # For manaully skipped files
-            if included_files.upper() == "SKIP":
-                print(
-                    f"{includer.upper()} resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                return
-            else:
-                raise Exception(
-                    "File path resolution cannot be a string other than SKIP."
-                )
-
-        # For reporting multiple resolutions
-        if len(included_files) > 1:
-            print(
-                f"{includer.upper()} resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
-            )
-
-        self.add_condition_to_reachability_stack(node_data, actor_point)
-        self.ast_stack.append(self.ast)
-
-        for resolution in included_files:
-            # For files with GumTree error
-            if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"{includer.upper()} resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
-                )
-                continue
-
-            # Recursive resolution
-            if (resolution == self.ast.file_path) or (
-                node_data["id"]
-                in self.sysdiff.file_data[resolution]["language_specific_info"][
-                    "importers"
-                ]
-            ):
-                print(
-                    f"{includer.upper()} resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                continue
-
-            # Resolving to entry point
-            if resolution == ROOT_FILE:
-                print(
-                    f"{includer.upper()} resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
-                continue
-
-            # Resolution is valid
-            self.sysdiff.file_data[resolution]["language_specific_info"][
-                "importers"
-            ].append(node_data["id"])
-            self.ast = getattr(
-                self.sysdiff.file_data[resolution]["diff"], self.ast.name
-            )
-
-            # Working on included file
-            self.generic_visit(self.ast.get_data(self.ast.root))
-            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
-            # Finished working on included file
-
-        self.ast = self.ast_stack.pop()
-        self.remove_condition_from_reachability_stack()
 
     def visit_function_definition(self, node_data, *args, **kwargs):
         print(f"Function definition {self.ast.get_name(node_data)}")
@@ -998,46 +1196,191 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "FIND_PACKAGE")
 
-        keywords = [
-            "EXACT",
-            "QUIET",
-            "REQUIRED",
-            "COMPONENTS",
-            "OPTIONAL_COMPONENTS",
-            "CONFIG" "NO_MODULE",
-            "GLOBAL",
-            "NO_POLICY_SCOPE",
+        self.register_new_def_point(
+            arguments[0], actor_point, "VARIABLE", suffix="_FOUND"
+        )
+
+        # For file-level analysis (No system provided)
+        if self.sysdiff.analysis_mode == "change_location":
+            return
+
+        module_mode = True
+        config_mode = True
+
+        basic_sig_keywords = [
             "BYPASS_PROVIDER",
-            "NAMES",
+            "COMPONENTS",
+            "EXACT",
+            "GLOBAL",
+            "MODULE",  #
+            "OPTIONAL_COMPONENTS",
+            "QUIET",
+            "REGISTRY_VIEW",
+            "REQUIRED",
+            "NO_POLICY_SCOPE",
+        ]
+        full_sig_extra_keywords = [
+            "CMAKE_FIND_ROOT_PATH_BOTH",
+            "CONFIG",  #
             "CONFIGS",
             "HINTS",
-            "PATHS",
-            "REGISTRY_VIEW",
-            "PATH_SUFFIXES",
-            "NO_DEFAULT_PATH",
-            "NO_PACKAGE_ROOT_PATH",
-            "NO_CMAKE_PATH",
-            "NO_CMAKE_ENVIRONMENT_PATH",
-            "NO_SYSTEM_ENVIRONMENT_PATH",
-            "NO_CMAKE_PACKAGE_REGISTRY",
-            "NO_CMAKE_BUILDS_PATH",
-            "NO_CMAKE_SYSTEM_PATH",
-            "NO_CMAKE_INSTALL_PREFIX",
-            "NO_CMAKE_SYSTEM_PACKAGE_REGISTRY",
-            "CMAKE_FIND_ROOT_PATH_BOTH",
+            "NAMES",  #
             "ONLY_CMAKE_FIND_ROOT_PATH",
+            "PATHS",
+            "PATH_SUFFIXES",
+            "NO_CMAKE_BUILDS_PATH",
+            "NO_CMAKE_ENVIRONMENT_PATH",
             "NO_CMAKE_FIND_ROOT_PATH",
+            "NO_CMAKE_INSTALL_PREFIX",
+            "NO_CMAKE_PACKAGE_REGISTRY",
+            "NO_CMAKE_PATH",
+            "NO_CMAKE_SYSTEM_PACKAGE_REGISTRY",
+            "NO_CMAKE_SYSTEM_PATH",
+            "NO_DEFAULT_PATH",
+            "NO_MODULE",  #
+            "NO_PACKAGE_ROOT_PATH",
+            "NO_SYSTEM_ENVIRONMENT_PATH",
         ]
 
+        keywords = basic_sig_keywords + full_sig_extra_keywords
+
+        resolution_fetched = False
         for i, argument in enumerate(arguments):
+            if self.ast.unparse(argument).upper() == "MODULE":
+                module_mode = True
+                config_mode = False
+                (
+                    resolution_success,
+                    found_files,
+                ) = self.resolve_find_package_file_path_best_effort(
+                    arguments[0], module_mode=module_mode, confi_mode=config_mode
+                )
+                resolution_fetched = True
+                break
+
             if self.ast.unparse(argument).upper() == "NAMES":
+                module_mode = False
+                config_mode = True
+                path_name_nodes = []
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in keywords:
                         break
-                    self.register_new_def_point(arg, actor_point, "VARIABLE")
+                    path_name_nodes.append(arg)
+
+                all_resolution_success = False
+                all_found_files = []
+                for path_name_node in path_name_nodes:
+                    (
+                        resolution_success,
+                        found_files,
+                    ) = self.resolve_find_package_file_path_best_effort(
+                        path_name_node, module_mode=module_mode, confi_mode=config_mode
+                    )
+                    if resolution_success:
+                        all_resolution_success = (
+                            all_resolution_success or resolution_success
+                        )
+                        all_found_files = all_found_files + found_files
+                resolution_success = all_resolution_success
+                found_files = list(set(all_found_files))
+                resolution_fetched = True
+
+            if self.ast.unparse(argument).upper() in full_sig_extra_keywords:
+                module_mode = False
+                config_mode = True
+
+        if not resolution_fetched:
+            (
+                resolution_success,
+                found_files,
+            ) = self.resolve_find_package_file_path_best_effort(
+                arguments[0], module_mode=module_mode, confi_mode=config_mode
+            )
+
+        package_file_path = self.ast.unparse(arguments[0])
+
+        if not resolution_success:
+            # Exclude CMake module
+            # Done after unsuccessful resoltuion attempt
+            # to allow files with the same name as CMake modules
+            if package_file_path in self.exclude_resolutions:
+                print(
+                    f"FIND_PACKAGE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {package_file_path} called from {self.ast.file_path}"
+                )
                 return
 
-        self.include_cmake_file(node_data, arguments[0], actor_point, "FIND_PACKAGE")
+            # For files that do not exist in the project
+            # or files that are refered to using a variable
+            if not found_files:
+                print(
+                    f"FIND_PACKAGE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+
+        # Successful resolution
+        if isinstance(found_files, str):
+            # For manaully skipped files
+            if found_files.upper() == "SKIP":
+                print(
+                    f"FIND_PACKAGE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+            else:
+                raise Exception(
+                    "File path resolution cannot be a string other than SKIP."
+                )
+
+        # For reporting multiple resolutions
+        if len(found_files) > 1:
+            print(
+                f"FIND_PACKAGE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(found_files)} called from {self.ast.file_path}"
+            )
+
+        self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.ast_stack.append(self.ast)
+
+        for resolution in found_files:
+            # For files with GumTree error
+            if self.sysdiff.file_data[resolution]["diff"] is None:
+                print(
+                    f"FIND_PACKAGE resolution skipping a file with parser error for {self.ast_stack[-1].unparse(node_data)}"
+                )
+                continue
+
+            # Recursive resolution
+            if (resolution == self.ast.file_path) or (
+                node_data["id"]
+                in self.sysdiff.file_data[resolution]["language_specific_info"][
+                    "importers"
+                ]
+            ):
+                print(
+                    f"FIND_PACKAGE resolution lead to recursive resolution for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                )
+                continue
+
+            # Resolving to entry point
+            if resolution == ROOT_FILE:
+                print(
+                    f"FIND_PACKAGE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                )
+                continue
+
+            # Resolution is valid
+            self.sysdiff.file_data[resolution]["language_specific_info"][
+                "importers"
+            ].append(node_data["id"])
+            self.ast = getattr(
+                self.sysdiff.file_data[resolution]["diff"], self.ast.name
+            )
+
+            # Working on included file
+            self.generic_visit(self.ast.get_data(self.ast.root))
+            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
+            # Finished working on included file
+
+        self.ast = self.ast_stack.pop()
+        self.remove_condition_from_reachability_stack()
 
     def visit_FIND_PATH(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1132,7 +1475,99 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 break
 
-        self.include_cmake_file(node_data, arguments[0], actor_point, "INCLUDE")
+        # For file-level analysis (No system provided)
+        if self.sysdiff.analysis_mode == "change_location":
+            return
+
+        included_file_path = self.ast.unparse(arguments[0])
+
+        (
+            resolution_success,
+            included_files,
+        ) = self.resolve_include_file_path_best_effort(arguments[0])
+
+        if not resolution_success:
+            # Exclude CMake module
+            # Done after unsuccessful resoltuion attempt
+            # to allow files with the same name as CMake modules
+            if included_file_path in self.exclude_resolutions:
+                print(
+                    f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+                )
+                return
+
+            # For files that do not exist in the project
+            # or files that are refered to using a variable
+            if included_files is None:
+                print(
+                    f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+
+        # Successful resolution
+        if isinstance(included_files, str):
+            # For manaully skipped files
+            if included_files.upper() == "SKIP":
+                print(
+                    f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+                return
+            else:
+                raise Exception(
+                    "File path resolution cannot be a string other than SKIP."
+                )
+
+        # For reporting multiple resolutions
+        if len(included_files) > 1:
+            print(
+                f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
+            )
+
+        self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.ast_stack.append(self.ast)
+
+        for resolution in included_files:
+            # For files with GumTree error
+            if self.sysdiff.file_data[resolution]["diff"] is None:
+                print(
+                    f"INCLUDE resolution skipping a file with parser error for {self.ast_stack[-1].unparse(node_data)}"
+                )
+                continue
+
+            # Recursive resolution
+            if (resolution == self.ast.file_path) or (
+                node_data["id"]
+                in self.sysdiff.file_data[resolution]["language_specific_info"][
+                    "importers"
+                ]
+            ):
+                print(
+                    f"INCLUDE resolution lead to recursive resolution for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                )
+                continue
+
+            # Resolving to entry point
+            if resolution == ROOT_FILE:
+                print(
+                    f"INCLUDE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                )
+                continue
+
+            # Resolution is valid
+            self.sysdiff.file_data[resolution]["language_specific_info"][
+                "importers"
+            ].append(node_data["id"])
+            self.ast = getattr(
+                self.sysdiff.file_data[resolution]["diff"], self.ast.name
+            )
+
+            # Working on included file
+            self.generic_visit(self.ast.get_data(self.ast.root))
+            self.sysdiff.set_data_flow_file_analysis(self.ast.file_path, self.ast.name)
+            # Finished working on included file
+
+        self.ast = self.ast_stack.pop()
+        self.remove_condition_from_reachability_stack()
 
     def visit_INCLUDE_GUARD(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1600,7 +2035,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         (
             resolution_success,
             added_files,
-        ) = self.resolve_added_subdirectory_file_path_best_effort(arguments[0])
+        ) = self.resolve_add_subdirectory_file_path_best_effort(arguments[0])
 
         if not resolution_success:
             # For files that do not exist in the project
