@@ -73,7 +73,7 @@ elif BUILD_SYSTEM == "gradle":
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
 
-ROOT_FILE = config["ROOT_FILE"]
+ENTRY_FILES = config["ENTRY_FILES"]
 
 PATTERNS_FLATTENED = {
     "include": reduce(

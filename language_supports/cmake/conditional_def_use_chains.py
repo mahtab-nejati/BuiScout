@@ -1,7 +1,7 @@
 from pathlib import Path
 from functools import reduce
 import data_flow_analysis as cm
-from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, ROOT_FILE
+from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -1360,7 +1360,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
             # Resolving to entry point
-            if resolution == ROOT_FILE:
+            if resolution == self.sysdiff.current_entry_file:
                 print(
                     f"FIND_PACKAGE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
                 )
@@ -1547,7 +1547,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
             # Resolving to entry point
-            if resolution == ROOT_FILE:
+            if resolution == self.sysdiff.current_entry_file:
                 print(
                     f"INCLUDE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
                 )
@@ -2086,7 +2086,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 continue
 
             # Resolving to entry point
-            if resolution == ROOT_FILE:
+            if resolution == self.sysdiff.current_entry_file:
                 print(
                     f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                 )

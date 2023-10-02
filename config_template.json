@@ -7,7 +7,10 @@
   "COMMITS": "List of commit hashes, keyword 'ALL' for all commits",
   "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
-  "ROOT_FILE": "The file that's the entry point to the build specifications, e.g. 'CMakeLists.txt'",
+  "ENTRY_FILES": [
+    "The list of build system entry point files, e.g. 'CMakeLists.txt'",
+    "This can be multiple files for projects with multiple independant modules."
+  ],
   "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']",
   "USE_PROJECT_SPECIFIC_MODELS": "Either 'YES' or 'NO'. Default is 'YES', when it first attemps to find project-specific models. If not found, proceed with general models.",
   "DATA_FLOW_ANALYSIS_MODE": "Either 'CHANGE_LOCATION' or 'GLOBAL'. Default is 'CHANGE_LOCATION'.",

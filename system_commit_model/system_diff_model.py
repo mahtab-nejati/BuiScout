@@ -30,7 +30,7 @@ class SystemDiff(object):
         git_repository,
         branch,
         commit,
-        root_file,
+        entry_files,
         language,
         patterns,
         root_path,
@@ -44,7 +44,9 @@ class SystemDiff(object):
         self.branch = branch
         self.commit = commit
 
-        self.root_file = root_file
+        self.entry_files = entry_files
+        # For multiple entry files
+        self.current_entry_file = None
         self.language = language
         self.patterns = patterns
 
@@ -319,25 +321,30 @@ class SystemDiff(object):
                 self.destination_cdu_chains[-1].analyze()
 
     def analyze_global(self):
-        # Skip if the self.root_file has GumTree error
-        try:
-            if self.file_data[self.root_file]["diff"] is None:
-                print("Selected entry file failed due to parser error.")
-                return
-        except KeyError:
-            print("Selected entry file doeas not exist.")
-            return
-
         self.globally_analyze_cluster("source")
         self.globally_analyze_cluster("destination")
 
     def globally_analyze_cluster(self, cluster):
         chains_stash = getattr(self, f"{cluster}_cdu_chains", None)
-        # Analyze CDUs from entry point
-        ast = getattr(self.file_data[self.root_file]["diff"], cluster, None)
-        chains_stash.append(self.ConditionalDefUseChains(ast, self))
-        print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
-        chains_stash[-1].analyze()
+        for entry_file in self.entry_files:
+            self.current_entry_file = entry_file
+            # Skip if the self.current_entry_file has GumTree error
+            try:
+                if self.file_data[self.current_entry_file]["diff"] is None:
+                    print(
+                        f"Selected entry file {self.current_entry_file} failed due to parser error."
+                    )
+                    continue
+            except KeyError:
+                print(f"Selected entry file {self.current_entry_file} does not exist.")
+                continue
+            # Analyze CDUs from entry point
+            ast = getattr(
+                self.file_data[self.current_entry_file]["diff"], cluster, None
+            )
+            chains_stash.append(self.ConditionalDefUseChains(ast, self))
+            print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+            chains_stash[-1].analyze()
 
         # Set GLOBAL reachability
         list(
