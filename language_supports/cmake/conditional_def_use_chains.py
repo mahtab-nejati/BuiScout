@@ -667,12 +667,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_use_point(node_data, actor_point, def_point.type)
         self.generic_visit(node_data, actor_point)
 
+        if actor_point.name == def_point.name:
+            print(
+                f"Recursive calls detected from {def_point.name}, in file {def_point.ast.file_path}"
+            )
+            return
+
         # Calls have an impact on the reachability of the content.
         self.add_condition_to_reachability_stack(node_data, actor_point)
         if def_point.type == "FUNCTION":
-            print(
-                f"Support needed for callable variable translation for function {def_point.name}, scope {node_data['id']}"
-            )
             target_ast = def_point.ast
             child_scope = self.sysdiff.ConditionalDefUseChains(
                 target_ast,
@@ -682,6 +685,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
+            print(
+                f"Support needed for callable variable translation for function {def_point.name}, file {actor_point.ast.file_path}, scope {child_scope.scope}"
+            )
 
             definer_node = def_point.node_data
             header_data = child_scope.ast.get_data(
@@ -695,7 +701,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 child_scope.visit(body_data)
         elif def_point.type == "MACRO":
             print(
-                f"Support needed for callable variable translation for macro {def_point.name}, scope {node_data['id'].replace(':','_')}"
+                f"Support needed for callable variable translation for macro {def_point.name}, file {actor_point.ast.file_path}, scope {self.scope}"
             )
             self.ast_stack.append(self.ast)
 
