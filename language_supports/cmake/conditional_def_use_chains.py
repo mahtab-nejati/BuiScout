@@ -1457,7 +1457,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for i, argument in enumerate(arguments):
             keyword = self.ast.unparse(argument).upper()
             if keyword in ["TARGET", "TARGET_DIRECTORY"]:
-                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
+                self.register_new_use_point(
+                    arguments[i + 1], actor_point, "DELIVERABLE"
+                )
             elif keyword == "TEST":
                 self.register_new_use_point(arguments[i + 1], actor_point, "TEST")
             elif keyword == "PROPERTY":
@@ -1736,8 +1738,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if unparsed_argument == "TARGET":
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() not in keywords:
-                        self.register_new_use_point(arg, actor_point, "TARGET")
-                        self.register_new_def_point(arg, actor_point, "TARGET")
+                        self.register_new_use_point(arg, actor_point, "DELIVERABLE")
+                        self.register_new_def_point(arg, actor_point, "DELIVERABLE")
                     else:
                         break
             elif unparsed_argument == "TEST":
@@ -1884,7 +1886,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_COMMAND")
 
         if self.ast.unparse(arguments[0]).upper() == "TARGET":
-            self.register_new_use_point(arguments[1], actor_point, "TARGET")
+            self.register_new_use_point(arguments[1], actor_point, "DELIVERABLE")
 
         print(
             f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -1919,10 +1921,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         #             defined_names = self.get_definitions_by_name(arg)
         #             if list(
         #                 filter(
-        #                     lambda def_point: def_point.type == "TARGET", defined_names
+        #                     lambda def_point: def_point.type == "DELIVERABLE", defined_names
         #                 )
         #             ):
-        #                 self.register_new_use_point(arg,actor_point, "TARGET")
+        #                 self.register_new_use_point(arg,actor_point, "DELIVERABLE")
 
     def visit_ADD_CUSTOM_TARGET(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1930,7 +1932,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
 
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         print(
             f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -1958,9 +1960,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_DEPENDENCIES")
 
         for argument in arguments:
-            self.register_new_use_point(argument, actor_point, "TARGET")
+            self.register_new_use_point(argument, actor_point, "DELIVERABLE")
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -1974,7 +1976,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_EXECUTABLE")
 
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         try:
             operation = self.ast.unparse(arguments[1]).upper()
@@ -1986,7 +1988,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             pass
         elif operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1], actor_point, "TARGET")
+            self.register_new_use_point(arguments[-1], actor_point, "DELIVERABLE")
 
     def visit_ADD_LIBRARY(self, node_data):
         """
@@ -2001,7 +2003,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_LIBRARY")
 
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         try:
             operation = self.ast.unparse(arguments[1]).upper()
@@ -2010,7 +2012,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         if operation == "ALIAS":
             assert len(arguments) == 3
-            self.register_new_use_point(arguments[-1], actor_point, "TARGET")
+            self.register_new_use_point(arguments[-1], actor_point, "DELIVERABLE")
 
     def visit_ADD_LINK_OPTIONS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2160,7 +2162,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
+                self.register_new_use_point(
+                    arguments[i + 1], actor_point, "DELIVERABLE"
+                )
                 break
 
     def visit_CMAKE_FILE_API(self, node_data):
@@ -2221,7 +2225,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 if self.ast.unparse(argument).upper() in keywords:
                     break
                 else:
-                    self.register_new_use_point(argument, actor_point, "TARGET")
+                    self.register_new_use_point(argument, actor_point, "DELIVERABLE")
 
         if operation in ["EXPORT", "PACKAGE"]:
             print(
@@ -2251,7 +2255,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET_DIRECTORY":
-                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
+                self.register_new_use_point(
+                    arguments[i + 1], actor_point, "DELIVERABLE"
+                )
                 break
 
     def visit_GET_TARGET_PROPERTY(self, node_data):
@@ -2263,7 +2269,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         self.register_new_def_point(arguments[0], actor_point, "VARIABLE")
-        self.register_new_use_point(arguments[1], actor_point, "TARGET")
+        self.register_new_use_point(arguments[1], actor_point, "DELIVERABLE")
         self.register_new_use_point(arguments[-1], actor_point, "PROPERTY")
 
     def visit_GET_TEST_PROPERTY(self, node_data):
@@ -2288,7 +2294,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "INCLUDE_EXTERNAL_MSPROJECT"
         )
 
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         keywrods = ["GUID", "PLATFORM", "TYPE"]
 
@@ -2299,7 +2305,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     i += 2
                 else:
                     for arg in arguments[i:]:
-                        self.register_new_use_point(arg, actor_point, "TARGET")
+                        self.register_new_use_point(arg, actor_point, "DELIVERABLE")
                     break
 
     def visit_INCLUDE_REGULAR_EXPRESSION(self, node_data):
@@ -2373,7 +2379,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in all_keywords:
                         break
-                    self.register_new_use_point(arg, actor_point, "TARGET")
+                    self.register_new_use_point(arg, actor_point, "DELIVERABLE")
 
         print(
             f"Support needed (partial) for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -2447,7 +2453,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for arg in arguments[i + 1 :]:
                     if self.ast.unparse(arg).upper() in current_target_keywords:
                         break
-                    self.register_new_use_point(arg, actor_point, "TARGET")
+                    self.register_new_use_point(arg, actor_point, "DELIVERABLE")
             elif self.ast.unparse(argument).upper() == "PROPERTIES":
                 j = i + 1
                 while True:
@@ -2470,8 +2476,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() != "PROPERTIES":
-                self.register_new_use_point(argument, actor_point, "TARGET")
-                self.register_new_def_point(argument, actor_point, "TARGET")
+                self.register_new_use_point(argument, actor_point, "DELIVERABLE")
+                self.register_new_def_point(argument, actor_point, "DELIVERABLE")
             else:
                 j = i + 1
                 while True:
@@ -2520,8 +2526,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_COMPILE_DEFINITIONS"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         print(
             f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
@@ -2535,8 +2541,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_COMPILE_FEATURES"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TARGET_COMPILE_OPTIONS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2546,8 +2552,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_COMPILE_OPTIONS"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TARGET_INCLUDE_DIRECTORIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2557,8 +2563,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_INCLUDE_DIRECTORIES"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TARGET_LINK_DIRECTORIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2568,8 +2574,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_LINK_DIRECTORIES"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TARGET_LINK_LIBRARIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2579,8 +2585,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_LINK_LIBRARIES"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         keywords = [
             "PRIVATE",
@@ -2597,9 +2603,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if not self.ast.unparse(argument).upper() in keywords:
                 defined_names = self.get_definitions_by_name(argument)
                 if list(
-                    filter(lambda def_point: def_point.type == "TARGET", defined_names)
+                    filter(
+                        lambda def_point: def_point.type == "DELIVERABLE", defined_names
+                    )
                 ):
-                    self.register_new_use_point(argument, actor_point, "TARGET")
+                    self.register_new_use_point(argument, actor_point, "DELIVERABLE")
 
     def visit_TARGET_LINK_OPTIONS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2609,8 +2617,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_LINK_OPTIONS"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TARGET_PRECOMPILE_HEADERS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2620,11 +2628,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             node_data, "TARGET_PRECOMPILE_HEADERS"
         )
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
         if self.ast.unparse(arguments[1]).upper() == "REUSE_FROM":
-            self.register_new_use_point(arguments[2], actor_point, "TARGET")
+            self.register_new_use_point(arguments[2], actor_point, "DELIVERABLE")
 
     def visit_TARGET_SOURCES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2632,8 +2640,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         arguments = self.get_sorted_arguments_data_list(node_data, "TARGET_SOURCES")
 
-        self.register_new_use_point(arguments[0], actor_point, "TARGET")
-        self.register_new_def_point(arguments[0], actor_point, "TARGET")
+        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_TRY_COMPILE(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2645,7 +2653,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
+                self.register_new_use_point(
+                    arguments[i + 1], actor_point, "DELIVERABLE"
+                )
                 continue
             if self.ast.unparse(argument).upper() == "SOURCE_FROM_VAR":
                 self.register_new_use_point(arguments[i + 2], actor_point, "VARIABLE")
@@ -2747,7 +2757,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "TARGET":
-                self.register_new_use_point(arguments[i + 1], actor_point, "TARGET")
+                self.register_new_use_point(
+                    arguments[i + 1], actor_point, "DELIVERABLE"
+                )
                 continue
             if self.ast.unparse(argument).upper() in current_target_keywords:
                 self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
