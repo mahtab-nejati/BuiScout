@@ -58,23 +58,20 @@ class SystemDiff(object):
         self.destination_cdu_chains = []
 
         """
-        Each propagation slice is a list of dictionaries representing the 
+        Each propagation slice is a Pandas DataFrame representing the 
         propagation relationships in the form of a Knowledge Graph (KD). 
-        Each entry of the list is one relationship stored as a dictionary. 
-        The dictionaries have the following structure:
+        Each entry of the DataFrame is one relationship stored as the following:
             {
-                'subject': some_object (Def,Use,Actor,CondtionalDefUseChains),
                 'subject_id': 'str_id',
                 'subject_type': the_class,
                 'propagation_rule': 'str_rule',
-                'object': some_object (Def,Use,Actor,CondtionalDefUseChains),
                 'object_id': 'str_id',
                 'object_type': the_class,
             }
         """
-        # Storing merged propagation slices
-        self.source_propagetion_slice = []
-        self.destination_propagetion_slice = []
+        # Storing merged propagation rules
+        self.source_propagation_slice = pd.DataFrame()
+        self.destination_propagation_slice = pd.DataFrame()
 
         self.set_paths()
 
@@ -432,21 +429,25 @@ class SystemDiff(object):
         )
 
     def compute_propagation_slices(self):
-        self.perform_data_flow_analysis()
+        if self.ps_extracted:
+            return
 
-        source_propagetion_slice = [
-            chain.get_propagation_slices() for chain in self.source_cdu_chains
+        if not self.cdus_extracted:
+            self.perform_data_flow_analysis()
+
+        source_propagation_slices = [
+            chain.get_propagation_slice() for chain in self.source_cdu_chains
         ]
-        self.source_propagetion_slice = reduce(
-            lambda a, b: [*a, *b], source_propagetion_slice, []
+        self.source_propagation_slice = pd.concat(
+            source_propagation_slices, ignore_index=True
         )
-        contaminated_source_nodes = list(
+        propagation_slice_source_nodes = list(
             map(
                 lambda point: point.node_data["id"],
                 reduce(
                     lambda a, b: [*a, *b],
                     map(
-                        lambda chain: chain.get_contaminated_points(),
+                        lambda chain: chain.get_propagation_slice_points(),
                         self.source_cdu_chains,
                     ),
                     [],
@@ -454,19 +455,19 @@ class SystemDiff(object):
             )
         )
 
-        destination_propagetion_slice = [
-            chain.get_propagation_slices() for chain in self.destination_cdu_chains
+        destination_propagation_slices = [
+            chain.get_propagation_slice() for chain in self.destination_cdu_chains
         ]
-        self.destination_propagetion_slice = reduce(
-            lambda a, b: [*a, *b], destination_propagetion_slice, []
+        self.destination_propagation_slice = pd.concat(
+            destination_propagation_slices, ignore_index=True
         )
-        contaminated_destination_nodes = list(
+        propagation_slice_destination_nodes = list(
             map(
                 lambda point: point.node_data["id"],
                 reduce(
                     lambda a, b: [*a, *b],
                     map(
-                        lambda chain: chain.get_contaminated_points(),
+                        lambda chain: chain.get_propagation_slice_points(),
                         self.destination_cdu_chains,
                     ),
                     [],
@@ -480,13 +481,14 @@ class SystemDiff(object):
                 lambda file_data: (
                     list(
                         filter(
-                            lambda match: match[0] in contaminated_source_nodes,
+                            lambda match: match[0] in propagation_slice_source_nodes,
                             file_data["diff"].source_match.items(),
                         )
                     ),
                     list(
                         filter(
-                            lambda match: match[0] in contaminated_destination_nodes,
+                            lambda match: match[0]
+                            in propagation_slice_destination_nodes,
                             file_data["diff"].destination_match.items(),
                         )
                     ),
@@ -498,39 +500,29 @@ class SystemDiff(object):
             ),
             ([], []),
         )
-        self.source_propagetion_slice_matches = dict(matches[0])
-        self.destination_propagetion_slice_matches = dict(matches[1])
+        self.source_propagation_slice_matches = dict(matches[0])
+        self.destination_propagation_slice_matches = dict(matches[1])
 
         self.ps_extracted = True
 
+    def run_analysis(self):
+        self.perform_data_flow_analysis()
+        self.compute_propagation_slices()
+
     def export_csv(self, propagation_slice_mode=True):
+        self.run_analysis()
         if propagation_slice_mode:
-            self.compute_propagation_slices()
             save_path = self.commit_dir / "change_propagation_output"
             Path(save_path).mkdir(parents=True, exist_ok=True)
 
-            source_propagation_rules_df = pd.DataFrame(self.source_propagetion_slice)
-            if len(source_propagation_rules_df):
-                source_propagation_rules_df.drop(
-                    columns=["subject", "object"], inplace=True
-                )
-            source_propagation_rules_df.to_csv(
+            self.source_propagation_slice.to_csv(
                 save_path / f"source_propagation_rules.csv", index=False
             )
-
-            destination_propagation_rules_df = pd.DataFrame(
-                self.destination_propagetion_slice
-            )
-            if len(destination_propagation_rules_df):
-                destination_propagation_rules_df.drop(
-                    columns=["subject", "object"], inplace=True
-                )
-            destination_propagation_rules_df.to_csv(
+            self.destination_propagation_slice.to_csv(
                 save_path / f"destination_propagation_rules.csv", index=False
             )
 
         else:
-            self.perform_data_flow_analysis()
             save_path = self.commit_dir / "data_flow_output"
             Path(save_path).mkdir(parents=True, exist_ok=True)
 
@@ -553,7 +545,7 @@ class SystemDiff(object):
             def_points_df.to_csv(save_path / f"source_def_points.csv", index=False)
             use_points_df.to_csv(save_path / f"source_use_points.csv", index=False)
             actor_points_df.to_csv(save_path / f"source_actor_points.csv", index=False)
-            if undefined_names_df:
+            if not undefined_names_df is None:
                 undefined_names_df.to_csv(
                     save_path / f"source_undefined_names.csv", index=False
                 )
@@ -579,7 +571,7 @@ class SystemDiff(object):
             actor_points_df.to_csv(
                 save_path / f"destination_actor_points.csv", index=False
             )
-            if undefined_names_df:
+            if not undefined_names_df is None:
                 undefined_names_df.to_csv(
                     save_path / f"destination_undefined_names.csv", index=False
                 )
@@ -589,7 +581,7 @@ class SystemDiff(object):
                 list(
                     map(
                         lambda pair: {"source": pair[0], "destination": pair[1]},
-                        self.source_propagetion_slice_matches.items(),
+                        self.source_propagation_slice_matches.items(),
                     )
                 )
             )
@@ -597,7 +589,7 @@ class SystemDiff(object):
                 list(
                     map(
                         lambda pair: {"source": pair[1], "destination": pair[0]},
-                        self.destination_propagetion_slice_matches.items(),
+                        self.destination_propagation_slice_matches.items(),
                     )
                 )
             )

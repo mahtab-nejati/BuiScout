@@ -1,6 +1,7 @@
 from pathlib import Path
 from functools import reduce
 import data_flow_analysis as cm
+import pandas as pd
 from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH
 from utils.exceptions import MissingArgumentsException, DebugException
 
@@ -2802,31 +2803,30 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ##### Propagation Slice #####
     #############################
 
-    def get_propagation_slices(self):
+    def get_propagation_slice(self):
         """
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute set to True.
         Use the .set_contamination() method to set the .is_in_propagation_slice attribute to True.
         """
         print(f"QUERY scope in process: {self.scope}")
-        self.contamination_summary = []
         # Downward Slicing is transitive
         self.slice_downwards()
         # Upward Slicing is not transitive
         self.slice_upwards()
-        return self.contamination_summary
+        return self.propagation_slice
 
-    def update_contamination_summary(self, entries):
+    def update_propagation_rules(self, entries):
         if not entries:
             return
-        list(
-            map(
-                lambda entry: self.contamination_summary.append(entry),
-                filter(
-                    lambda entry: not (entry in self.contamination_summary), entries
-                ),
-            )
+        new_propagation_rules = pd.DataFrame(entries)
+        self.propagation_slice = pd.concat(
+            [self.propagation_slice, new_propagation_rules], ignore_index=True
         )
+        # else:
+        #     self.propagation_slice = new_propagation_rules
+
+        self.propagation_slice.drop_duplicates(ignore_index=True, inplace=True)
 
     def get_all_non_processed_actor_points(self):
         return list(
@@ -2860,16 +2860,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         for actor_point in actor_points:
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda def_point: {
-                            "subject": actor_point,
                             "subject_id": actor_point.id,
                             "subject_type": "actor",
                             "propagation_rule": "defines"
                             + ("" if def_point.set_is_modified() else ""),
-                            "object": def_point,
                             "object_id": def_point.id,
                             "object_type": "def",
                         },
@@ -2894,16 +2892,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         for actor_point in actor_points:
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda def_point: {
-                            "subject": actor_point,
                             "subject_id": actor_point.id,
                             "subject_type": "actor",
                             "propagation_rule": "defines"
                             + ("" if def_point.set_is_reach_affected() else ""),
-                            "object": def_point,
                             "object_id": def_point.id,
                             "object_type": "def",
                         },
@@ -2914,16 +2910,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda use_point: {
-                            "subject": actor_point,
                             "subject_id": actor_point.id,
                             "subject_type": "actor",
                             "propagation_rule": "uses"
                             + ("" if use_point.set_is_reach_affected() else ""),
-                            "object": use_point,
                             "object_id": use_point.id,
                             "object_type": "use",
                         },
@@ -2952,16 +2946,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         for def_point in def_points:
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda use_point: {
-                            "subject": def_point,
                             "subject_id": def_point.id,
                             "subject_type": "def",
                             "propagation_rule": "is_directly_used_at"
                             + ("" if use_point.set_is_value_affected() else ""),
-                            "object": use_point,
                             "object_id": use_point.id,
                             "object_type": "use",
                         },
@@ -2980,16 +2972,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for use_point in use_points:
             #################################################### is_modified/is_value_affected Uses non-modified Defs
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda def_point: {
-                            "subject": use_point,
                             "subject_id": use_point.id,
                             "subject_type": "use",
                             "propagation_rule": "is_used_in_definition_of"
                             + ("" if not def_point.set_is_value_affected() else ""),
-                            "object": def_point,
                             "object_id": def_point.id,
                             "object_type": "def",
                         },
@@ -3017,16 +3007,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             lambda actor_point: (actor_id in actor_point.reachability_actor_ids),
             self.get_all_actor_points(),
         )
-        self.update_contamination_summary(
+        self.update_propagation_rules(
             list(
                 map(
                     lambda actor_point: {
-                        "subject": point,
                         "subject_id": point.id,
                         "subject_type": point_type,
                         "propagation_rule": "affects_reachability_of"
                         + ("" if not actor_point.set_is_reach_affected() else ""),
-                        "object": actor_point,
                         "object_id": actor_point.id,
                         "object_type": "actor",
                     },
@@ -3051,16 +3039,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             next_children = []
             for child_chain in children:
                 # point affects_reachability_of def_point
-                self.update_contamination_summary(
+                self.update_propagation_rules(
                     list(
                         map(
                             lambda def_point: {
-                                "subject": point,
                                 "subject_id": point.id,
                                 "subject_type": point_type,
                                 "propagation_rule": "affects_reachability_of"
                                 + ("" if not def_point.set_is_reach_affected() else ""),
-                                "object": def_point,
                                 "object_id": def_point.id,
                                 "object_type": "def",
                             },
@@ -3078,27 +3064,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             children = next_children
 
     def slice_downwards(self):
-        previous_summary_length = len(self.contamination_summary)
+        previous_propagation_rules_length = len(self.propagation_slice)
         self.slice_downwards_actor_points()
         self.slice_downwards_def_points()
         self.slice_downwards_use_points()
-        if len(self.contamination_summary) != previous_summary_length:
+        if len(self.propagation_slice) != previous_propagation_rules_length:
             self.slice_downwards()
 
     def slice_upwards(self):
         def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
 
         for def_point in def_points:
-            self.update_contamination_summary(
+            self.update_propagation_rules(
                 list(
                     map(
                         lambda use_point: {
-                            "subject": use_point,
                             "subject_id": use_point.id,
                             "subject_type": "use",
                             "propagation_rule": "is_used_in_definition_of"
                             + ("" if use_point.set_is_upstream() else ""),
-                            "object": def_point,
                             "object_id": def_point.id,
                             "object_type": "def",
                         },
@@ -3119,16 +3103,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         while chain:
             for use_point in use_points:
-                self.update_contamination_summary(
+                self.update_propagation_rules(
                     list(
                         map(
                             lambda def_point: {
-                                "subject": def_point,
                                 "subject_id": def_point.id,
                                 "subject_type": "def",
                                 "propagation_rule": "is_directly_used_at"
                                 + ("" if def_point.set_is_upstream() else ""),
-                                "object": use_point,
                                 "object_id": use_point.id,
                                 "object_type": "use",
                             },

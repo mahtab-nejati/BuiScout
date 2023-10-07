@@ -78,6 +78,21 @@ class ConditionalDefUseChains(NodeVisitor):
         # Stores a mapping of the name to undefined users {'name': [Use]}
         self.undefined_names = defaultdict(list)
 
+        """
+        Each propagation slice is a Pandas DataFrame representing the 
+        propagation relationships in the form of a Knowledge Graph (KD). 
+        Each entry of the DataFrame is one relationship stored as the following:
+            {
+                'subject_id': 'str_id',
+                'subject_type': the_class,
+                'propagation_rule': 'str_rule',
+                'object_id': 'str_id',
+                'object_type': the_class,
+            }
+        """
+        # Storing propagation rules
+        self.propagation_slice = pd.DataFrame()
+
     def get_definitions_by_name(self, node_data, get_from_parent_scopes=True):
         """
         Looks up use (node_data) in current and all ancestor contexts
@@ -352,34 +367,19 @@ class ConditionalDefUseChains(NodeVisitor):
             save_path / f"{self.ast.name}_undefined_names_{self.scope}.csv", index=False
         )
 
-    def get_propagation_slices(self):
+    def get_propagation_slice(self):
         """
         This method must be implemented in the language support subclass. As the result,
-        Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute set to True.
+        Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute
+        set to True and the propagation rules within the slice are stored in self.propagation_slice
+        DataFrame.
 
-        NOTE: Make sure you uss the .set_contamination() method to set the .is_in_propagation_slice attribute to True
-        for all contaminated Def/Use/Actor objects.
-
-        Each propagation slice is a list of dictionaries representing the
-        propagation relationships in the form of a Knowledge Graph (KD).
-        Each entry of the list is one relationship stored as a dictionary.
-        The dictionaries have the following structure:
-            {
-                'subject': some_object (Def,Use,Actor),
-                'subject_id': 'str_id',
-                'subject_type': the_class,
-                'propagation_rule': 'str_rule',
-                'object': some_object (Def,Use,Actor),
-                'object_id': 'str_id',
-                'object_type': the_class,
-            }
-
-        NOTE: When exporting the output, the "subject" and "object" keys are dropped as it is expected to export
-        them in a different file and refer to them with their id.
+        NOTE: Make sure you use the .set_*() method to set the .is_in_propagation_slice attribute to True
+        for all propagation slice Def/Use/Actor objects.
         """
         pass
 
-    def get_contaminated_points(self):
+    def get_propagation_slice_points(self):
         def_points = list(
             filter(
                 lambda point: point.is_in_propagation_slice, self.get_all_def_points()
