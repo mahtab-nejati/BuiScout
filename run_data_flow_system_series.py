@@ -108,21 +108,8 @@ for commit in tqdm(repo.traverse_commits()):
         # Clear existing code and gumtree outputs
         clear_existing_data()
         if not (commit.hash in EXCLUDED_COMMITS):
-            chronological_commit_order += 1
-            # Log missing commits and move to then next
-            commit_data_df = pd.DataFrame(
-                {
-                    "commit_hash": [commit.hash],
-                    "chronological_commit_order": [chronological_commit_order],
-                    "commit_parents": [commit.parents],
-                    "has_build": [None],
-                    "has_nonbuild": [None],
-                    "is_missing": [True],
-                    "elapsed_time": [datetime.now() - commit_start],
-                }
-            )
-            commit_data_df.to_csv(
-                SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
+            raise DebugException(
+                f"Missing commit {commit.hash}. Exclude the commit from analysis."
             )
         continue
 
