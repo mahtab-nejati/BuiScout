@@ -25,6 +25,8 @@ if isinstance(config["COMMITS"], str) and config["COMMITS"].upper() == "ALL":
 else:
     COMMITS = config["COMMITS"]
 
+EXCLUDED_COMMITS = config["EXCLUDED_COMMITS"]
+
 BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
 SUMMARIZATION_METHODS = list(
     map(lambda method: method.upper(), config["SUMMARIZATION_METHODS"])

@@ -16,6 +16,7 @@ from utils.configurations import (
     PROJECT,
     BRANCH,
     COMMITS,
+    EXCLUDED_COMMITS,
     LANGUAGES,
     ENTRY_FILES,
     PATTERN_SETS,
@@ -55,13 +56,19 @@ create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
 
 all_commits_start = datetime.now()
 
+
+def clear_existing_data():
+    # Clear existing code and gumtree outputs
+    to_remove = Path(SAVE_PATH / "code")
+    if to_remove.exists():
+        shutil.rmtree(to_remove)
+    to_remove = Path(SAVE_PATH / "gumtree_output")
+    if to_remove.exists():
+        shutil.rmtree(to_remove)
+
+
 # Clear existing code and gumtree outputs
-to_remove = Path(SAVE_PATH / "code")
-if to_remove.exists():
-    shutil.rmtree(to_remove)
-to_remove = Path(SAVE_PATH / "gumtree_output")
-if to_remove.exists():
-    shutil.rmtree(to_remove)
+clear_existing_data()
 
 
 # Run tool on commits
@@ -69,7 +76,6 @@ chronological_commit_order = 0
 for commit in tqdm(repo.traverse_commits()):
     gc.collect()
     print(f"Commit in process: {commit.hash}")
-    chronological_commit_order += 1
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
     has_build = False
@@ -99,21 +105,25 @@ for commit in tqdm(repo.traverse_commits()):
         # This will throw an error if the commit is missing
         commit.modified_files
     except ValueError:
-        # Log missing commits and move to then next
-        commit_data_df = pd.DataFrame(
-            {
-                "commit_hash": [commit.hash],
-                "chronological_commit_order": [chronological_commit_order],
-                "commit_parents": [commit.parents],
-                "has_build": [None],
-                "has_nonbuild": [None],
-                "is_missing": [True],
-                "elapsed_time": [datetime.now() - commit_start],
-            }
-        )
-        commit_data_df.to_csv(
-            SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
-        )
+        # Clear existing code and gumtree outputs
+        clear_existing_data()
+        if not (commit.hash in EXCLUDED_COMMITS):
+            chronological_commit_order += 1
+            # Log missing commits and move to then next
+            commit_data_df = pd.DataFrame(
+                {
+                    "commit_hash": [commit.hash],
+                    "chronological_commit_order": [chronological_commit_order],
+                    "commit_parents": [commit.parents],
+                    "has_build": [None],
+                    "has_nonbuild": [None],
+                    "is_missing": [True],
+                    "elapsed_time": [datetime.now() - commit_start],
+                }
+            )
+            commit_data_df.to_csv(
+                SAVE_PATH / "all_commits.csv", mode="a", header=False, index=False
+            )
         continue
 
     # Iterate over the languages and file naming conventions
@@ -124,13 +134,6 @@ for commit in tqdm(repo.traverse_commits()):
         # Identify if the commit has build modifications
         if any(map(lambda mf: file_is_target(mf, PATTERNS), commit.modified_files)):
             has_build = True
-
-            # # Initialize summaries
-            # summary_dir = COMMITS_SAVE_PATH / commit.hash / "summaries"
-            # summary_dir.mkdir(parents=True, exist_ok=True)
-            # summaries = {}.copy()
-            # for sm in SUMMARIZATION_METHODS:
-            #     summaries[sm] = [].copy()
 
             diff = SystemDiffModel(
                 REPOSITORY,
@@ -145,46 +148,12 @@ for commit in tqdm(repo.traverse_commits()):
                 SAVE_PATH,
             )
 
-            # for build_file in diff.file_data.values():
-            #     # Skip files with GumTree error
-            #     if build_file["diff"] is None:
-            #         continue
-            #     # Skip if no change to file
-            #     if build_file["file_action"] is None:
-            #         continue
-            #     # Summarize and log
-            #     for sm in SUMMARIZATION_METHODS:
-            #         summary = build_file["diff"].summarize(method=sm)
-            #         summaries[sm] += list(
-            #             map(
-            #                 lambda entry: {
-            #                     "commit": commit.hash,
-            #                     "subject_file": build_file["saved_as"],
-            #                     **entry,
-            #                 },
-            #                 summary,
-            #             )
-            #         )
-            #     build_file["diff"].source.slice.export_dot(
-            #         f'{summary_dir}/{build_file["saved_as"]}_slice_source.dot'
-            #     )
-            #     build_file["diff"].destination.slice.export_dot(
-            #         f'{summary_dir}/{build_file["saved_as"]}_slice_destination.dot'
-            #     )
-
-            # # Convert slices to svg
-            # command = [str(ROOT_PATH / "convert.sh"), str(summary_dir)]
-            # process = subprocess.Popen(command, stdout=subprocess.PIPE)
-            # output, error = process.communicate()
-
-            # for sm in SUMMARIZATION_METHODS:
-            #     summaries_df = pd.DataFrame(summaries[sm])
-            #     summaries_df.to_csv(
-            #         SAVE_PATH / f"summaries_{sm.lower()}.csv",
-            #         mode="a",
-            #         header=False,
-            #         index=False,
-            #     )
+            # Save time by skipping
+            if commit.hash in EXCLUDED_COMMITS:
+                to_remove = diff.commit_dir
+                if to_remove.exists():
+                    shutil.rmtree(to_remove)
+                continue
 
             diff.export_csv(propagation_slice_mode=True)
 
@@ -198,6 +167,11 @@ for commit in tqdm(repo.traverse_commits()):
                 SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
             )
 
+    # Don't log if excluded
+    if commit.hash in EXCLUDED_COMMITS:
+        continue
+
+    chronological_commit_order += 1
     # Log all changes
     commit_data_df = pd.DataFrame(
         {
@@ -221,11 +195,6 @@ for commit in tqdm(repo.traverse_commits()):
 git_repo.checkout(BRANCH)
 
 # Clear existing code and gumtree outputs
-to_remove = Path(SAVE_PATH / "code")
-if to_remove.exists():
-    shutil.rmtree(to_remove)
-to_remove = Path(SAVE_PATH / "gumtree_output")
-if to_remove.exists():
-    shutil.rmtree(to_remove)
+clear_existing_data()
 
 print(f"Finished processing in {datetime.now()-all_commits_start}")

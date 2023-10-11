@@ -5,6 +5,7 @@
   "REPOSITORY": "URL or local path to repository MUST NOT CONTAIN WHITESPACE",
   "BRANCH": "The branch to consider, keyword 'ALL' for all branches, use of 'main' or 'master' branch is recommended",
   "COMMITS": "List of commit hashes, keyword 'ALL' for all commits",
+  "EXCLUDED_COMMITS": "List of commit hashes to exclude from the analysis",
   "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
   "ENTRY_FILES": [
