@@ -7,28 +7,36 @@ class NameGetter(NodeVisitor):
         return self.ast.unparse(node_data)
 
     def visit_if_statement(self, node_data):
-        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<IF_STMNT>"
+        # return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_if_clause(self, node_data):
-        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<IF_STMNT>IF"
+        # return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_elseif_clause(self, node_data):
-        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<IF_STMNT>ELSEIF"
+        # return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_else_clause(self, node_data):
-        return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<IF_STMNT>ELSE"
+        # return "<IF_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_while_statement(self, node_data):
-        return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<WHILE_STMNT>"
+        # return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_while_clause(self, node_data):
-        return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<WHILE_STMNT>WHILE"
+        # return "<WHILE_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_foreach_statement(self, node_data):
-        return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<FOREACH_STMNT>"
+        # return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_foreach_clause(self, node_data):
-        return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
+        return "<FOREACH_STMNT>FOREACH"
+        # return "<FOREACH_STMNT>" + self.visit_conditional_statement(node_data)
 
     def visit_conditional_statement(self, node_data):
         return self.ast.unparse(node_data, masked_types=["body"])
