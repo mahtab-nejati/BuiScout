@@ -129,16 +129,8 @@ class SystemDiff(object):
         self.gumtree_output_dir.mkdir(parents=True, exist_ok=True)
 
     def populate_file_data(self):
-        self.git_repository.checkout(self.commit.hash)
-        time.sleep(5)
-
         self.set_file_data()
         self.set_file_data_diffs()
-
-        ## Moved to the end of all commits analysis
-        ## in run_* scripts for performance improvement.
-        # self.git_repository.checkout(self.branch)
-        # time.sleep(10)
 
     def set_file_data_modified_only(self):
         self.file_data = dict(
@@ -225,9 +217,30 @@ class SystemDiff(object):
         )
 
     def set_file_data(self):
+        if self.snapshot_mode:
+            self.git_repository.checkout(self.commit.hash)
+            time.sleep(5)
+            self.set_file_data_non_modified_only()
+            list(
+                map(
+                    lambda file_data: file_data.update({"file_action": "ADD"}),
+                    self.file_data.values(),
+                )
+            )
+            ## Moved to the end of all commits analysis
+            ## in run_* scripts for performance improvement.
+            # self.git_repository.checkout(self.branch)
+            # time.sleep(10)
+            return
         self.set_file_data_modified_only()
         if self.analysis_mode != "change_location":
+            self.git_repository.checkout(self.commit.hash)
+            time.sleep(5)
             self.set_file_data_non_modified_only()
+            ## Moved to the end of all commits analysis
+            ## in run_* scripts for performance improvement.
+            # self.git_repository.checkout(self.branch)
+            # time.sleep(10)
 
     def write_code_files(self, file_path):
         write_source_code(

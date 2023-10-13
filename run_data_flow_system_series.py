@@ -110,7 +110,7 @@ for commit in tqdm(repo.traverse_commits()):
         clear_existing_data()
         if not (commit.hash in EXCLUDED_COMMITS):
             raise DebugException(
-                f"Missing commit {commit.hash}. Exclude the commit from analysis."
+                f"Missing commit {commit.hash} must be excluded from analysis."
             )
         continue
 
