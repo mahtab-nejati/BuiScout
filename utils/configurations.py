@@ -9,7 +9,7 @@ ROOT_PATH = Path(__file__).parent.parent
 sys.path.append(str(ROOT_PATH))
 
 with open(ROOT_PATH / "config.json", "r") as f:
-    config = json.load(f)
+    config = json5.load(f)
 
 DATA_PATH = Path(config["DATA_PATH"])
 GUMTREE_OUTPUT_AVAILABLE = config["USE_EXISTING_DATA"].upper() == "YES"
