@@ -15,6 +15,7 @@
   "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']",
   "USE_PROJECT_SPECIFIC_MODELS": "Either 'YES' or 'NO'. Default is 'YES', when it first attemps to find project-specific models. If not found, proceed with general models.",
   "DATA_FLOW_ANALYSIS_MODE": "Either 'CHANGE_LOCATION' or 'GLOBAL'. Default is 'CHANGE_LOCATION'.",
+  "SNAPSHOT_MODE": "YES if the goal is to analyze the repository in its latest version, sets previous version to empty. NO otherwise",
   "PROJECT_SPECIFIC_FILTERS": {
     "include": {
       "starts_with": [

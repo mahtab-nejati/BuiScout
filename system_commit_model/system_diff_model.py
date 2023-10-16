@@ -10,7 +10,7 @@ from utils.helpers import (
     read_dotdiff,
 )
 from diff_model import ASTDiff
-from utils.configurations import DATA_FLOW_ANALYSIS_MODE
+from utils.configurations import DATA_FLOW_ANALYSIS_MODE, SNAPSHOT_MODE
 
 
 class SystemDiff(object):
@@ -22,6 +22,7 @@ class SystemDiff(object):
     """
 
     analysis_mode = DATA_FLOW_ANALYSIS_MODE.lower()
+    snapshot_mode = SNAPSHOT_MODE
 
     def __init__(
         self,
@@ -218,6 +219,7 @@ class SystemDiff(object):
 
     def set_file_data(self):
         if self.snapshot_mode:
+            # Treats everything as added
             self.git_repository.checkout(self.commit.hash)
             time.sleep(5)
             self.set_file_data_non_modified_only()
