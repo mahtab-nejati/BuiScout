@@ -1,4 +1,4 @@
-import json
+import json5
 from pathlib import Path
 from functools import reduce
 import sys
