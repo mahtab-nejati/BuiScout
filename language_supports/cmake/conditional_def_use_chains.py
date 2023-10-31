@@ -92,6 +92,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         Returns (success_flag, resolution)
         """
         file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
 
         resolved_path_item = list(
@@ -117,6 +118,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         Find<PackageName>.cmake
         """
         file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
@@ -189,6 +191,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         <lowercasePackageName>-config-version.cmake
         """
         file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
@@ -275,6 +278,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         <PackageName>.cmake
         """
         file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
@@ -484,7 +488,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 file_keys,
             )
         )
-        print(f"DL {desparate_list}")
         if desparate_list:
             return True, list(
                 map(
@@ -516,6 +519,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return True, resolution
 
         file_path = self.ast.unparse(file_path_node)
+        file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
         candidate_path = file_path.split("}")[-1]
         if not candidate_path:
