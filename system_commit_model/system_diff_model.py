@@ -397,8 +397,10 @@ class SystemDiff(object):
             directory = self.file_data[file_path]["before_path"]
         elif cluster == "destination":
             directory = self.file_data[file_path]["after_path"]
-
-        return "/".join(directory.split("/")[:-1])
+        path_components = directory.split("/")
+        if len(path_components) <= 1:
+            return ""
+        return "/".join(path_components[:-1])
 
     def set_data_flow_file_analysis(self, file_path, cluster):
         self.file_data[file_path][f"data_flow_{cluster}_analysis"] = True
