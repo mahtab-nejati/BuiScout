@@ -2751,7 +2751,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
-        arguments = self.get_sorted_arguments_data_list(node_data, "CTEST_BUILD")
+        try:
+            arguments = self.get_sorted_arguments_data_list(node_data, "CTEST_BUILD")
+        except MissingArgumentsException:
+            arguments = []
 
         current_target_keywords = [
             "NUMBER_ERRORS",
