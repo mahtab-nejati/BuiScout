@@ -2772,7 +2772,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
                 continue
             if self.ast.unparse(argument).upper() in current_target_keywords:
-                self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
+                try:
+                    self.register_new_def_point(
+                        arguments[i + 1], actor_point, "VARIABLE"
+                    )
+                except IndexError:
+                    pass
                 continue
 
     ############################
