@@ -386,7 +386,20 @@ class SystemDiff(object):
             print(f"UNREACHED files so far: {len(unreached)}")
             if not unreached:
                 break
-            target_file_path = unreached[0]
+            target_depth = min(
+                map(lambda file_path: len(file_path.split("/")), unreached)
+            )
+            candidate_unreached = list(
+                filter(
+                    lambda file_path: (len(file_path.split("/")) == target_depth)
+                    and (file_path.endswith(tuple(self.entry_files))),
+                    unreached,
+                )
+            )
+            if candidate_unreached:
+                target_file_path = candidate_unreached[0]
+            else:
+                target_file_path = unreached[0]
             ast = getattr(self.file_data[target_file_path]["diff"], cluster, None)
             chains_stash.append(self.ConditionalDefUseChains(ast, self))
             print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
