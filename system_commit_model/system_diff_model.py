@@ -400,6 +400,7 @@ class SystemDiff(object):
                 target_file_path = candidate_unreached[0]
             else:
                 target_file_path = unreached[0]
+            print(f"NEXt FILE SELECTED {target_file_path}")
             ast = getattr(self.file_data[target_file_path]["diff"], cluster, None)
             chains_stash.append(self.ConditionalDefUseChains(ast, self))
             print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
