@@ -105,6 +105,14 @@ for commit in tqdm(repo.traverse_commits()):
     try:
         # This will throw an error if the commit is missing
         commit.modified_files
+    except AttributeError:
+        # Clear existing code and gumtree outputs
+        clear_existing_data()
+        if not (commit.hash in EXCLUDED_COMMITS):
+            raise DebugException(
+                f"Submodule commit {commit.hash} must be excluded from analysis."
+            )
+        continue
     except ValueError:
         # Clear existing code and gumtree outputs
         clear_existing_data()

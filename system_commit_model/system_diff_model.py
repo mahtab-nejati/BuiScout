@@ -221,7 +221,7 @@ class SystemDiff(object):
         if self.snapshot_mode:
             # Treats everything as added
             self.git_repository.checkout(self.commit.hash)
-            time.sleep(5)
+            time.sleep(10)
             self.set_file_data_non_modified_only()
             list(
                 map(
@@ -237,7 +237,7 @@ class SystemDiff(object):
         self.set_file_data_modified_only()
         if self.analysis_mode != "change_location":
             self.git_repository.checkout(self.commit.hash)
-            time.sleep(5)
+            time.sleep(10)
             self.set_file_data_non_modified_only()
             ## Moved to the end of all commits analysis
             ## in run_* scripts for performance improvement.
