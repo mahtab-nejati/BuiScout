@@ -730,7 +730,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             body_data = self.ast.get_data(
                 self.ast.get_children_by_type(definer_node, "body")
             )
-            self.visit(body_data)
+            if body_data:
+                self.visit(body_data)
 
             self.ast = self.ast_stack.pop()
         # Remove from reachability condition
