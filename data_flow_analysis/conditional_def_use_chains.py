@@ -17,7 +17,7 @@ class ConditionalDefUseChains(NodeVisitor):
     Def = Def
     Use = Use
 
-    def __init__(self, ast, sysdiff, scope=None, parent=None):
+    def __init__(self, ast, sysdiff, scope=None, parent_scop=None, global_scope=None):
         """
         ast: ast_model.AST
         """
@@ -29,7 +29,11 @@ class ConditionalDefUseChains(NodeVisitor):
             self.scope = self.ast.get_data(self.ast.root)["id"]
 
         # The ConditionalDefUseChains object of the parent scope
-        self.parent = parent
+        if global_scope:
+            self.global_scope = global_scope
+        else:
+            self.global_scope = self
+        self.parent_scope = parent_scop
         self.parent_names_available = True
         # A list of ConditionalDefUseChains objects of the children scopes
         self.children = []
@@ -39,12 +43,14 @@ class ConditionalDefUseChains(NodeVisitor):
         self.sysdiff = sysdiff
 
         # Store current reachability conditions based on conditional statements
-        if parent is None:
+        if parent_scop is None:
             self.reachability_stack = []
             self.reachability_actor_id_stack = []
         else:
-            self.reachability_stack = parent.reachability_stack.copy()
-            self.reachability_actor_id_stack = parent.reachability_actor_id_stack.copy()
+            self.reachability_stack = parent_scop.reachability_stack.copy()
+            self.reachability_actor_id_stack = (
+                parent_scop.reachability_actor_id_stack.copy()
+            )
 
         # Stores a mapping between def nodes and their object (Def)
         # in the form of {'node_id': [Def]}
@@ -101,10 +107,10 @@ class ConditionalDefUseChains(NodeVisitor):
         name = self.ast.get_name(node_data)
         defined_names = self.defined_names[name]
         if self.parent_names_available and get_from_parent_scopes:
-            parent = self.parent
+            parent = self.parent_scope
             while not parent is None:
                 defined_names = parent.defined_names["name"] + defined_names
-                parent = parent.parent
+                parent = parent.parent_scope
         return defined_names
 
     def register_new_use_point(
@@ -202,11 +208,11 @@ class ConditionalDefUseChains(NodeVisitor):
         """
         Consumes a Def object and registers it to the parent scope.
         """
-        if self.parent is None:
+        if self.parent_scope is None:
             return
-        self.parent.defined_names[def_point.name].append(def_point)
-        self.parent.def_points[def_point.node_data["id"]].append(def_point)
-        self.parent.actor_points[def_point.actor_point.node_data["id"]].append(
+        self.parent_scope.defined_names[def_point.name].append(def_point)
+        self.parent_scope.def_points[def_point.node_data["id"]].append(def_point)
+        self.parent_scope.actor_points[def_point.actor_point.node_data["id"]].append(
             def_point.actor_point
         )
         if recursive:
@@ -224,9 +230,9 @@ class ConditionalDefUseChains(NodeVisitor):
 
     def negate_last_condition_in_reachability_stack(self, negation_symbol="NOT"):
         # Usefull for else_if structure
-        self.reachability_stack[
-            -1
-        ] = f"{negation_symbol} ({self.reachability_stack[-1]})"
+        self.reachability_stack[-1] = (
+            f"{negation_symbol} ({self.reachability_stack[-1]})"
+        )
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
@@ -260,7 +266,9 @@ class ConditionalDefUseChains(NodeVisitor):
             "commit_hash": self.ast.commit_hash,
             "cluster": self.ast.name,
             "scope": self.scope,
-            "parent_scopes": None if self.parent is None else self.parent.scope,
+            "parent_scopes": (
+                None if self.parent_scope is None else self.parent_scope.scope
+            ),
             "def_points": list(
                 map(
                     lambda def_point: def_point.to_json(propagation_slice_mode),
@@ -318,7 +326,7 @@ class ConditionalDefUseChains(NodeVisitor):
             cols = list(def_points_df.columns)
             def_points_df["scope"] = self.scope
             def_points_df["parent_scopes"] = (
-                None if self.parent is None else self.parent.scope
+                None if self.parent_scope is None else self.parent_scope.scope
             )
             def_points_df = def_points_df[["scope", *cols]]
         else:

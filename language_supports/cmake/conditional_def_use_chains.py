@@ -651,7 +651,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             target_ast,
             self.sysdiff,
             scope=self.scope + "/" + node_data["id"],
-            parent=self,
+            parent_scope=self,
+            global_scope=self.global_scope,
         )
         child_scope.parent_names_available = False
 
@@ -688,7 +689,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 target_ast,
                 self.sysdiff,
                 scope=self.scope + "/" + node_data["id"],
-                parent=self,
+                parent_scope=self,
+                global_scope=self.global_scope,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -758,7 +760,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.ast,
                 self.sysdiff,
                 scope=self.scope + "/" + node_data["id"],
-                parent=self,
+                parent_scope=self,
+                global_scope=self.global_scope,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -2119,7 +2122,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 target_ast,
                 self.sysdiff,
                 scope=self.scope + "/" + node_data["id"],
-                parent=self,
+                parent_scope=self,
+                global_scope=self.global_scope,
             )
             self.children.append(child_scope)
             self.sysdiff.append_to_chains(child_scope)
@@ -3135,7 +3139,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         )
                     )
                 )
-            chain = chain.parent
+            chain = chain.parent_scope
 
     ####################################
     #### CMake Depricatred Commands ####
@@ -3235,7 +3239,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     target_ast,
                     self.sysdiff,
                     scope=self.scope + "/" + node_data["id"],
-                    parent=self,
+                    parent_scope=self,
+                    global_scope=self.global_scope,
                 )
                 self.children.append(child_scope)
                 self.sysdiff.append_to_chains(child_scope)
