@@ -146,6 +146,7 @@ class ConditionalDefUseChains(NodeVisitor):
         self.use_points[use_point.node_data["id"]].append(use_point)
         self.used_names[use_point.name].append(use_point)
         defined_names = self.get_definitions_by_name(use_point.node_data)
+        registered_to = []
         if defined_names:
             reachability_checker = getattr(
                 self, "compare_reachability_conditions", None
@@ -157,20 +158,23 @@ class ConditionalDefUseChains(NodeVisitor):
                         defined_names,
                     )
                 )
-                return
+                registered_to = defined_names.copy()
+                return use_point, registered_to
             for def_point in reversed(defined_names):
                 reachability_status = reachability_checker(def_point, use_point)
                 if reachability_status in ["=", "<"]:
                     def_point.add_use_point(use_point)
+                    registered_to.append(def_point)
                     break
                 if reachability_status in ["!"]:
                     continue
                 if reachability_status in [">", "?"]:
                     def_point.add_use_point(use_point)
+                    registered_to.append(def_point)
                     continue
         else:
             self.undefined_names[use_point.name].append(use_point)
-        return use_point
+        return use_point, registered_to
 
     def register_new_def_point(
         self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
