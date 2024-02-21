@@ -198,7 +198,7 @@ class ConditionalDefUseChains(NodeVisitor):
         self.actor_points[actor_node_data["id"]].append(actor_point)
         return actor_point
 
-    def register_def_point_to_parent_scope(self, def_point):
+    def register_def_point_to_parent_scope(self, def_point, recursive=False):
         """
         Consumes a Def object and registers it to the parent scope.
         """
@@ -209,6 +209,8 @@ class ConditionalDefUseChains(NodeVisitor):
         self.parent.actor_points[def_point.actor_point.node_data["id"]].append(
             def_point.actor_point
         )
+        if recursive:
+            self.register_def_point_to_parent_scope(def_point)
 
     def add_condition_to_reachability_stack(self, condition_node_data, actor_point):
         self.reachability_stack.append(
