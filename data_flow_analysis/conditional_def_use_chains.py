@@ -17,7 +17,7 @@ class ConditionalDefUseChains(NodeVisitor):
     Def = Def
     Use = Use
 
-    def __init__(self, ast, sysdiff, scope=None, parent_scop=None, global_scope=None):
+    def __init__(self, ast, sysdiff, scope=None, parent_scope=None, global_scope=None):
         """
         ast: ast_model.AST
         """
@@ -33,7 +33,7 @@ class ConditionalDefUseChains(NodeVisitor):
             self.global_scope = global_scope
         else:
             self.global_scope = self
-        self.parent_scope = parent_scop
+        self.parent_scope = parent_scope
         self.parent_names_available = True
         # A list of ConditionalDefUseChains objects of the children scopes
         self.children = []
@@ -43,13 +43,13 @@ class ConditionalDefUseChains(NodeVisitor):
         self.sysdiff = sysdiff
 
         # Store current reachability conditions based on conditional statements
-        if parent_scop is None:
+        if parent_scope is None:
             self.reachability_stack = []
             self.reachability_actor_id_stack = []
         else:
-            self.reachability_stack = parent_scop.reachability_stack.copy()
+            self.reachability_stack = parent_scope.reachability_stack.copy()
             self.reachability_actor_id_stack = (
-                parent_scop.reachability_actor_id_stack.copy()
+                parent_scope.reachability_actor_id_stack.copy()
             )
 
         # Stores a mapping between def nodes and their object (Def)
