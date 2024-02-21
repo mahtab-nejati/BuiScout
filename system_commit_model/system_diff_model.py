@@ -137,9 +137,11 @@ class SystemDiff(object):
         self.file_data = dict(
             map(
                 lambda file_data: (
-                    file_data["before_path"]
-                    if file_data["after_path"] is None
-                    else file_data["after_path"],
+                    (
+                        file_data["before_path"]
+                        if file_data["after_path"] is None
+                        else file_data["after_path"]
+                    ),
                     file_data,
                 ),
                 map(
@@ -148,14 +150,18 @@ class SystemDiff(object):
                         "file_name": modified_file.filename,
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
-                        "before_path": None
-                        if modified_file.old_path is None
-                        else modified_file.old_path.strip("/"),
+                        "before_path": (
+                            None
+                            if modified_file.old_path is None
+                            else modified_file.old_path.strip("/")
+                        ),
                         # code_before will be removed once written to a file
                         "code_before": modified_file.source_code_before,
-                        "after_path": None
-                        if modified_file.new_path is None
-                        else modified_file.new_path.strip("/"),
+                        "after_path": (
+                            None
+                            if modified_file.new_path is None
+                            else modified_file.new_path.strip("/")
+                        ),
                         # code_after will be removed once written to a file
                         "code_after": modified_file.source_code,
                         "saved_as": get_processed_path(modified_file),
@@ -649,9 +655,11 @@ class SystemDiffShortcut(SystemDiff):
         self.file_data = dict(
             map(
                 lambda file_data: (
-                    file_data["before_path"]
-                    if file_data["after_path"] is None
-                    else file_data["after_path"],
+                    (
+                        file_data["before_path"]
+                        if file_data["after_path"] is None
+                        else file_data["after_path"]
+                    ),
                     file_data,
                 ),
                 map(
@@ -660,12 +668,16 @@ class SystemDiffShortcut(SystemDiff):
                         "file_name": modified_file.filename,
                         "build_language": self.language,
                         "file_action": str(modified_file.change_type).split(".")[-1],
-                        "before_path": None
-                        if modified_file.old_path is None
-                        else modified_file.old_path.strip("/"),
-                        "after_path": None
-                        if modified_file.new_path is None
-                        else modified_file.new_path.strip("/"),
+                        "before_path": (
+                            None
+                            if modified_file.old_path is None
+                            else modified_file.old_path.strip("/")
+                        ),
+                        "after_path": (
+                            None
+                            if modified_file.new_path is None
+                            else modified_file.new_path.strip("/")
+                        ),
                         "saved_as": get_processed_path(modified_file),
                         "has_gumtree_error": False,
                         "data_flow_source_analysis": False,
