@@ -3136,3 +3136,116 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             chain = chain.parent
+
+    ####################################
+    #### CMake Depricatred Commands ####
+    ####################################
+
+    def visit_SUBDIRS(self, node_data):
+        """
+        Support for deprecated command for vxl project:
+        https://cmake.org/cmake/help/latest/command/subdirs.html
+        """
+        # Because this command imoprts other commands at this location,
+        # the actor must be taken as a reachability condition.
+        # This happens when the resolution is successful and right before
+        # the analysis of the resolved file. The condition is removed from
+        # the reachability stack after the resolved file is processed.
+        actor_point = self.register_new_actor_point(node_data)
+        self.generic_visit(node_data, actor_point)
+
+        arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
+
+        # For file-level analysis (No system provided)
+        if self.sysdiff.analysis_mode == "change_location":
+            return
+
+        for argument in arguments:
+            if self.ast.unparse(argument).upper() in ["EXCLUDE_FROM_ALL", "PREORDER"]:
+                break
+            (
+                resolution_success,
+                added_files,
+            ) = self.resolve_add_subdirectory_file_path_best_effort(argument)
+
+            if not resolution_success:
+                # For files that do not exist in the project
+                # or files that are refered to using a variable
+                if added_files is None:
+                    print(
+                        f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
+                    return
+
+            if isinstance(added_files, str):
+                # For manaully skipped files
+                if added_files.upper() == "SKIP":
+                    print(
+                        f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
+                    return
+                else:
+                    raise Exception(
+                        "File path resolution cannot be a string other than SKIP."
+                    )
+
+            # For reporting multiple resolutions
+            if len(added_files) > 1:
+                print(
+                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
+                )
+
+            # Add to reachability stack
+            self.add_condition_to_reachability_stack(node_data, actor_point)
+
+            for resolution in added_files:
+                # For files with GumTree error
+                if self.sysdiff.file_data[resolution]["diff"] is None:
+                    print(f"Parser error for {self.ast.unparse(node_data)}")
+                    continue
+
+                # Recursive resolution
+                if (resolution == self.ast.file_path) or (
+                    node_data["id"]
+                    in self.sysdiff.file_data[resolution]["language_specific_info"][
+                        "importers"
+                    ]
+                ):
+                    print(
+                        f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
+                    continue
+
+                # Resolving to entry point
+                if resolution == self.sysdiff.current_entry_file:
+                    print(
+                        f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
+                    continue
+
+                # Resolution is valid
+                self.sysdiff.file_data[resolution]["language_specific_info"][
+                    "importers"
+                ].append(node_data["id"])
+
+                target_ast = getattr(
+                    self.sysdiff.file_data[resolution]["diff"], self.ast.name
+                )
+                child_scope = self.sysdiff.ConditionalDefUseChains(
+                    target_ast,
+                    self.sysdiff,
+                    scope=self.scope + "/" + node_data["id"],
+                    parent=self,
+                )
+                self.children.append(child_scope)
+                self.sysdiff.append_to_chains(child_scope)
+
+                # Working on added file
+                child_scope.analyze()
+                self.sysdiff.set_data_flow_file_analysis(
+                    child_scope.ast.file_path, child_scope.ast.name
+                )
+                # Finished working on added file
+
+            # Remove from reachability stack
+            self.remove_condition_from_reachability_stack()
