@@ -15,6 +15,21 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     manual_resolution = PATH_RESOLUTIONS
     exclude_resolutions = CMAKE_MODULES
 
+    def register_new_def_point(
+        self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
+    ):
+        target_scope = self
+        if def_type in ["FUNCTION", "MACRO"]:
+            target_scope = self.global_scope
+
+        def_point = target_scope.Def(
+            def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
+        )
+        actor_point.add_def_point(def_point)
+        target_scope.def_points[def_point.node_data["id"]].append(def_point)
+        target_scope.defined_names[def_point.name].append(def_point)
+        return def_point
+
     def compare_reachability_conditions(self, def_point, use_point):
         """
         Consumes the def_point (or the def reachability stack) and
@@ -670,17 +685,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             child_scope.visit(body_data)
         return
 
-    def process_callable_call_location(self, node_data, def_point):
-        actor_point = self.register_new_actor_point(node_data)
-        self.register_new_use_point(node_data, actor_point, def_point.type)
-        self.generic_visit(node_data, actor_point)
-
-        if actor_point.name == def_point.name:
-            print(
-                f"Recursive calls detected from {def_point.name}, in file {def_point.ast.file_path}"
-            )
-            return
-
+    def process_callable_call_location(self, node_data, def_point, actor_point):
+        # TODO: Recursive call detection is removed for technical issues.
         # Calls have an impact on the reachability of the content.
         self.add_condition_to_reachability_stack(node_data, actor_point)
         if def_point.type == "FUNCTION":
@@ -966,43 +972,21 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # # at definition location processing time?
         # temp_flag = self.parent_names_available
         # self.parent_names_available = True
-        def_points = self.get_definitions_by_name(node_data, True)
+        actor_point = self.register_new_actor_point(node_data)
+        use_point, def_points = self.register_new_use_point(
+            node_data, actor_point, "USER_DEFINED_NORMAL_COMMAND"
+        )
+        self.generic_visit(node_data, actor_point)
         # self.parent_names_available = temp_flag
         if len(def_points) > 0:
-            reachability_checker = getattr(
-                self, "compare_reachability_conditions", None
+            list(
+                map(
+                    lambda def_point: self.process_callable_call_location(
+                        node_data, def_point, actor_point
+                    ),
+                    def_points,
+                )
             )
-            if reachability_checker is None:
-                list(
-                    map(
-                        lambda def_point: self.process_callable_call_location(
-                            node_data, def_point
-                        ),
-                        def_points,
-                    )
-                )
-                return
-            for def_point in reversed(def_points):
-                reachability_status = reachability_checker(
-                    def_point.actor_point.reachability.copy(),
-                    self.reachability_stack.copy(),
-                )
-                if reachability_status in ["=", "<"]:
-                    self.process_callable_call_location(node_data, def_point)
-                    break
-                if reachability_status in ["!"]:
-                    continue
-                if reachability_status in [">", "?"]:
-                    self.process_callable_call_location(node_data, def_point)
-                    continue
-        elif not self.parent_names_available:
-            actor_point = self.register_new_actor_point(node_data)
-            self.register_new_use_point(node_data, actor_point, "SOME_COMMAND")
-            self.generic_visit(node_data, actor_point)
-        elif self.parent_names_available:
-            actor_point = self.register_new_actor_point(node_data)
-            self.register_new_use_point(node_data, actor_point, "UNKNOWN_COMMAND")
-            self.generic_visit(node_data, actor_point)
         return
 
     ############################
