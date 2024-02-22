@@ -662,21 +662,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     def visit_endmacro_clause(self, node_data, *args, **kwargs):
         return
 
-    def is_recursive_call(self, callsite_node_data, *args, **kwargs):
-        name = self.ast.get_name(callsite_node_data)
-        ancestors = self.ast.get_ancestors(callsite_node_data)
-        callable_definition_ancestors = filter(
-            lambda ancestor: (
-                ancestor["type"] in ["function_definition", "macro_definition"]
-            ),
-            ancestors.values(),
-        )
-        same_name_callable_definition_ancestors = filter(
-            lambda ancestor: self.ast.get_name(ancestor) == name,
-            callable_definition_ancestors,
-        )
-        return len(list(same_name_callable_definition_ancestors)) > 0
-
     def process_callable_definition_location(
         self, node_data, callable_type, actor_point
     ):
@@ -712,8 +697,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if self.is_recursive_call(node_data):
             self.generic_visit(node_data, actor_point)
             return
+
         # Calls have an impact on the reachability of the content.
         self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.global_scope.add_callable_to_current_call_stack(
+            self.ast.get_name(node_data)
+        )
         if def_point.type == "FUNCTION":
             target_ast = def_point.ast
             child_scope = self.sysdiff.ConditionalDefUseChains(
@@ -760,7 +749,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             self.ast = self.ast_stack.pop()
         # Remove from reachability condition
-        self.remove_condition_from_reachability_stack
+        self.remove_condition_from_reachability_stack()
+        self.global_scope.remove_callable_from_current_call_stack()
 
     def visit_block_definition(self, node_data, *args, **kwargs):
         header_data = self.ast.get_data(

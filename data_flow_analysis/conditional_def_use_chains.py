@@ -84,6 +84,10 @@ class ConditionalDefUseChains(NodeVisitor):
         # Stores a mapping of the name to undefined users {'name': [Use]}
         self.undefined_names = defaultdict(list)
 
+        # Stores a call stack to facilitate detection of recursive and circular calls
+        # Only gets modified in self.global_scope
+        self.current_call_stack = []
+
         """
         Each propagation slice is a Pandas DataFrame representing the 
         propagation relationships in the form of a Knowledge Graph (KD). 
@@ -236,6 +240,18 @@ class ConditionalDefUseChains(NodeVisitor):
         self.reachability_stack[-1] = (
             f"{negation_symbol} ({self.reachability_stack[-1]})"
         )
+
+    def add_callable_to_current_call_stack(self, callable_name, *args, **kwargs):
+        if self.global_scope == self:
+            self.current_call_stack.append(callable_name)
+
+    def remove_callable_from_current_call_stack(self, *args, **kwargs):
+        if self.global_scope == self:
+            self.current_call_stack.pop(-1)
+
+    def is_recursive_call(self, node_data):
+        name = self.ast.get_name(node_data)
+        return name in self.global_scope.current_call_stack
 
     def analyze(self):
         self.generic_visit(self.ast.get_data(self.ast.root))
