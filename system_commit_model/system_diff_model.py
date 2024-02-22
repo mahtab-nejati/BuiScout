@@ -546,11 +546,12 @@ class SystemDiff(object):
 
     def run_analysis(self):
         self.perform_data_flow_analysis()
-        self.compute_propagation_slices()
+        if not self.snapshot_mode:
+            self.compute_propagation_slices()
 
     def export_csv(self, propagation_slice_mode=True):
         self.run_analysis()
-        if propagation_slice_mode:
+        if propagation_slice_mode and not self.snapshot_mode:
             save_path = self.commit_dir / "change_propagation_output"
             Path(save_path).mkdir(parents=True, exist_ok=True)
 
@@ -615,7 +616,7 @@ class SystemDiff(object):
                     save_path / f"destination_undefined_names.csv", index=False
                 )
 
-        if propagation_slice_mode:
+        if propagation_slice_mode and not self.snapshot_mode:
             source_matches_df = pd.DataFrame(
                 list(
                     map(
