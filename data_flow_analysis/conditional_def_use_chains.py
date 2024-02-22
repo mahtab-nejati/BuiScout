@@ -99,12 +99,15 @@ class ConditionalDefUseChains(NodeVisitor):
         # Storing propagation rules
         self.propagation_slice = pd.DataFrame()
 
-    def get_definitions_by_name(self, node_data, get_from_parent_scopes=True):
+    def get_definitions_by_name(self, node_data_or_name, get_from_parent_scopes=True):
         """
-        Looks up use (node_data) in current and all ancestor contexts
+        Looks up use (node_data_or_name) in current and all ancestor contexts
         Returns the list of defs linked to the node_data
         """
-        name = self.ast.get_name(node_data)
+        if not isinstance(node_data_or_name, str):
+            name = self.ast.get_name(node_data_or_name)
+        else:
+            name = node_data_or_name
         defined_names = self.defined_names[name]
         if self.parent_names_available and get_from_parent_scopes:
             parent = self.parent_scope
