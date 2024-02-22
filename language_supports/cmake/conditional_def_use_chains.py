@@ -951,6 +951,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         def_node = arguments.pop(0)
         def_point = self.register_new_def_point(def_node, actor_point, "VARIABLE")
 
+        if self.ast.unparse(arguments[0]).upper() == "IN":
+            if self.ast.unparse(arguments[1]).upper() == "LISTS":
+                for arg in arguments[2:]:
+                    self.register_new_use_point(arg, actor_point, use_type="VARIABLE")
+
         self.generic_visit(condition_node_data, actor_point)
         self.generic_visit(body_node_data, *args, **kwargs)
 
