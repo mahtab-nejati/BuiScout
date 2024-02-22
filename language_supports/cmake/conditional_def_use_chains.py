@@ -22,6 +22,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if def_type in ["FUNCTION", "MACRO"]:
             target_scope = self.global_scope
 
+            defined = target_scope.get_definitions_by_name(
+                self.ast.get_name(def_node_data)
+            )
+            if len(defined) > 0:
+                node_ids = list(map(lambda point: point.node_data["id"], defined))
+                if def_node_data["id"] in node_ids:
+                    return None
+
         def_point = target_scope.Def(
             def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
         )
