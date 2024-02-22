@@ -112,7 +112,7 @@ class ConditionalDefUseChains(NodeVisitor):
         if self.parent_names_available and get_from_parent_scopes:
             parent = self.parent_scope
             while not parent is None:
-                defined_names = parent.defined_names["name"] + defined_names
+                defined_names = parent.defined_names[name] + defined_names
                 parent = parent.parent_scope
         return defined_names
 
