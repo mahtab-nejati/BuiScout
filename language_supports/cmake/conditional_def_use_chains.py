@@ -1023,9 +1023,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ############################
     ###### CMake Commands ######
     ############################
-    # All functions are designed based on current latest
-    # release of CMake, documentations available at:
-    # https://cmake.org/cmake/help/v3.27/manual/cmake-commands.7.html
+
+    """ All functions are designed based on current latest
+    release of CMake, documentations available at:
+    https://cmake.org/cmake/help/v3.27/manual/cmake-commands.7.html"""
 
     ########## Scripting Commands:
 
