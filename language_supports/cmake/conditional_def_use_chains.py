@@ -817,7 +817,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             + 1  # For the if_clause
         )
         self.generic_visit(node_data, *args, **kwargs)
-        self.remove_condition_from_reachability_stack(last_n=stacked_condition_count)
+        self.remove_condition_from_reachability_stack(
+            last_n=stacked_condition_count, was_comparative=True
+        )
 
     def visit_if_clause(self, node_data, *args, **kwargs):
         condition_node_data = self.ast.get_data(
@@ -864,7 +866,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
     def visit_while_statement(self, node_data, *args, **kwargs):
         self.generic_visit(node_data, *args, **kwargs)
-        self.remove_condition_from_reachability_stack(last_n=1)
+        self.remove_condition_from_reachability_stack(last_n=1, was_comparative=True)
         return
 
     def visit_while_clause(self, node_data, *args, **kwargs):
@@ -943,7 +945,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         self.generic_visit(node_data, actor_point)
 
-        self.add_condition_to_reachability_stack(node_data, actor_point)
+        self.add_condition_to_reachability_stack(
+            node_data, actor_point, is_comparative=True
+        )
 
     def visit_foreach_clause(self, node_data, *args, **kwargs):
         """

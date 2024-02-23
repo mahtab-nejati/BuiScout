@@ -225,14 +225,18 @@ class ConditionalDefUseChains(NodeVisitor):
         if recursive:
             self.register_def_point_to_parent_scope(def_point)
 
-    def add_condition_to_reachability_stack(self, condition_node_data, actor_point):
-        self.reachability_stack.append(
-            self.ast.unparse(condition_node_data).strip("()").strip()
-        )
+    def add_condition_to_reachability_stack(
+        self, condition_node_data, actor_point, is_comparative=False
+    ):
+        if is_comparative:
+            self.reachability_stack.append(
+                self.ast.unparse(condition_node_data).strip("()").strip()
+            )
         self.reachability_actor_id_stack.append(actor_point.id)
 
-    def remove_condition_from_reachability_stack(self, last_n=1):
-        del self.reachability_stack[-last_n:]
+    def remove_condition_from_reachability_stack(self, last_n=1, was_comparative=False):
+        if was_comparative:
+            del self.reachability_stack[-last_n:]
         del self.reachability_actor_id_stack[-last_n:]
 
     def negate_last_condition_in_reachability_stack(self, negation_symbol="NOT"):
