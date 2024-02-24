@@ -1,4 +1,5 @@
 {
+  "CLEAR_PROGRESS": "If 'YES', clears all previous progress into the list of commits, else if 'NO' continues.",
   "DATA_PATH": "Path to store data/results MUST NOT CONTAIN WHITESPACE",
   "USE_EXISTING_DATA": "'YES' or 'NO'. Uses the the pre-xisting GumTree output. Assumes that there was a GumTree error if data does not exist.",
   "PROJECT": "Project name",

@@ -11,6 +11,7 @@ from utils.helpers import (
     file_is_target,
 )
 from utils.configurations import (
+    CLEAR_PROGRESS,
     ROOT_PATH,
     SAVE_PATH,
     REPOSITORY,
@@ -38,22 +39,71 @@ if USE_PROJECT_SPECIFIC_MODELS:
         ).SystemDiffSeries
 
 
+def analyze_commit(
+    REPOSITORY,
+    repo,
+    git_repo,
+    BRANCH,
+    commit,
+    ENTRY_FILES,
+    LANGUAGE,
+    PATTERNS,
+    ROOT_PATH,
+    SAVE_PATH,
+):
+    diff = SystemDiffModel(
+        REPOSITORY,
+        repo,
+        git_repo,
+        BRANCH,
+        commit,
+        ENTRY_FILES,
+        LANGUAGE,
+        PATTERNS,
+        ROOT_PATH,
+        SAVE_PATH,
+    )
+
+    diff.export_csv(propagation_slice_mode=True)
+
+    commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
+    commit_build_files_df.drop(
+        labels=["diff", "language_specific_info"],
+        axis=1,
+        inplace=True,
+    )
+    commit_build_files_df.to_csv(
+        SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
+    )
+
+    del diff
+    gc.collect()
+
+
 SAVE_PATH = SAVE_PATH / f"system_series_{DATA_FLOW_ANALYSIS_MODE.lower()}"
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
+if CLEAR_PROGRESS:
+    create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
+else:
+    try:
+        completed_commits = pd.read_csv(SAVE_PATH / "all_commits.csv")
+        completed_commits = list(completed_commits.commit_hash.unique())
+    except:
+        completed_commits = []
+        create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
+
 repo = Repository(
     REPOSITORY,
-    only_modifications_with_file_types=PATTERNS_FLATTENED["include"]
-    if FILTERING
-    else None,  # See EXCEPTION_HANDLING_GitPython in comments within code
+    only_modifications_with_file_types=(
+        PATTERNS_FLATTENED["include"] if FILTERING else None
+    ),  # See EXCEPTION_HANDLING_GitPython in comments within code
     only_commits=COMMITS,
     only_in_branch=BRANCH,
     # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)
 )
 git_repo = Git(REPOSITORY)
-
-create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
 
 all_commits_start = datetime.now()
 
@@ -71,12 +121,14 @@ def clear_existing_data():
 # Clear existing code and gumtree outputs
 clear_existing_data()
 
-
 # Run tool on commits
 chronological_commit_order = 0
 for commit in tqdm(repo.traverse_commits()):
-    gc.collect()
     print(f"Commit in process: {commit.hash}")
+    if commit.hash in completed_commits:
+        print("Commit previously analyzed.")
+        chronological_commit_order += 1
+        continue
     # Commit-level attributes that show whether the commit
     # has affected build/non-build files
     has_build = False
@@ -131,7 +183,14 @@ for commit in tqdm(repo.traverse_commits()):
         if any(map(lambda mf: file_is_target(mf, PATTERNS), commit.modified_files)):
             has_build = True
 
-            diff = SystemDiffModel(
+            # Save time by skipping
+            if commit.hash in EXCLUDED_COMMITS:
+                to_remove = SAVE_PATH / "commits" / commit.hash
+                if to_remove.exists():
+                    shutil.rmtree(to_remove)
+                continue
+
+            analyze_commit(
                 REPOSITORY,
                 repo,
                 git_repo,
@@ -143,25 +202,7 @@ for commit in tqdm(repo.traverse_commits()):
                 ROOT_PATH,
                 SAVE_PATH,
             )
-
-            # Save time by skipping
-            if commit.hash in EXCLUDED_COMMITS:
-                to_remove = diff.commit_dir
-                if to_remove.exists():
-                    shutil.rmtree(to_remove)
-                continue
-
-            diff.export_csv(propagation_slice_mode=True)
-
-            commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
-            commit_build_files_df.drop(
-                labels=["diff", "language_specific_info"],
-                axis=1,
-                inplace=True,
-            )
-            commit_build_files_df.to_csv(
-                SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
-            )
+            gc.collect()
 
     # Don't log if excluded
     if commit.hash in EXCLUDED_COMMITS:

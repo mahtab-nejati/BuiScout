@@ -11,6 +11,12 @@ sys.path.append(str(ROOT_PATH))
 with open(ROOT_PATH / "config.json", "r") as f:
     config = json5.load(f)
 
+CLEAR_PROGRESS = config["CLEAR_PROGRESS"].upper()
+if CLEAR_PROGRESS == "NO":
+    CLEAR_PROGRESS = False
+else:
+    CLEAR_PROGRESS = True
+
 DATA_PATH = Path(config["DATA_PATH"])
 GUMTREE_OUTPUT_AVAILABLE = config["USE_EXISTING_DATA"].upper() == "YES"
 PROJECT = config["PROJECT"]
