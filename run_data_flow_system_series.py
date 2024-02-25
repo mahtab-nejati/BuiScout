@@ -86,6 +86,7 @@ COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
 if CLEAR_PROGRESS:
     create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
+    completed_commits = []
 else:
     try:
         completed_commits = pd.read_csv(SAVE_PATH / "all_commits.csv")
