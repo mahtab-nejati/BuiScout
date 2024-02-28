@@ -12,10 +12,16 @@ with open(ROOT_PATH / "config.json", "r") as f:
     config = json5.load(f)
 
 CLEAR_PROGRESS = config["CLEAR_PROGRESS"].upper()
-if CLEAR_PROGRESS == "NO":
-    CLEAR_PROGRESS = False
-else:
+if CLEAR_PROGRESS == "YES":
     CLEAR_PROGRESS = True
+else:
+    CLEAR_PROGRESS = False
+
+EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper()
+if EXECUTE_CALLABLE_TYPES == "YES":
+    EXECUTE_CALLABLE_TYPES = True
+else:
+    EXECUTE_CALLABLE_TYPES = False
 
 DATA_PATH = Path(config["DATA_PATH"])
 GUMTREE_OUTPUT_AVAILABLE = config["USE_EXISTING_DATA"].upper() == "YES"

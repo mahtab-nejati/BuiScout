@@ -2,7 +2,7 @@ from pathlib import Path
 from functools import reduce
 import data_flow_analysis as cm
 import pandas as pd
-from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH
+from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, EXECUTE_CALLABLE_TYPES
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -1003,7 +1003,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         self.generic_visit(node_data, actor_point)
         # self.parent_names_available = temp_flag
-        if len(def_points) > 0:
+        if len(def_points) > 0 and EXECUTE_CALLABLE_TYPES:
             list(
                 map(
                     lambda def_point: self.process_callable_call_location(
