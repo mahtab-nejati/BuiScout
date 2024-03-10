@@ -201,13 +201,14 @@ class ConditionalDefUseChains(NodeVisitor):
         self.defined_names[def_point.name].append(def_point)
         return def_point
 
-    def register_new_actor_point(self, node_data):
+    def register_new_actor_point(self, node_data, actor_type="built_in"):
         actor_node_data = self.ast.get_actor(node_data)
         actor_point = self.Actor(
             actor_node_data,
             self.reachability_stack,
             self.reachability_actor_id_stack,
             self.ast,
+            actor_type=actor_type,
         )
         self.actor_points[actor_node_data["id"]].append(actor_point)
         return actor_point

@@ -997,7 +997,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # # at definition location processing time?
         # temp_flag = self.parent_names_available
         # self.parent_names_available = True
-        actor_point = self.register_new_actor_point(node_data)
+        actor_point = self.register_new_actor_point(
+            node_data,
+            actor_type="built_in",
+        )
         use_point, def_points = self.register_new_use_point(
             node_data, actor_point, "USER_DEFINED_NORMAL_COMMAND"
         )
@@ -3000,21 +3003,23 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for use_point in use_points:
             #################################################### is_modified/is_value_affected Uses non-modified Defs
-            self.update_propagation_rules(
-                list(
-                    map(
-                        lambda def_point: {
-                            "subject_id": use_point.id,
-                            "subject_type": "use",
-                            "propagation_rule": "is_used_in_definition_of"
-                            + ("" if not def_point.set_is_value_affected() else ""),
-                            "object_id": def_point.id,
-                            "object_type": "def",
-                        },
-                        use_point.actor_point.def_points,
+            actor = use_point.actor_point
+            if actor.type == "built_in":
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if not def_point.set_is_value_affected() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            actor.def_points,
+                        )
                     )
                 )
-            )
             #################################################### is_modified/is_value_affected Uses reachability
             if use_point.actor_point.node_data["type"] in (
                 self.ast.node_actors.conditional_actor_types + ["FUNCTION", "MACRO"]
@@ -3103,24 +3108,26 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
 
         for def_point in def_points:
-            self.update_propagation_rules(
-                list(
-                    map(
-                        lambda use_point: {
-                            "subject_id": use_point.id,
-                            "subject_type": "use",
-                            "propagation_rule": "is_used_in_definition_of"
-                            + ("" if use_point.set_is_upstream() else ""),
-                            "object_id": def_point.id,
-                            "object_type": "def",
-                        },
-                        filter(
-                            lambda use_point: use_point.name == def_point.name,
-                            def_point.actor_point.use_points,
-                        ),
+            actor = def_point.actor_point
+            if actor.type == "built_in":
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda use_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if use_point.set_is_upstream() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            filter(
+                                lambda use_point: use_point.name == def_point.name,
+                                actor.use_points,
+                            ),
+                        )
                     )
                 )
-            )
 
         use_points = filter(
             lambda point: point.is_modified or point.is_upstream,

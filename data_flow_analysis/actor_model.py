@@ -12,9 +12,17 @@ class Actor(object):
     # (see system_diff_model.py > SystemDiff.__init__())
     id_generator = itertools.count(start=1)
 
-    def __init__(self, node_data, reachability, reachability_actor_ids, ast):
+    def __init__(
+        self,
+        node_data,
+        reachability,
+        reachability_actor_ids,
+        ast,
+        actor_type="built_in",
+    ):
         self.id = f"{ast.commit_hash}_{ast.name}_{next(Actor.id_generator)}"
         self.ast = ast
+        self.type = actor_type
 
         # Storing the node_data
         self.node_data = node_data
@@ -89,6 +97,7 @@ class Actor(object):
         if propagation_slice_mode:
             return {
                 "id": self.id,
+                "type": self.type,
                 "name": self.name,
                 "is_modified": self.is_modified,
                 "is_value_affected": self.is_value_affected,
@@ -108,6 +117,7 @@ class Actor(object):
             }
         return {
             "id": self.id,
+            "type": self.type,
             "name": self.name,
             "node_id": self.node_data["id"],
             "is_modified": self.is_modified,
