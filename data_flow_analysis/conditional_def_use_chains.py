@@ -28,11 +28,12 @@ class ConditionalDefUseChains(NodeVisitor):
         else:
             self.scope = self.ast.get_data(self.ast.root)["id"]
 
-        # The ConditionalDefUseChains object of the parent scope
         if global_scope:
             self.global_scope = global_scope
         else:
             self.global_scope = self
+
+        # The ConditionalDefUseChains object of the parent scope
         self.parent_scope = parent_scope
         self.parent_names_available = True
         # A list of ConditionalDefUseChains objects of the children scopes

@@ -12,7 +12,16 @@ class Def(object):
     # (see system_diff_model.py > SystemDiff.__init__())
     id_generator = itertools.count(start=1)
 
-    def __init__(self, node_data, def_type, actor_point, ast, prefix=None, suffix=None):
+    def __init__(
+        self,
+        node_data,
+        def_type,
+        actor_point,
+        ast,
+        prefix=None,
+        suffix=None,
+        preferred_name=None,
+    ):
         self.id = f"{ast.commit_hash}_{ast.name}_{next(Def.id_generator)}"
         self.ast = ast
         self.type = def_type
@@ -30,6 +39,9 @@ class Def(object):
             self.name = prefix + self.name
         if suffix:
             self.name = self.name + suffix
+        if preferred_name:
+            self.name = preferred_name
+
         self.is_modified = node_data["operation"] != "no-op"
         self.is_value_affected = False
         self.is_reach_affected = False

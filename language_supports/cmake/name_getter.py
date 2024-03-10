@@ -153,7 +153,7 @@ class NameGetter(NodeVisitor):
             .strip()
         )
 
-    def find_keword_argument(self, command_node_data, command_id, keywords=[]):
+    def find_keyword_argument(self, command_node_data, command_id, keywords=[]):
         if not keywords:
             return "UNKNOWN"
         arguments_node_data = self.ast.get_data(
@@ -207,7 +207,7 @@ class NameGetter(NodeVisitor):
             sub_operation = self.get_keyword_argument(node_data, "STRING", 2)
             return f"<CMD>STRING/{operation}/{sub_operation}"
         if operation == "JSON":
-            sub_operation = self.find_keword_argument(
+            sub_operation = self.find_keyword_argument(
                 node_data,
                 "STRING",
                 ["GET", "TYPE", "LENGTH", "REMOVE", "MEMBER", "SET", "EQUAL"],
