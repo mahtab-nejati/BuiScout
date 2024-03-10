@@ -999,10 +999,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # self.parent_names_available = True
         actor_point = self.register_new_actor_point(
             node_data,
-            actor_type="built_in",
+            actor_type="user_defined",
         )
         use_point, def_points = self.register_new_use_point(
-            node_data, actor_point, "USER_DEFINED_NORMAL_COMMAND"
+            node_data, actor_point, "USER_DEFINED_CALLABLE"
         )
         self.generic_visit(node_data, actor_point)
         # self.parent_names_available = temp_flag
