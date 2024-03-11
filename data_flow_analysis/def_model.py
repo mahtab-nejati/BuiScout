@@ -42,6 +42,8 @@ class Def(object):
         if preferred_name:
             self.name = preferred_name
 
+        self.callable_arguments = []
+
         self.is_modified = node_data["operation"] != "no-op"
         self.is_value_affected = False
         self.is_reach_affected = False
@@ -97,6 +99,10 @@ class Def(object):
         """
         return self.name == use_point.name
 
+    def add_callable_argument(self, use_point):
+        if not self.lock:
+            self.callable_arguments.append(use_point)
+
     def is_listed_use_point(self, use_point, *args, **kwargs):
         return use_point.node_data["id"] in set(
             lambda use_point: use_point.node_data["id"], self.use_points
@@ -124,7 +130,12 @@ class Def(object):
                 "code": self.actor_point.ast.unparse(
                     self.actor_point.node_data, masked_types=["body"]
                 ),
-                "use_ids": list(map(lambda use_point: use_point.id, self.use_points)),
+                "use_ids": list(
+                    map(
+                        lambda use_point: use_point.id,
+                        self.use_points + self.callable_arguments,
+                    )
+                ),
                 "non_contaminated_use_nodes": len(
                     list(
                         map(
@@ -147,5 +158,10 @@ class Def(object):
             "is_upstream": self.is_upstream,
             "node_id": self.node_data["id"],
             "actor_id": self.actor_point.id,
-            "use_ids": list(map(lambda use_point: use_point.id, self.use_points)),
+            "use_ids": list(
+                map(
+                    lambda use_point: use_point.id,
+                    self.use_points + self.callable_arguments,
+                )
+            ),
         }
