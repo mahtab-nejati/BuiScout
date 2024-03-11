@@ -206,7 +206,7 @@ class ConditionalDefUseChains(NodeVisitor):
             self.ast,
             prefix=prefix,
             suffix=suffix,
-            preferred_name=None,
+            preferred_name=preferred_name,
         )
         actor_point.add_def_point(def_point)
         self.def_points[def_point.node_data["id"]].append(def_point)

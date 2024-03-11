@@ -1,5 +1,3 @@
-from pathlib import Path
-from functools import reduce
 import data_flow_analysis as cm
 import pandas as pd
 from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, EXECUTE_CALLABLE_TYPES
@@ -16,7 +14,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     exclude_resolutions = CMAKE_MODULES
 
     def register_new_def_point(
-        self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
+        self,
+        def_node_data,
+        actor_point,
+        def_type="VAR",
+        prefix=None,
+        suffix=None,
+        preferred_name=None,
     ):
         target_scope = self
         if def_type in ["FUNCTION", "MACRO"]:
@@ -31,7 +35,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     return None
 
         def_point = target_scope.Def(
-            def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
+            def_node_data,
+            def_type,
+            actor_point,
+            self.ast,
+            prefix=prefix,
+            suffix=suffix,
+            preferred_name=preferred_name,
         )
         actor_point.add_def_point(def_point)
         target_scope.def_points[def_point.node_data["id"]].append(def_point)
@@ -608,7 +618,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return False, None
 
     def visit_function_definition(self, node_data, *args, **kwargs):
-        print(f"Function definition {self.ast.get_name(node_data)}")
         actor_point = self.register_new_actor_point(node_data)
         self.register_new_def_point(node_data, actor_point, "FUNCTION")
 
@@ -636,7 +645,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return
 
     def visit_macro_definition(self, node_data, *args, **kwargs):
-        print(f"Macro definition {self.ast.get_name(node_data)}")
         actor_point = self.register_new_actor_point(node_data)
         self.register_new_def_point(node_data, actor_point, "MACRO")
         return self.process_callable_definition_location(
@@ -699,57 +707,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return
 
         # Calls have an impact on the reachability of the content.
-        self.add_condition_to_reachability_stack(node_data, actor_point)
+        if node_data["operation"] in ["added", "deleted"]:
+            self.add_condition_to_reachability_stack(node_data, actor_point)
         self.global_scope.add_callable_to_current_call_stack(
             self.ast.get_name(node_data)
         )
-        if def_point.type == "FUNCTION":
-            target_ast = def_point.ast
-            child_scope = self.sysdiff.ConditionalDefUseChains(
-                target_ast,
-                self.sysdiff,
-                scope=self.scope + "/" + node_data["id"],
-                parent_scope=self,
-                global_scope=self.global_scope,
-            )
-            self.children.append(child_scope)
-            self.sysdiff.append_to_chains(child_scope)
-            print(
-                f"Support needed for callable variable translation for function {def_point.name}, file {actor_point.ast.file_path}, scope {child_scope.scope}"
-            )
-
-            definer_node = def_point.node_data
-            header_data = child_scope.ast.get_data(
-                child_scope.ast.get_children_by_type(definer_node, "function_header")
-            )
-            child_scope.visit(header_data, actor_point)
-            body_data = child_scope.ast.get_data(
-                child_scope.ast.get_children_by_type(definer_node, "body")
-            )
-            if body_data:
-                child_scope.visit(body_data)
-        elif def_point.type == "MACRO":
-            print(
-                f"Support needed for callable variable translation for macro {def_point.name}, file {actor_point.ast.file_path}, scope {self.scope}"
-            )
-            self.ast_stack.append(self.ast)
-
-            self.ast = def_point.ast
-
-            definer_node = def_point.node_data
-            header_data = self.ast.get_data(
-                self.ast.get_children_by_type(definer_node, "macro_header")
-            )
-            self.visit(header_data, actor_point)
-            body_data = self.ast.get_data(
-                self.ast.get_children_by_type(definer_node, "body")
-            )
-            if body_data:
-                self.visit(body_data)
-
-            self.ast = self.ast_stack.pop()
+        def_ast = def_point.ast
+        callable = CMakeCallable(
+            def_ast,
+            self.sysdiff,
+            self.scope + "/" + node_data["id"],
+            self,
+            self.global_scope,
+            def_point,
+            actor_point,
+        )
+        callable.analyze()
         # Remove from reachability condition
-        self.remove_condition_from_reachability_stack()
+        if node_data["operation"] in ["added", "deleted"]:
+            self.remove_condition_from_reachability_stack()
         self.global_scope.remove_callable_from_current_call_stack()
 
     def visit_block_definition(self, node_data, *args, **kwargs):
@@ -1071,11 +1047,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
-        print(
-            f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
-        actor_point = self.register_new_actor_point(node_data)
-        self.generic_visit(node_data, actor_point)
+        print(f"CMAKE_PARSE_ARGUMENTS called in a non-callable scope.")
 
     def visit_CMAKE_PATH(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1365,7 +1337,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 f"FIND_PACKAGE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(found_files)} called from {self.ast.file_path}"
             )
 
-        self.add_condition_to_reachability_stack(node_data, actor_point)
+        if node_data["operation"] in ["added", "deleted"]:
+            self.add_condition_to_reachability_stack(node_data, actor_point)
         self.ast_stack.append(self.ast)
 
         for resolution in found_files:
@@ -1409,7 +1382,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Finished working on included file
 
         self.ast = self.ast_stack.pop()
-        self.remove_condition_from_reachability_stack()
+        if node_data["operation"] in ["added", "deleted"]:
+            self.remove_condition_from_reachability_stack()
 
     def visit_FIND_PATH(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1554,7 +1528,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
             )
 
-        self.add_condition_to_reachability_stack(node_data, actor_point)
+        if node_data["operation"] in ["added", "deleted"]:
+            self.add_condition_to_reachability_stack(node_data, actor_point)
         self.ast_stack.append(self.ast)
 
         for resolution in included_files:
@@ -1598,7 +1573,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Finished working on included file
 
         self.ast = self.ast_stack.pop()
-        self.remove_condition_from_reachability_stack()
+        if node_data["operation"] in ["added", "deleted"]:
+            self.remove_condition_from_reachability_stack()
 
     def visit_INCLUDE_GUARD(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2096,7 +2072,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
 
         # Add to reachability stack
-        self.add_condition_to_reachability_stack(node_data, actor_point)
+        if node_data["operation"] in ["added", "deleted"]:
+            self.add_condition_to_reachability_stack(node_data, actor_point)
 
         for resolution in added_files:
             # For files with GumTree error
@@ -2149,7 +2126,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Finished working on added file
 
         # Remove from reachability stack
-        self.remove_condition_from_reachability_stack()
+        if node_data["operation"] in ["added", "deleted"]:
+            self.remove_condition_from_reachability_stack()
 
     def visit_ADD_TEST(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2992,6 +2970,21 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
+            self.update_propagation_rules(
+                list(
+                    map(
+                        lambda use_point: {
+                            "subject_id": def_point.id,
+                            "subject_type": "def",
+                            "propagation_rule": "is_passed_as_argument"
+                            + ("" if use_point.set_is_value_affected() else ""),
+                            "object_id": use_point.id,
+                            "object_type": "use",
+                        },
+                        def_point.callable_arguments,
+                    )
+                )
+            )
             def_point.set_is_processed_for_propagation()
 
     def slice_downwards_use_points(self):
@@ -3017,6 +3010,34 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_type": "def",
                             },
                             actor.def_points,
+                        )
+                    )
+                )
+            elif actor.type == "user_defined":
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if not def_point.set_is_value_affected() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            filter(
+                                lambda point: (
+                                    (
+                                        point.node_data["s_pos"]
+                                        <= use_point.node_data["s_pos"]
+                                    )
+                                    and (
+                                        point.node_data["e_pos"]
+                                        >= use_point.node_data["e_pos"]
+                                    )
+                                ),
+                                actor.def_points,
+                            ),
                         )
                     )
                 )
@@ -3105,29 +3126,57 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.slice_downwards()
 
     def slice_upwards(self):
-        def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
+        # def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
 
-        for def_point in def_points:
-            actor = def_point.actor_point
-            if actor.type == "built_in":
-                self.update_propagation_rules(
-                    list(
-                        map(
-                            lambda use_point: {
-                                "subject_id": use_point.id,
-                                "subject_type": "use",
-                                "propagation_rule": "is_used_in_definition_of"
-                                + ("" if use_point.set_is_upstream() else ""),
-                                "object_id": def_point.id,
-                                "object_type": "def",
-                            },
-                            filter(
-                                lambda use_point: use_point.name == def_point.name,
-                                actor.use_points,
-                            ),
-                        )
-                    )
-                )
+        # for def_point in def_points:
+        #     actor = def_point.actor_point
+        #     if actor.type == "built_in":
+        #         self.update_propagation_rules(
+        #             list(
+        #                 map(
+        #                     lambda use_point: {
+        #                         "subject_id": use_point.id,
+        #                         "subject_type": "use",
+        #                         "propagation_rule": "is_used_in_definition_of"
+        #                         + ("" if use_point.set_is_upstream() else ""),
+        #                         "object_id": def_point.id,
+        #                         "object_type": "def",
+        #                     },
+        #                     filter(
+        #                         lambda use_point: use_point.name == def_point.name,
+        #                         actor.use_points,
+        #                     ),
+        #                 )
+        #             )
+        #         )
+        #     elif actor.type == "user_defined":
+        #         self.update_propagation_rules(
+        #             list(
+        #                 map(
+        #                     lambda use_point: {
+        #                         "subject_id": use_point.id,
+        #                         "subject_type": "use",
+        #                         "propagation_rule": "is_used_in_definition_of"
+        #                         + ("" if not def_point.set_is_value_affected() else ""),
+        #                         "object_id": def_point.id,
+        #                         "object_type": "def",
+        #                     },
+        #                     filter(
+        #                         lambda point: (
+        #                             (
+        #                                 def_point.node_data["s_pos"]
+        #                                 <= point.node_data["s_pos"]
+        #                             )
+        #                             and (
+        #                                 def_point.node_data["e_pos"]
+        #                                 >= point.node_data["e_pos"]
+        #                             )
+        #                         ),
+        #                         actor.use_points,
+        #                     ),
+        #                 )
+        #             )
+        #         )
 
         use_points = filter(
             lambda point: point.is_modified or point.is_upstream,
@@ -3217,7 +3266,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 )
 
             # Add to reachability stack
-            self.add_condition_to_reachability_stack(node_data, actor_point)
+            if node_data["operation"] in ["added", "deleted"]:
+                self.add_condition_to_reachability_stack(node_data, actor_point)
 
             for resolution in added_files:
                 # For files with GumTree error
@@ -3270,4 +3320,277 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 # Finished working on added file
 
             # Remove from reachability stack
-            self.remove_condition_from_reachability_stack()
+            if node_data["operation"] in ["added", "deleted"]:
+                self.remove_condition_from_reachability_stack()
+
+
+class CMakeCallable(ConditionalDefUseChains):
+
+    def __init__(
+        self,
+        def_ast,
+        sysdiff,
+        scope,
+        caller_scope,
+        global_scope,
+        callable_def_point,
+        caller_actor_point,
+    ):
+        self.caller_scope = caller_scope
+        self.callable_type = callable_def_point.type
+        if self.callable_type == "FUNCTION":
+            super().__init__(
+                def_ast,
+                sysdiff,
+                scope,
+                caller_scope,
+                global_scope,
+            )
+            self.children.append(self)
+            self.sysdiff.append_to_chains(self)
+
+        elif self.callable_type == "MACRO":
+            self.ast = def_ast
+            self.scope = caller_scope.scope
+            self.global_scope = global_scope
+            # The ConditionalDefUseChains object of the parent scope
+            self.parent_scope = caller_scope.parent_scope
+            self.parent_names_available = True
+            # A list of ConditionalDefUseChains objects of the children scopes
+            self.children = caller_scope.children
+            self.ast_stack = caller_scope.ast_stack
+            self.sysdiff = sysdiff
+            # Store current reachability conditions based on conditional statements
+            self.reachability_stack = caller_scope.reachability_stack.copy()
+            self.reachability_actor_id_stack = (
+                caller_scope.reachability_actor_id_stack.copy()
+            )
+            self.def_points = caller_scope.def_points
+            self.use_points = caller_scope.use_points
+            self.actor_points = caller_scope.actor_points
+            self.defined_names = caller_scope.defined_names
+            self.used_names = caller_scope.used_names
+            self.current_call_stack = caller_scope.current_call_stack
+            self.propagation_slice = caller_scope.propagation_slice
+
+        else:
+            raise DebugException(
+                f"CMakeCallable initialized for a command that is neither a FUNCTION nor a MACRO, but is a {callable_def_point.type}"
+            )
+
+        self.caller_actor = caller_actor_point
+        self.caller_node_data = caller_actor_point.node_data
+        self.caller_ast = caller_actor_point.ast
+
+        self.header_node_type = f"{self.callable_type.lower()}_header"
+
+        self.callable_def_point = callable_def_point
+        self.callable_def_node_data = callable_def_point.node_data
+        self.callable_header_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(
+                self.callable_def_point.node_data, self.header_node_type
+            )
+        )
+
+        self.callable_body_node_data = self.ast.get_data(
+            self.ast.get_children_by_type(self.callable_def_node_data, "body")
+        )
+        # The following names, when assigned to use points,
+        # have no def point, but are connected to arguments.
+        self.required_arguments_names = {}
+        self.accessable_aggregate_names = {"ARGC": [], "ARGV": [], "ARGN": {}}
+        self.accessable_names = {}
+        self.parsed_args_prefix = None
+        self.prefixed_parsed_names = {}
+
+    def analyze(self):
+        if self.callable_body_node_data:
+            try:
+                self.passed_values = self.get_sorted_arguments_data_list(
+                    self.caller_node_data, "user_deined_callable"
+                )
+            except MissingArgumentsException:
+                self.passed_values = []
+
+            try:
+                self.required_arguments = self.get_sorted_arguments_data_list(
+                    self.callable_header_node_data, self.header_node_type
+                )
+            except MissingArgumentsException:
+                self.required_arguments = []
+
+            self.set_up_mappings()
+
+            self.visit(self.callable_body_node_data)
+
+            self.check_for_parsed_arguments_updates()
+
+    def set_up_mappings(self):
+        locational_passed_def_points = []
+        required_arguments_names = list(
+            map(
+                lambda node_data: self.ast.get_name(node_data),
+                self.required_arguments,
+            )
+        )
+        for i, node_data in enumerate(self.passed_values):
+            # Each argument is a def point
+            def_point = self.caller_scope.register_new_def_point(
+                node_data, self.caller_actor, def_type="VARIABLE"
+            )
+            locational_passed_def_points.append(def_point)
+
+            # To register any internal use points
+            self.caller_scope.visit(node_data, self.caller_actor)
+
+            # Set up name mapping
+            # ARGV# names
+            self.accessable_names[f"ARGV{str(i)}"] = def_point
+            # Required argument names
+            if i < len(self.required_arguments):
+                self.required_arguments_names[required_arguments_names[i]] = def_point
+
+        # Aggregate ARG? names
+        self.accessable_aggregate_names["ARGC"] = locational_passed_def_points
+        self.accessable_aggregate_names["ARGV"] = locational_passed_def_points
+        if len(locational_passed_def_points) > len(self.required_arguments):
+            self.accessable_aggregate_names["ARGN"] = locational_passed_def_points[
+                len(self.required_arguments) :
+            ]
+        else:
+            self.accessable_aggregate_names["ARGN"] = []
+
+    def map_required_argument_name(self, use_point):
+        def_point = self.required_arguments_names[use_point.name]
+        def_point.add_callable_argument(use_point)
+        return [def_point]
+
+    def map_accessable_aggregate_names(self, use_point):
+        def_points = self.accessable_aggregate_names[use_point.name]
+        list(
+            map(
+                lambda def_point: def_point.add_callable_argument(use_point),
+                def_points,
+            )
+        )
+        return def_points
+
+    def map_accessable_names(self, use_point):
+        def_point = self.accessable_names[use_point.name]
+        def_point.add_callable_argument(use_point)
+        return [def_point]
+
+    def map_prefixed_parsed_names(self, use_point):
+        if self.parsed_args_prefix:
+            name = use_point.name
+            if name in self.prefixed_parsed_names:
+                def_points = self.prefixed_parsed_names["name"]
+                list(
+                    map(
+                        lambda def_point: def_point.add_callable_argument(use_point),
+                        def_points,
+                    )
+                )
+                return def_points
+
+            def_name = name[len(self.parsed_args_prefix) :]
+            def_points = list(
+                filter(
+                    lambda def_point: def_point.name == def_name,
+                    self.accessable_aggregate_names["ARGV"],
+                )
+            )
+            if def_points:
+                self.prefixed_parsed_names[name] = def_points
+                list(
+                    map(
+                        lambda def_point: def_point.add_callable_argument(use_point),
+                        def_points,
+                    )
+                )
+                return def_points
+        return []
+
+    def check_for_parsed_arguments_updates(self):
+        parsed_arg = None
+        for def_point in self.accessable_aggregate_names["ARGV"]:
+            if self.parsed_args_prefix + def_point.name in self.prefixed_parsed_names:
+                parsed_arg = def_point
+            elif parsed_arg:
+                if parsed_arg.is_modified:
+                    continue
+                elif def_point.is_modified:
+                    print(f"DEF {def_point.name}")
+                    print(f"PARSED ARG {parsed_arg.name}")
+                    self.ast.update_node_operation(parsed_arg.node_data, "updated")
+                    parsed_arg.set_is_modified()
+
+    def register_new_use_point(
+        self, use_node_data, actor_point, use_type="VAR", preferred_name=None
+    ):
+        use_point = self.Use(
+            use_node_data, use_type, actor_point, self.ast, preferred_name
+        )
+        registered_to = []
+        actor_point.add_use_point(use_point)
+        self.use_points[use_point.node_data["id"]].append(use_point)
+        self.used_names[use_point.name].append(use_point)
+
+        # Check mappings first
+        name = use_point.name
+        if name in self.required_arguments_names:
+            registered_to = self.map_required_argument_name(use_point)
+        elif name in self.accessable_aggregate_names:
+            registered_to = self.map_accessable_aggregate_names(use_point)
+        elif name in self.accessable_names:
+            registered_to = self.map_accessable_names(use_point)
+        elif self.parsed_args_prefix:
+            if use_point.name.startswith(self.parsed_args_prefix):
+                registered_to = self.map_prefixed_parsed_names(use_point)
+
+        if not registered_to:
+            defined_names = self.get_definitions_by_name(use_point.node_data)
+            if defined_names:
+                reachability_checker = getattr(
+                    self, "compare_reachability_conditions", None
+                )
+                if reachability_checker is None:
+                    list(
+                        map(
+                            lambda def_point: def_point.add_use_point(use_point),
+                            defined_names,
+                        )
+                    )
+                    registered_to = defined_names.copy()
+                    return use_point, registered_to
+                for def_point in reversed(defined_names):
+                    reachability_status = reachability_checker(def_point, use_point)
+                    if reachability_status in ["=", "<"]:
+                        def_point.add_use_point(use_point)
+                        registered_to.append(def_point)
+                        break
+                    if reachability_status in ["!"]:
+                        continue
+                    if reachability_status in [">", "?"]:
+                        def_point.add_use_point(use_point)
+                        registered_to.append(def_point)
+                        continue
+            else:
+                self.undefined_names[use_point.name].append(use_point)
+
+        return use_point, registered_to
+
+    def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
+        actor_point = self.register_new_actor_point(node_data)
+        arguments = self.get_sorted_arguments_data_list(
+            node_data, "CMAKE_PARSE_ARGUMENTS"
+        )
+        self.parsed_args_prefix = self.ast.unparse(arguments[0]).strip('"')
+        if self.parsed_args_prefix.upper() == "PARSE_ARGV":
+            self.parsed_args_prefix = self.ast.unparse(arguments[2]).strip('"')
+            for arg in arguments:
+                self.visit(arg, actor_point)
+        else:
+            for arg in arguments[:-1]:
+                self.visit(arg, actor_point)
+        self.parsed_args_prefix = self.parsed_args_prefix + "_"
