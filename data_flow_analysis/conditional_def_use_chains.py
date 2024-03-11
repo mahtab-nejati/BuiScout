@@ -191,10 +191,22 @@ class ConditionalDefUseChains(NodeVisitor):
         return use_point, registered_to
 
     def register_new_def_point(
-        self, def_node_data, actor_point, def_type="VAR", prefix=None, suffix=None
+        self,
+        def_node_data,
+        actor_point,
+        def_type="VAR",
+        prefix=None,
+        suffix=None,
+        preferred_name=None,
     ):
         def_point = self.Def(
-            def_node_data, def_type, actor_point, self.ast, prefix=prefix, suffix=suffix
+            def_node_data,
+            def_type,
+            actor_point,
+            self.ast,
+            prefix=prefix,
+            suffix=suffix,
+            preferred_name=None,
         )
         actor_point.add_def_point(def_point)
         self.def_points[def_point.node_data["id"]].append(def_point)
