@@ -3370,6 +3370,7 @@ class CMakeCallable(ConditionalDefUseChains):
             self.actor_points = caller_scope.actor_points
             self.defined_names = caller_scope.defined_names
             self.used_names = caller_scope.used_names
+            self.undefined_names = caller_scope.undefined_names
             self.current_call_stack = caller_scope.current_call_stack
             self.propagation_slice = caller_scope.propagation_slice
 
@@ -3406,7 +3407,7 @@ class CMakeCallable(ConditionalDefUseChains):
     def analyze(self):
         if self.callable_body_node_data:
             try:
-                self.passed_values = self.get_sorted_arguments_data_list(
+                self.passed_values = self.caller_scope.get_sorted_arguments_data_list(
                     self.caller_node_data, "user_deined_callable"
                 )
             except MissingArgumentsException:
@@ -3423,7 +3424,8 @@ class CMakeCallable(ConditionalDefUseChains):
 
             self.visit(self.callable_body_node_data)
 
-            self.check_for_parsed_arguments_updates()
+            if self.parsed_args_prefix:
+                self.check_for_parsed_arguments_updates()
 
     def set_up_mappings(self):
         locational_passed_def_points = []
@@ -3484,7 +3486,7 @@ class CMakeCallable(ConditionalDefUseChains):
         if self.parsed_args_prefix:
             name = use_point.name
             if name in self.prefixed_parsed_names:
-                def_points = self.prefixed_parsed_names["name"]
+                def_points = self.prefixed_parsed_names[name]
                 list(
                     map(
                         lambda def_point: def_point.add_callable_argument(use_point),
@@ -3512,18 +3514,17 @@ class CMakeCallable(ConditionalDefUseChains):
         return []
 
     def check_for_parsed_arguments_updates(self):
-        parsed_arg = None
-        for def_point in self.accessable_aggregate_names["ARGV"]:
-            if self.parsed_args_prefix + def_point.name in self.prefixed_parsed_names:
-                parsed_arg = def_point
-            elif parsed_arg:
-                if parsed_arg.is_modified:
-                    continue
-                elif def_point.is_modified:
-                    print(f"DEF {def_point.name}")
-                    print(f"PARSED ARG {parsed_arg.name}")
-                    self.ast.update_node_operation(parsed_arg.node_data, "updated")
-                    parsed_arg.set_is_modified()
+        if self.parsed_args_prefix:
+            parsed_arg = None
+            for def_point in self.accessable_aggregate_names["ARGV"]:
+                if self.parsed_args_prefix + def_point.name in self.prefixed_parsed_names:
+                    parsed_arg = def_point
+                elif parsed_arg:
+                    if parsed_arg.is_modified:
+                        continue
+                    elif def_point.is_modified:
+                        parsed_arg.ast.update_node_operation(parsed_arg.node_data, "updated")
+                        parsed_arg.set_is_modified()
 
     def register_new_use_point(
         self, use_node_data, actor_point, use_type="VAR", preferred_name=None
