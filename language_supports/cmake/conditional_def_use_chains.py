@@ -982,15 +982,31 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
         self.generic_visit(node_data, actor_point)
         # self.parent_names_available = temp_flag
-        if len(def_points) > 0 and EXECUTE_CALLABLE_TYPES:
-            list(
-                map(
-                    lambda def_point: self.process_callable_call_location(
-                        node_data, def_point, actor_point
-                    ),
-                    def_points,
+        if len(def_points) > 0:
+            if EXECUTE_CALLABLE_TYPES:
+                list(
+                    map(
+                        lambda def_point: self.process_callable_call_location(
+                            node_data, def_point, actor_point
+                        ),
+                        def_points,
+                    )
                 )
-            )
+            else:
+                modified_call_site_nodes = filter(
+                    lambda nd: (nd["operation"] != "no-op"),
+                    self.ast.get_subtree_nodes(node_data).values(),
+                )
+                for _ in modified_call_site_nodes:
+                    list(
+                        map(
+                            lambda def_point: self.process_callable_call_location(
+                                node_data, def_point, actor_point
+                            ),
+                            def_points,
+                        )
+                    )
+                    break
         return
 
     ############################
@@ -3517,13 +3533,18 @@ class CMakeCallable(ConditionalDefUseChains):
         if self.parsed_args_prefix:
             parsed_arg = None
             for def_point in self.accessable_aggregate_names["ARGV"]:
-                if self.parsed_args_prefix + def_point.name in self.prefixed_parsed_names:
+                if (
+                    self.parsed_args_prefix + def_point.name
+                    in self.prefixed_parsed_names
+                ):
                     parsed_arg = def_point
                 elif parsed_arg:
                     if parsed_arg.is_modified:
                         continue
                     elif def_point.is_modified:
-                        parsed_arg.ast.update_node_operation(parsed_arg.node_data, "updated")
+                        parsed_arg.ast.update_node_operation(
+                            parsed_arg.node_data, "updated"
+                        )
                         parsed_arg.set_is_modified()
 
     def register_new_use_point(
