@@ -2912,7 +2912,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "subject_id": actor_point.id,
                             "subject_type": "actor",
                             "propagation_rule": "uses"
-                            + ("" if use_point.set_is_reach_affected() else ""),
+                            + ("" if use_point.set_is_upstream() else ""),
                             "object_id": use_point.id,
                             "object_type": "use",
                         },
