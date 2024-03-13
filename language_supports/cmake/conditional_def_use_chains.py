@@ -975,7 +975,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # self.parent_names_available = True
         actor_point = self.register_new_actor_point(
             node_data,
-            actor_type="user_defined",
+            preferred_type="user_defined",
         )
         use_point, def_points = self.register_new_use_point(
             node_data, actor_point, "USER_DEFINED_CALLABLE"
