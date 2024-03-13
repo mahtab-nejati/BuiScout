@@ -2879,10 +2879,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
     def slice_downwards_actor_points(self):
+        non_processed_actors = self.get_all_non_processed_actor_points()
         #################################################### is_modified Actors with non-modified Defs
         actor_points = filter(
             lambda point: point.is_modified,
-            self.get_all_actor_points(),
+            non_processed_actors,
         )
 
         for actor_point in actor_points:
@@ -2904,17 +2905,39 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
-            if actor_point.name in [
-                "<CMD>ADD_SUBDIRECOTRY",
-                "<CMD>INCLUDE",
-                "<CMD>FIND_PACKAGE",
-            ]:
+            self.update_propagation_rules(
+                list(
+                    map(
+                        lambda use_point: {
+                            "subject_id": actor_point.id,
+                            "subject_type": "actor",
+                            "propagation_rule": "uses"
+                            + ("" if use_point.set_is_reach_affected() else ""),
+                            "object_id": use_point.id,
+                            "object_type": "use",
+                        },
+                        filter(
+                            lambda point: (not point.is_modified),
+                            actor_point.use_points,
+                        ),
+                    )
+                )
+            )
+            if (
+                actor_point.name
+                in [
+                    "<CMD>ADD_SUBDIRECOTRY",
+                    "<CMD>INCLUDE",
+                    "<CMD>FIND_PACKAGE",
+                ]
+            ) or (actor_point.type == "user_defined"):
                 self.process_reachability_propagation(actor_point)
+            actor_point.set_is_processed_for_propagation()
 
-        #################################################### is_reach_affected Actors
+        #################################################### is affected Actors (only reach is possible bc value affected, i.e., callable def change, happens to use points)
         actor_points = filter(
             lambda point: point.is_reach_affected,
-            self.get_all_non_processed_actor_points(),
+            non_processed_actors,
         )
 
         for actor_point in actor_points:
@@ -2954,21 +2977,16 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
-            if actor_point.name in [
-                "<CMD>ADD_SUBDIRECOTRY",
-                "<CMD>INCLUDE",
-                "<CMD>FIND_PACKAGE",
-            ]:
-                self.process_reachability_propagation(actor_point)
             actor_point.set_is_processed_for_propagation()
 
     def slice_downwards_def_points(self):
+        non_processed_defs = self.get_all_non_processed_def_points()
         #################################################### is_modified/is_value_affected/reach Defs
         def_points = filter(
             lambda point: (
                 point.is_modified or point.is_value_affected or point.is_reach_affected
             ),
-            self.get_all_non_processed_def_points(),
+            non_processed_defs,
         )
 
         for def_point in def_points:
@@ -3005,32 +3023,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             def_point.set_is_processed_for_propagation()
 
     def slice_downwards_use_points(self):
+        non_processed_uses = self.get_all_non_processed_use_points()
         #################################################### is_modified/is_value_affected Uses
         use_points = filter(
             lambda point: (point.is_modified or point.is_value_affected),
-            self.get_all_non_processed_use_points(),
+            non_processed_uses,
         )
 
         for use_point in use_points:
             #################################################### is_modified/is_value_affected Uses non-modified Defs
             actor = use_point.actor_point
-            if actor.type == "built_in":
-                self.update_propagation_rules(
-                    list(
-                        map(
-                            lambda def_point: {
-                                "subject_id": use_point.id,
-                                "subject_type": "use",
-                                "propagation_rule": "is_used_in_definition_of"
-                                + ("" if not def_point.set_is_value_affected() else ""),
-                                "object_id": def_point.id,
-                                "object_type": "def",
-                            },
-                            actor.def_points,
-                        )
-                    )
-                )
-            elif actor.type == "user_defined":
+            if actor.type == "user_defined":
                 self.update_propagation_rules(
                     list(
                         map(
@@ -3058,9 +3061,28 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         )
                     )
                 )
+            else:
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if not def_point.set_is_value_affected() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            actor.def_points,
+                            actor.def_points,
+                        ),
+                        actor.def_points,
+                    ),
+                )
+
             #################################################### is_modified/is_value_affected Uses reachability
             if use_point.actor_point.node_data["type"] in (
-                self.ast.node_actors.conditional_actor_types + ["FUNCTION", "MACRO"]
+                self.ast.node_actors.reach_impacting_types
             ):
                 self.process_reachability_propagation(use_point)
 
@@ -3139,8 +3161,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.slice_downwards_actor_points()
         self.slice_downwards_def_points()
         self.slice_downwards_use_points()
-        if len(self.propagation_slice) != previous_propagation_rules_length:
-            self.slice_downwards()
+        # if len(self.propagation_slice) != previous_propagation_rules_length:
+        #     self.slice_downwards()
 
     def slice_upwards(self):
         # def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
