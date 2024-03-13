@@ -3074,10 +3074,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_type": "def",
                             },
                             actor.def_points,
-                            actor.def_points,
-                        ),
-                        actor.def_points,
-                    ),
+                        )
+                    )
                 )
 
             #################################################### is_modified/is_value_affected Uses reachability
