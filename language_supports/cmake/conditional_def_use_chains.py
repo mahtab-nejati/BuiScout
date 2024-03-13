@@ -2905,24 +2905,24 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
-            self.update_propagation_rules(
-                list(
-                    map(
-                        lambda use_point: {
-                            "subject_id": actor_point.id,
-                            "subject_type": "actor",
-                            "propagation_rule": "uses"
-                            + ("" if use_point.set_is_upstream() else ""),
-                            "object_id": use_point.id,
-                            "object_type": "use",
-                        },
-                        filter(
-                            lambda point: (not point.is_modified),
-                            actor_point.use_points,
-                        ),
-                    )
-                )
-            )
+            # self.update_propagation_rules(
+            #     list(
+            #         map(
+            #             lambda use_point: {
+            #                 "subject_id": actor_point.id,
+            #                 "subject_type": "actor",
+            #                 "propagation_rule": "uses"
+            #                 + ("" if use_point.set_is_upstream() else ""),
+            #                 "object_id": use_point.id,
+            #                 "object_type": "use",
+            #             },
+            #             filter(
+            #                 lambda point: (not point.is_modified),
+            #                 actor_point.use_points,
+            #             ),
+            #         )
+            #     )
+            # )
             if (
                 actor_point.name
                 in [
