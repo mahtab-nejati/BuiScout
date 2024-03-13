@@ -20,7 +20,7 @@ class Actor(object):
         ast,
         actor_type="built_in",
     ):
-        self.id = f"{ast.commit_hash}_{ast.name}_{next(Actor.id_generator)}"
+        self.id = f"{ast.commit_hash}_{ast.name}_actor_{next(Actor.id_generator)}"
         self.ast = ast
         self.type = actor_type
 

@@ -22,7 +22,7 @@ class Def(object):
         suffix=None,
         preferred_name=None,
     ):
-        self.id = f"{ast.commit_hash}_{ast.name}_{next(Def.id_generator)}"
+        self.id = f"{ast.commit_hash}_{ast.name}_def_{next(Def.id_generator)}"
         self.ast = ast
         self.type = def_type
 
