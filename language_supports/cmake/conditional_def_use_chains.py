@@ -3397,13 +3397,11 @@ class CMakeCallable(ConditionalDefUseChains):
             )
 
         self.caller_actor = caller_actor_point
-        self.caller_node_data = caller_actor_point.node_data
-        self.caller_ast = caller_actor_point.ast
 
         self.header_node_type = f"{self.callable_type.lower()}_header"
 
         self.callable_def_point = callable_def_point
-        self.callable_def_node_data = callable_def_point.node_data
+
         self.callable_header_node_data = self.ast.get_data(
             self.ast.get_children_by_type(
                 self.callable_def_point.node_data, self.header_node_type
@@ -3411,8 +3409,9 @@ class CMakeCallable(ConditionalDefUseChains):
         )
 
         self.callable_body_node_data = self.ast.get_data(
-            self.ast.get_children_by_type(self.callable_def_node_data, "body")
+            self.ast.get_children_by_type(self.callable_def_point.node_data, "body")
         )
+
         # The following names, when assigned to use points,
         # have no def point, but are connected to arguments.
         self.required_arguments_names = {}
@@ -3425,7 +3424,7 @@ class CMakeCallable(ConditionalDefUseChains):
         if self.callable_body_node_data:
             try:
                 self.passed_values = self.caller_scope.get_sorted_arguments_data_list(
-                    self.caller_node_data, "user_deined_callable"
+                    self.caller_actor.node_data, "user_deined_callable"
                 )
             except MissingArgumentsException:
                 self.passed_values = []
