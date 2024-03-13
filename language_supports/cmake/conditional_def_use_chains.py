@@ -1006,7 +1006,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             def_points,
                         )
                     )
-                    break
+                    return
+                self.generic_visit(node_data, actor_point)
         return
 
     ############################
