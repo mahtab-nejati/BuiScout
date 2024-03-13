@@ -166,3 +166,4 @@ class ActorGetter(NodeVisitor):
             ),
             key=lambda ancestor_data: ancestor_data["level"],
         )
+        return self.generic_visit(actor_node_data)
