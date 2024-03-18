@@ -101,6 +101,9 @@ class SystemDiff(object):
         )
 
         self.ConditionalDefUseChains = language_support_tools.ConditionalDefUseChains
+        self.CallableConditionalDefUseChains = (
+            language_support_tools.CallableConditionalDefUseChains
+        )
         # To reset Actor/Def/Use point ids for each commit
         self.ConditionalDefUseChains.Actor.id_generator = itertools.count(start=1)
         self.ConditionalDefUseChains.Def.id_generator = itertools.count(start=1)

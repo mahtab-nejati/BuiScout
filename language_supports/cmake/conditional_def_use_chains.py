@@ -618,87 +618,87 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return False, None
 
     def visit_function_definition(self, node_data, *args, **kwargs):
+        """
+        #CALLABLE_DEF_SITE_NOTICE:
+        We do not process the definition location of a callable.
+        Any changes within the definition location will be later
+        processed in the call site.
+        """
         actor_point = self.register_new_actor_point(node_data)
-        self.register_new_def_point(node_data, actor_point, "FUNCTION")
+        def_point = self.register_new_def_point(node_data, actor_point, "FUNCTION")
 
-        return self.process_callable_definition_location(
-            node_data, "function", actor_point
-        )
-
-    def visit_function_header(self, node_data, actor_point, *args, **kwargs):
-        arguments_node = self.ast.get_children_by_type(node_data, "arguments")
-        if arguments_node:
-            arguments = self.ast.get_children(
-                self.ast.get_data(arguments_node)
-            ).values()
-            list(
-                map(
-                    lambda argument: self.register_new_def_point(
-                        argument, actor_point, "VARIABLE"
-                    ),
-                    arguments,
-                )
-            )
+        # return self.process_callable_definition_location(node_data, def_point)
         return
+
+    # def visit_function_header(self, node_data, actor_point, *args, **kwargs):
+    #     arguments_node = self.ast.get_children_by_type(node_data, "arguments")
+    #     if arguments_node:
+    #         arguments = self.ast.get_children(
+    #             self.ast.get_data(arguments_node)
+    #         ).values()
+    #         list(
+    #             map(
+    #                 lambda argument: self.register_new_def_point(
+    #                     argument, actor_point, "VARIABLE"
+    #                 ),
+    #                 arguments,
+    #             )
+    #         )
+    #     return
 
     def visit_endfunction_clause(self, node_data, *args, **kwargs):
         return
 
     def visit_macro_definition(self, node_data, *args, **kwargs):
+        """
+        #CALLABLE_DEF_SITE_NOTICE:
+        We do not process the definition location of a callable.
+        Any changes within the definition location will be later
+        processed in the call site.
+        """
         actor_point = self.register_new_actor_point(node_data)
-        self.register_new_def_point(node_data, actor_point, "MACRO")
-        return self.process_callable_definition_location(
-            node_data, "macro", actor_point
-        )
+        def_point = self.register_new_def_point(node_data, actor_point, "MACRO")
 
-    def visit_macro_header(self, node_data, actor_point, *args, **kwargs):
-        arguments_node = self.ast.get_children_by_type(node_data, "arguments")
-        if arguments_node:
-            arguments = self.ast.get_children(
-                self.ast.get_data(arguments_node)
-            ).values()
-            list(
-                map(
-                    lambda argument: self.register_new_def_point(
-                        argument, actor_point, "VARIABLE"
-                    ),
-                    arguments,
-                )
-            )
+        # return self.process_callable_definition_location(node_data, def_point)
         return
+
+    # def visit_macro_header(self, node_data, actor_point, *args, **kwargs):
+    #     arguments_node = self.ast.get_children_by_type(node_data, "arguments")
+    #     if arguments_node:
+    #         arguments = self.ast.get_children(
+    #             self.ast.get_data(arguments_node)
+    #         ).values()
+    #         list(
+    #             map(
+    #                 lambda argument: self.register_new_def_point(
+    #                     argument, actor_point, "VARIABLE"
+    #                 ),
+    #                 arguments,
+    #             )
+    #         )
+    #     return
 
     def visit_endmacro_clause(self, node_data, *args, **kwargs):
         return
 
-    def process_callable_definition_location(
-        self, node_data, callable_type, actor_point
-    ):
+    def process_callable_definition_location(self, node_data, def_point):
         """
-        This method only analyzes the definition of a function/macro
-        so that changes to a callable that has never been used also get analyzed
+        This method can be implemented to analyze the definition of a function/macro
+        so that changes to a callable that has never been used also get analyzed.
+        #CALLABLE_DEF_SITE_NOTICE:
+        We do not process the definition location of a callable.
+        Any changes within the definition location will be later
+        processed in the call site.
         """
-        target_ast = self.ast
-        child_scope = self.sysdiff.ConditionalDefUseChains(
-            target_ast,
-            self.sysdiff,
-            scope=self.scope + "/" + node_data["id"],
-            parent_scope=self,
-            global_scope=self.global_scope,
-        )
-        child_scope.parent_names_available = False
-
-        self.children.append(child_scope)
-        self.sysdiff.append_to_chains(child_scope)
-
-        header_data = child_scope.ast.get_data(
-            child_scope.ast.get_children_by_type(node_data, f"{callable_type}_header")
-        )
-        child_scope.visit(header_data, actor_point)
-        body_data = child_scope.ast.get_data(
-            child_scope.ast.get_children_by_type(node_data, "body")
-        )
-        if body_data:
-            child_scope.visit(body_data)
+        # def_site_scope = self.sysdiff.CallableConditionalDefUseChains(
+        #     self.ast,
+        #     self.sysdiff,
+        #     self.scope + "/" + node_data["id"],
+        #     self,
+        #     self.global_scope,
+        #     def_point,
+        # )
+        # def_site_scope.analyze()
         return
 
     def process_callable_call_location(self, node_data, def_point, actor_point):
@@ -713,7 +713,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             self.ast.get_name(node_data)
         )
         def_ast = def_point.ast
-        callable = CMakeCallable(
+        callable = self.sysdiff.CallableConditionalDefUseChains(
             def_ast,
             self.sysdiff,
             self.scope + "/" + node_data["id"],
@@ -3361,7 +3361,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.remove_condition_from_reachability_stack()
 
 
-class CMakeCallable(ConditionalDefUseChains):
+class CallableConditionalDefUseChains(ConditionalDefUseChains):
 
     def __init__(
         self,
@@ -3371,50 +3371,72 @@ class CMakeCallable(ConditionalDefUseChains):
         caller_scope,
         global_scope,
         callable_def_point,
-        caller_actor_point,
+        caller_actor_point=None,
     ):
-        self.caller_scope = caller_scope
-        self.callable_type = callable_def_point.type
-        if self.callable_type == "FUNCTION":
-            super().__init__(
-                def_ast,
-                sysdiff,
-                scope,
-                caller_scope,
-                global_scope,
-            )
-            self.children.append(self)
-            self.sysdiff.append_to_chains(self)
+        if caller_actor_point is None:
+            self.is_call_site = False
 
-        elif self.callable_type == "MACRO":
-            self.ast = def_ast
-            self.scope = caller_scope.scope
-            self.global_scope = global_scope
-            # The ConditionalDefUseChains object of the parent scope
-            self.parent_scope = caller_scope.parent_scope
-            self.parent_names_available = True
-            # A list of ConditionalDefUseChains objects of the children scopes
-            self.children = caller_scope.children
-            self.ast_stack = caller_scope.ast_stack
-            self.sysdiff = sysdiff
-            # Store current reachability conditions based on conditional statements
-            self.reachability_stack = caller_scope.reachability_stack.copy()
-            self.reachability_actor_id_stack = (
-                caller_scope.reachability_actor_id_stack.copy()
-            )
-            self.def_points = caller_scope.def_points
-            self.use_points = caller_scope.use_points
-            self.actor_points = caller_scope.actor_points
-            self.defined_names = caller_scope.defined_names
-            self.used_names = caller_scope.used_names
-            self.undefined_names = caller_scope.undefined_names
-            self.current_call_stack = caller_scope.current_call_stack
-            self.propagation_slice = caller_scope.propagation_slice
+        if self.is_call_site:
+            self.caller_scope = caller_scope
+            self.callable_type = callable_def_point.type
+            if self.callable_type == "FUNCTION":
+                super().__init__(
+                    def_ast,
+                    sysdiff,
+                    scope,
+                    caller_scope,
+                    global_scope,
+                )
+                self.parent_scope.children.append(self)
+                self.sysdiff.append_to_chains(self)
 
+            elif self.callable_type == "MACRO":
+                self.ast = def_ast
+                self.scope = caller_scope.scope
+                self.global_scope = global_scope
+                # The ConditionalDefUseChains object of the parent scope
+                self.parent_scope = caller_scope.parent_scope
+                self.parent_names_available = True
+                # A list of ConditionalDefUseChains objects of the children scopes
+                self.children = caller_scope.children
+                self.ast_stack = caller_scope.ast_stack
+                self.sysdiff = sysdiff
+                # Store current reachability conditions based on conditional statements
+                self.reachability_stack = caller_scope.reachability_stack.copy()
+                self.reachability_actor_id_stack = (
+                    caller_scope.reachability_actor_id_stack.copy()
+                )
+                self.def_points = caller_scope.def_points
+                self.use_points = caller_scope.use_points
+                self.actor_points = caller_scope.actor_points
+                self.defined_names = caller_scope.defined_names
+                self.used_names = caller_scope.used_names
+                self.undefined_names = caller_scope.undefined_names
+                self.current_call_stack = caller_scope.current_call_stack
+                self.propagation_slice = caller_scope.propagation_slice
+
+            else:
+                raise DebugException(
+                    f"CallableConditionalDefUseChains initialized for a command that is neither a FUNCTION nor a MACRO, but is a {callable_def_point.type}"
+                )
         else:
-            raise DebugException(
-                f"CMakeCallable initialized for a command that is neither a FUNCTION nor a MACRO, but is a {callable_def_point.type}"
-            )
+            """
+            #CALLABLE_DEF_SITE_NOTICE:
+            We do not process the definition location of a callable.
+            Any changes within the definition location will be later
+            processed in the call site.
+            """
+            pass
+            # super().__init__(
+            #     def_ast,
+            #     sysdiff,
+            #     scope,
+            #     caller_scope,
+            #     global_scope,
+            # )
+            # self.parent_names_available = False
+            # self.parent_scope.children.append(self)
+            # self.sysdiff.append_to_chains(self)
 
         self.caller_actor = caller_actor_point
 
@@ -3441,6 +3463,12 @@ class CMakeCallable(ConditionalDefUseChains):
         self.prefixed_parsed_names = {}
 
     def analyze(self):
+        if self.is_call_site:
+            self.analyze_call_site()
+        else:
+            self.analyze_def_site()
+
+    def analyze_call_site(self):
         if self.callable_body_node_data:
             try:
                 self.passed_values = self.caller_scope.get_sorted_arguments_data_list(
@@ -3462,6 +3490,15 @@ class CMakeCallable(ConditionalDefUseChains):
 
             if self.parsed_args_prefix:
                 self.check_for_parsed_arguments_updates()
+
+    def analyze_def_site(self):
+        """
+        #CALLABLE_DEF_SITE_NOTICE:
+        We do not process the definition location of a callable.
+        Any changes within the definition location will be later
+        processed in the call site.
+        """
+        pass
 
     def set_up_mappings(self):
         locational_passed_def_points = []
