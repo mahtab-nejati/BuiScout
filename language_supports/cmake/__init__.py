@@ -1,4 +1,7 @@
-from .conditional_def_use_chains import ConditionalDefUseChains
+from .conditional_def_use_chains import (
+    ConditionalDefUseChains,
+    CallableConditionalDefUseChains,
+)
 from .name_getter import NameGetter
 from .stringifier import Stringifier
 from .actor_getter import ActorGetter
