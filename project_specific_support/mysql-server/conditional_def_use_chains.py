@@ -125,6 +125,8 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
             )
             return True, resolutions
 
+        return False, None
+
     def visit_CONFIGURE_COMPONENTS(self, node_data):
         self.visit_user_defined_normal_command(node_data)
         cluster = self.ast.name
