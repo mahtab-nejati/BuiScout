@@ -3381,6 +3381,8 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
     ):
         if caller_actor_point is None:
             self.is_call_site = False
+        else:
+            self.is_call_site = True
 
         if self.is_call_site:
             self.caller_scope = caller_scope
