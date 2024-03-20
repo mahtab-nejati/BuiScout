@@ -35,7 +35,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
@@ -52,7 +51,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
@@ -69,7 +67,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
@@ -86,7 +83,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
@@ -103,7 +99,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
@@ -120,7 +115,6 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                             resolution_map.items(),
                         ),
                     ),
-                    key=lambda pair: len(pair[0].strip("/").split("/")),
                 )
             )
             return True, resolutions
