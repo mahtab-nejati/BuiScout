@@ -628,6 +628,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         def_point = self.register_new_def_point(node_data, actor_point, "FUNCTION")
 
         # return self.process_callable_definition_location(node_data, def_point)
+        print(
+            "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a FUNCTION callable."
+        )
         return
 
     # def visit_function_header(self, node_data, actor_point, *args, **kwargs):
@@ -660,6 +663,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         def_point = self.register_new_def_point(node_data, actor_point, "MACRO")
 
         # return self.process_callable_definition_location(node_data, def_point)
+        print(
+            "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a MACRO callable."
+        )
         return
 
     # def visit_macro_header(self, node_data, actor_point, *args, **kwargs):
