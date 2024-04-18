@@ -133,7 +133,8 @@ class Def(object):
                 "use_ids": list(
                     map(
                         lambda use_point: use_point.id,
-                        self.use_points + self.callable_arguments,
+                        self.use_points
+                        + self.callable_arguments,  # TODO (Low) : Store seperately
                     )
                 ),
                 "non_contaminated_use_nodes": len(
@@ -161,7 +162,8 @@ class Def(object):
             "use_ids": list(
                 map(
                     lambda use_point: use_point.id,
-                    self.use_points + self.callable_arguments,
+                    self.use_points
+                    + self.callable_arguments,  # TODO (Low) : Store seperately
                 )
             ),
         }
