@@ -22,6 +22,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         suffix=None,
         preferred_name=None,
     ):
+        # TODO (High): DELIVERABLES must also be globally defined,
+        # but currently, thier name can be a var ref, making them
+        # not unique. If we rely on the order of referencing them,
+        # different scopes and different reachability conditions
+        # can mess with access.
         target_scope = self
         if def_type in ["FUNCTION", "MACRO"]:
             target_scope = self.global_scope
@@ -956,7 +961,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if self.ast.unparse(arguments[0]).upper() == "IN":
                 if self.ast.unparse(arguments[1]).upper() == "LISTS":
                     for arg in arguments[2:]:
-                        self.register_new_use_point(arg, actor_point, use_type="VARIABLE")
+                        self.register_new_use_point(
+                            arg, actor_point, use_type="VARIABLE"
+                        )
 
         self.generic_visit(condition_node_data, actor_point)
         self.generic_visit(body_node_data, *args, **kwargs)
@@ -975,11 +982,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         return visitor(node_data)
 
     def visit_user_defined_normal_command(self, node_data):
-        # # TODO: Should we uncomment the following 3 commented lines
-        # # and allow for analysis of function inside functions
-        # # at definition location processing time?
-        # temp_flag = self.parent_names_available
-        # self.parent_names_available = True
         actor_point = self.register_new_actor_point(
             node_data,
             preferred_type="user_defined",
@@ -1627,9 +1629,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 for def_node in arguments[2:]:
                     self.register_new_def_point(def_node, actor_point, "VARIABLE")
 
-        # TODO (Decision): The following commented operations modify the list
-        # but do not change the content (only reordering and cleaning).
-        # Do we need to consider them?
         current_target_operations = [
             "APPEND",
             "FILTER",
@@ -2007,7 +2006,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return
 
         if operation == "IMPORTED":
-            # TODO: After Scoping is implemented, consider if GLOBAL keyword exists?
             pass
         elif operation == "ALIAS":
             assert len(arguments) == 3
@@ -2804,31 +2802,20 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     ############################
 
     def visit_bracket_argument(self, node_data, *args, **kwargs):
-        # TODO
-        # when it's def point
-        # when it's use point
-        # # NOTE: No generic_visit required
-        # # as the inner scape sequnces, regex,
-        # # and variable refs are not evaluated.
+        # NOTE: No generic_visit required
+        # as the inner scape sequnces, regex,
+        # and variable refs are not evaluated.
         # self.generic_visit(node_data, actor_point)
         return
 
     def visit_quoted_argument(self, node_data, *args, **kwargs):
-        # TODO
-        # when it's def point
-        # when it's use point
         self.generic_visit(node_data, *args, **kwargs)
 
     def visit_unquoted_argument(self, node_data, *args, **kwargs):
-        # TODO
-        # when it's def point
-        # when it's use point
         self.generic_visit(node_data, *args, **kwargs)
 
     def visit_variable_ref(self, node_data, actor_point):
         self.generic_visit(node_data, actor_point)
-
-        # TODO (High)
         self.register_new_use_point(node_data, actor_point, "VARIABLE")
         # For nested variable references
 
@@ -3519,6 +3506,15 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
         )
         for i, node_data in enumerate(self.passed_values):
             # Each argument is a def point
+            # TODO (High): Make it so that only required args are defined here and
+            # the keyword args are defined when cmake_parse_arguments is called.
+            # TODO (High): Does not apply here but make use the extended processor
+            # to set the node actions to updated for keyword args and called
+            # functions/macros
+            # TODO (High): Needs extensive work but make sure you modify all built-in
+            # commands such that when the value for a keyword arg changes
+            # the extended processor sets the operation for the keyword arg
+            # to updated
             def_point = self.caller_scope.register_new_def_point(
                 node_data, self.caller_actor, def_type="VARIABLE"
             )

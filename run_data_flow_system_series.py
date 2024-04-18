@@ -135,7 +135,7 @@ if __name__ == "__main__":
         # Commit-level attributes that show whether the commit
         # has affected build/non-build files
         has_build = False
-        has_nonbuild = None  # TODO: Disabled to keep script simple
+        has_nonbuild = None  # Disabled to keep script simple
 
         # Start analysis of the commit
         commit_start = datetime.now()

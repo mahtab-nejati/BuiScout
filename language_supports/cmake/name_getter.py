@@ -82,7 +82,6 @@ class NameGetter(NodeVisitor):
 
     def visit_quoted_argument(self, node_data):
         """
-        TODO (High): quoted_argument.quoted_element: ($) => repeat1(choice($.variable_ref, $.gen_exp, $._quoted_text, $.escape_sequence))
         Documentations: https://cmake.org/cmake/help/latest/manual/cmake-language.7.html#quoted-argument
             This is always one argument even though it contains a ; character.
             Both \\-escape sequences and ${variable} references are evaluated.
@@ -91,7 +90,6 @@ class NameGetter(NodeVisitor):
 
     def visit_unquoted_argument(self, node_data):
         """
-        TODO (High): unquoted_argument: ($) => prec.right(repeat1(choice($.variable_ref, $.gen_exp, $._unquoted_text, $.escape_sequence)))
         Documentations: https://cmake.org/cmake/help/latest/manual/cmake-language.7.html#unquoted-argument
             This is always one argument even though it contains a ; character.
             Both \\-escape sequences and ${variable} references are evaluated.
@@ -100,7 +98,6 @@ class NameGetter(NodeVisitor):
 
     def visit_variable_ref(self, node_data):
         """
-        TODO (High): variable_ref: ($) => choice($.normal_var, $.env_var, $.cache_var)
         Documentations: https://cmake.org/cmake/help/latest/manual/cmake-language.7.html#variable-references
             Variable names are case-sensitive and may consist of almost any text
             Is evaluated inside a Quoted Argument or an Unquoted Argument.
