@@ -938,7 +938,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
     def visit_foreach_clause(self, node_data, *args, **kwargs):
         """
-        # TODO (High): Look into the scoping.
+        # TODO (High): Look into the scoping. Must work fine.
         """
         actor_point = self.register_new_actor_point(node_data)
         condition_node_data = self.ast.get_data(

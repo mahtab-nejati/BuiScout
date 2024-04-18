@@ -119,7 +119,7 @@ class NameGetter(NodeVisitor):
         variable_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "variable")
         )
-        # TODO (Medium): Figure out after the scoping implementation is done
+        # TODO (Medium): Do we want this?
         # return "<ENV>" + self.generic_visit(variable_node_data)
         return self.generic_visit(variable_node_data)
 
@@ -127,7 +127,7 @@ class NameGetter(NodeVisitor):
         variable_node_data = self.ast.get_data(
             self.ast.get_children_by_type(node_data, "variable")
         )
-        # TODO (Medium): Figure out after the scoping implementation is done
+        # TODO (Medium): Do we want this?
         # return "<CACHE>" + self.generic_visit(variable_node_data)
         return self.generic_visit(variable_node_data)
 
