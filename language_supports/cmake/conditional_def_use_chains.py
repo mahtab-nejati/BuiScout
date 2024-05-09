@@ -1984,7 +1984,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for argument in arguments:
             self.register_new_use_point(argument, actor_point, "DELIVERABLE")
 
-        self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
+        self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
     def visit_ADD_EXECUTABLE(self, node_data):
         """
@@ -2923,6 +2923,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     "<CMD>ADD_SUBDIRECOTRY",
                     "<CMD>INCLUDE",
                     "<CMD>FIND_PACKAGE",
+                    "<CMD>SUBDIRS",
                 ]
             ) or (actor_point.type == "user_defined"):
                 self.process_reachability_propagation(actor_point)
@@ -3453,7 +3454,11 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
         # The following names, when assigned to use points,
         # have no def point, but are connected to arguments.
         self.required_arguments_names = {}
-        self.accessable_aggregate_names = {"ARGC": [], "ARGV": [], "ARGN": {}}
+        self.accessable_aggregate_names = {
+            "ARGC": [],
+            "ARGV": [],
+            "ARGN": [],
+        }
         self.accessable_names = {}
         self.parsed_args_prefix = None
         self.prefixed_parsed_names = {}
@@ -3678,3 +3683,6 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
             for arg in arguments[:-1]:
                 self.visit(arg, actor_point)
         self.parsed_args_prefix = self.parsed_args_prefix + "_"
+        self.accessable_aggregate_names[
+            self.parsed_args_prefix + "UNPARSED_ARGUMENTS"
+        ] = self.accessable_aggregate_names["ARGN"]
