@@ -3154,8 +3154,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.slice_downwards_actor_points()
         self.slice_downwards_def_points()
         self.slice_downwards_use_points()
-        # if len(self.propagation_slice) != previous_propagation_rules_length:
-        #     self.slice_downwards()
+        if len(self.propagation_slice) != previous_propagation_rules_length:
+            self.slice_downwards()
 
     def slice_upwards(self):
         # def_points = filter(lambda point: point.is_modified, self.get_all_def_points())
