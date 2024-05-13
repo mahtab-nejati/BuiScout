@@ -3019,14 +3019,76 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
     def slice_downwards_use_points(self):
         non_processed_uses = self.get_all_non_processed_use_points()
-        #################################################### is_modified/is_value_affected Uses
+        #################################################### is_modified
         use_points = filter(
-            lambda point: (point.is_modified or point.is_value_affected),
+            lambda point: (point.is_modified),
             non_processed_uses,
         )
 
         for use_point in use_points:
-            #################################################### is_modified/is_value_affected Uses non-modified Defs
+            #################################################### is_modified Uses non-modified Defs
+            actor = use_point.actor_point
+            if actor.type == "user_defined":
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if not def_point.set_is_modified() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            filter(
+                                lambda point: (
+                                    (
+                                        point.node_data["s_pos"]
+                                        <= use_point.node_data["s_pos"]
+                                    )
+                                    and (
+                                        point.node_data["e_pos"]
+                                        >= use_point.node_data["e_pos"]
+                                    )
+                                ),
+                                actor.def_points,
+                            ),
+                        )
+                    )
+                )
+            else:
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": use_point.id,
+                                "subject_type": "use",
+                                "propagation_rule": "is_used_in_definition_of"
+                                + ("" if not def_point.set_is_modified() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            actor.def_points,
+                        )
+                    )
+                )
+                
+            #################################################### is_value_affected Uses reachability
+            if use_point.actor_point.node_data["type"] in (
+                self.ast.node_actors.reach_impacting_types
+            ):
+                self.process_reachability_propagation(use_point)
+
+            use_point.set_is_processed_for_propagation()
+
+        #################################################### is_value_affected
+        use_points = filter(
+            lambda point: ((~point.is_modified) & point.is_value_affected),
+            non_processed_uses,
+        )
+
+        for use_point in use_points:
+            #################################################### is_value_affected Uses non-modified Defs
             actor = use_point.actor_point
             if actor.type == "user_defined":
                 self.update_propagation_rules(
@@ -3073,7 +3135,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
 
-            #################################################### is_modified/is_value_affected Uses reachability
+            #################################################### is_value_affected Uses reachability
             if use_point.actor_point.node_data["type"] in (
                 self.ast.node_actors.reach_impacting_types
             ):
@@ -3473,7 +3535,7 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
         if self.callable_body_node_data:
             try:
                 self.passed_values = self.caller_scope.get_sorted_arguments_data_list(
-                    self.caller_actor.node_data, "user_deined_callable"
+                    self.caller_actor.node_data, "user_defined_callable"
                 )
             except MissingArgumentsException:
                 self.passed_values = []
