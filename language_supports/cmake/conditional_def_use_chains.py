@@ -2920,7 +2920,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             if (
                 actor_point.name
                 in [
-                    "<CMD>ADD_SUBDIRECOTRY",
+                    "<CMD>ADD_SUBDIRECTORY",
                     "<CMD>INCLUDE",
                     "<CMD>FIND_PACKAGE",
                     "<CMD>SUBDIRS",
@@ -3072,7 +3072,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         )
                     )
                 )
-                
+
             #################################################### is_value_affected Uses reachability
             if use_point.actor_point.node_data["type"] in (
                 self.ast.node_actors.reach_impacting_types
