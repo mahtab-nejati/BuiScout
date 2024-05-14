@@ -152,3 +152,37 @@ class ExtendedProcessor(NodeVisitor):
             break
 
         return self.generic_visit(node_data)
+
+    def visit_bracket_argument(self, node_data):
+        self.visit_argument(self, node_data)
+
+    def visit_quoted_argument(self, node_data):
+        self.visit_argument(self, node_data)
+
+    def visit_unquoted_argument(self, node_data):
+        self.visit_argument(self, node_data)
+
+    def visit_argument(self, node_data):
+        if node_data["operation"] != "no-op":
+            return
+
+        subtree_nodes = self.ast.get_subtree_nodes(node_data)
+        affected_nodes = filter(
+            lambda subtree_node_data: subtree_node_data["operation"] != "no-op",
+            subtree_nodes.values(),
+        )
+        for _ in affected_nodes:
+            list(
+                map(
+                    lambda unaffected_node_data: self.ast.update_node_operation(
+                        unaffected_node_data, "updated"
+                    )
+                ),
+                filter(
+                    lambda subtree_node_data: subtree_node_data["operation"] == "no-op",
+                    subtree_nodes.values(),
+                ),
+            )
+            break
+
+        return
