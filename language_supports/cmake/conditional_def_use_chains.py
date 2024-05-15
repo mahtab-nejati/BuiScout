@@ -3235,7 +3235,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             is_conditional = False
 
         reach_affected_actor_points = filter(
-            lambda actor_point: (actor_id in actor_point.reachability_actor_ids),
+            lambda point: (
+                (actor_id in point.reachability_actor_ids) and (not point.is_modified)
+            ),
             self.get_all_actor_points(),
         )
         if is_conditional:
@@ -3250,10 +3252,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_id": actor_point.id,
                             "object_type": "actor",
                         },
-                        filter(
-                            lambda point: (not point.is_modified),
-                            reach_affected_actor_points,
-                        ),
+                        reach_affected_actor_points,
                     )
                 )
             )
@@ -3293,11 +3292,18 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                     "subject_id": point.id,
                                     "subject_type": point_type,
                                     "propagation_rule": "affects_reachability_of"
-                                    + ("" if not actor_point.set_is_import_reach_affected() else ""),
+                                    + (
+                                        ""
+                                        if not actor_point.set_is_import_reach_affected()
+                                        else ""
+                                    ),
                                     "object_id": actor_point.id,
                                     "object_type": "def",
                                 },
-                                child_chain.get_all_actor_points(),
+                                filter(
+                                    lambda point: (not point.is_modified),
+                                    child_chain.get_all_actor_points(),
+                                ),
                             )
                         )
                     )
