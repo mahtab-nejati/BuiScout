@@ -2829,7 +2829,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute set to True.
-        Use the .set_contamination() method to set the .is_in_propagation_slice attribute to True.
         """
         print(f"QUERY scope in process: {self.scope}")
         # Downward Slicing is transitive
@@ -3294,12 +3293,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                     "subject_id": point.id,
                                     "subject_type": point_type,
                                     "propagation_rule": "affects_reachability_of"
-                                    + (
-                                        ""
-                                        if not actor_point.set_is_import_reach_affected()
-                                        and actor_point.set_contamination()
-                                        else ""
-                                    ),
+                                    + ("" if not actor_point.set_is_import_reach_affected() else ""),
                                     "object_id": actor_point.id,
                                     "object_type": "def",
                                 },
