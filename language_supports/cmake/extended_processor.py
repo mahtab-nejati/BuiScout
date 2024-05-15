@@ -154,13 +154,13 @@ class ExtendedProcessor(NodeVisitor):
         return self.generic_visit(node_data)
 
     def visit_bracket_argument(self, node_data):
-        self.visit_argument(self, node_data)
+        self.visit_argument(node_data)
 
     def visit_quoted_argument(self, node_data):
-        self.visit_argument(self, node_data)
+        self.visit_argument(node_data)
 
     def visit_unquoted_argument(self, node_data):
-        self.visit_argument(self, node_data)
+        self.visit_argument(node_data)
 
     def visit_argument(self, node_data):
         if node_data["operation"] != "no-op":
