@@ -176,12 +176,14 @@ class ExtendedProcessor(NodeVisitor):
                 map(
                     lambda unaffected_node_data: self.ast.update_node_operation(
                         unaffected_node_data, "updated"
-                    )
-                ),
-                filter(
-                    lambda subtree_node_data: subtree_node_data["operation"] == "no-op",
-                    subtree_nodes.values(),
-                ),
+                    ),
+                    filter(
+                        lambda subtree_node_data: (
+                            subtree_node_data["operation"] == "no-op"
+                        ),
+                        subtree_nodes.values(),
+                    ),
+                )
             )
             break
 
