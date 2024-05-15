@@ -3040,7 +3040,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         for def_point in def_points:
-            actor = def_point.actor
+            actor = def_point.actor_point
             if actor.type == "built_in":
                 if actor.is_import_reach_affected:
                     #################################################### actor.is_import_reach_affected
@@ -3092,10 +3092,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                             or (
                                                 len(
                                                     set(
-                                                        def_point.actor.reachability_actor_ids
+                                                        def_point.actor_point.reachability_actor_ids
                                                     ).difference(
                                                         set(
-                                                            point.actor.reachability_actor_ids
+                                                            point.actor_point.reachability_actor_ids
                                                         )
                                                     )
                                                 )
