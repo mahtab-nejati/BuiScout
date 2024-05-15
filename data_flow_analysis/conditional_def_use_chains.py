@@ -154,7 +154,13 @@ class ConditionalDefUseChains(NodeVisitor):
 
         """
         use_point = self.Use(
-            use_node_data, use_type, actor_point, self.ast, preferred_name
+            use_node_data,
+            use_type,
+            actor_point,
+            self.ast,
+            preferred_name,
+            scope=self.scope,
+            file=self.ast.file_saved_as,
         )
         actor_point.add_use_point(use_point)
         self.use_points[use_point.node_data["id"]].append(use_point)
@@ -207,6 +213,8 @@ class ConditionalDefUseChains(NodeVisitor):
             prefix=prefix,
             suffix=suffix,
             preferred_name=preferred_name,
+            scope=self.scope,
+            file=self.ast.file_saved_as,
         )
         actor_point.add_def_point(def_point)
         self.def_points[def_point.node_data["id"]].append(def_point)
@@ -223,6 +231,8 @@ class ConditionalDefUseChains(NodeVisitor):
             self.reachability_actor_id_stack,
             self.ast,
             actor_type=actor_type,
+            scope=self.scope,
+            file=self.ast.file_saved_as,
         )
         self.actor_points[actor_node_data["id"]].append(actor_point)
         return actor_point

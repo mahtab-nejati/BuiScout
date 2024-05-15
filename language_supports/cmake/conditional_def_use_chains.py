@@ -47,6 +47,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             prefix=prefix,
             suffix=suffix,
             preferred_name=preferred_name,
+            scope=self.scope,
+            file=self.ast.file_saved_as,
         )
         actor_point.add_def_point(def_point)
         target_scope.def_points[def_point.node_data["id"]].append(def_point)
@@ -2851,7 +2853,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     def get_all_non_processed_actor_points(self):
         return list(
             filter(
-                lambda point: not point.is_processed_for_propagation,
+                lambda point: (not point.is_processed_for_propagation)
+                and (point.is_in_propagation_slice),
                 self.get_all_actor_points(),
             )
         )
@@ -2859,7 +2862,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     def get_all_non_processed_def_points(self):
         return list(
             filter(
-                lambda point: not point.is_processed_for_propagation,
+                lambda point: (not point.is_processed_for_propagation)
+                and (point.is_in_propagation_slice),
                 self.get_all_def_points(),
             )
         )
@@ -2867,75 +2871,66 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     def get_all_non_processed_use_points(self):
         return list(
             filter(
-                lambda point: not point.is_processed_for_propagation,
+                lambda point: (not point.is_processed_for_propagation)
+                and (point.is_in_propagation_slice),
                 self.get_all_use_points(),
             )
         )
 
     def slice_downwards_actor_points(self):
+        importer_actors = {
+            "<CMD>ADD_SUBDIRECTORY",
+            "<CMD>INCLUDE",
+            "<CMD>FIND_PACKAGE",
+            "<CMD>SUBDIRS",
+        }
         non_processed_actors = self.get_all_non_processed_actor_points()
-        #################################################### is_modified Actors with non-modified Defs
+
+        #################################################### actor.is_modified
         actor_points = filter(
             lambda point: point.is_modified,
             non_processed_actors,
         )
 
+        # THE IN_LINE IMPACT EFFECT:
+        # If it's a built-in command with modified arguments or it is modified itself
+        # it'll set the Def points to modified, but the Use points don't matter
         for actor_point in actor_points:
-            self.update_propagation_rules(
-                list(
-                    map(
-                        lambda def_point: {
-                            "subject_id": actor_point.id,
-                            "subject_type": "actor",
-                            "propagation_rule": "defines"
-                            + ("" if def_point.set_is_modified() else ""),
-                            "object_id": def_point.id,
-                            "object_type": "def",
-                        },
-                        filter(
-                            lambda point: (not point.is_modified),
-                            actor_point.def_points,
-                        ),
+            #################################################### built-in actor
+            if actor_point.type == "built_in":
+                self.update_propagation_rules(
+                    list(
+                        map(
+                            lambda def_point: {
+                                "subject_id": actor_point.id,
+                                "subject_type": "actor",
+                                "propagation_rule": "defines"
+                                + ("" if def_point.set_is_modified() else ""),
+                                "object_id": def_point.id,
+                                "object_type": "def",
+                            },
+                            filter(
+                                lambda point: (not point.is_modified),
+                                actor_point.def_points,
+                            ),
+                        )
                     )
                 )
-            )
-            # self.update_propagation_rules(
-            #     list(
-            #         map(
-            #             lambda use_point: {
-            #                 "subject_id": actor_point.id,
-            #                 "subject_type": "actor",
-            #                 "propagation_rule": "uses"
-            #                 + ("" if use_point.set_is_upstream() else ""),
-            #                 "object_id": use_point.id,
-            #                 "object_type": "use",
-            #             },
-            #             filter(
-            #                 lambda point: (not point.is_modified),
-            #                 actor_point.use_points,
-            #             ),
-            #         )
-            #     )
-            # )
-            if (
-                actor_point.name
-                in [
-                    "<CMD>ADD_SUBDIRECTORY",
-                    "<CMD>INCLUDE",
-                    "<CMD>FIND_PACKAGE",
-                    "<CMD>SUBDIRS",
-                ]
-            ) or (actor_point.type == "user_defined"):
+            #################################################### user-defined or importer actor
+            if (actor_point.type == "user_defined") or (
+                actor_point.name in importer_actors
+            ):
                 self.process_reachability_propagation(actor_point)
             actor_point.set_is_processed_for_propagation()
 
-        #################################################### is affected Actors (only reach is possible bc value affected, i.e., callable def change, happens to use points)
+        #################################################### actor.is_reach_affected
         actor_points = filter(
-            lambda point: point.is_reach_affected,
+            lambda point: (not point.is_modified) and (point.is_reach_affected),
             non_processed_actors,
         )
 
         for actor_point in actor_points:
+            #################################################### built-in actor
             self.update_propagation_rules(
                 list(
                     map(
@@ -2972,19 +2967,31 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             )
+
+            #################################################### user-defined or importer actor
+            # is_import_reach_affected is handled as scopes in process_reachability_propagation
+            if (not actor_point.is_import_reach_affected) and (
+                (actor_point.type == "user_defined")
+                or (actor_point.name in importer_actors)
+            ):
+                self.process_reachability_propagation(actor_point)
+
             actor_point.set_is_processed_for_propagation()
+
+        #################################################### actor.is_value affected Actors
+        # This case is not possible. Even for Callables, this will affect their use point
+        return
 
     def slice_downwards_def_points(self):
         non_processed_defs = self.get_all_non_processed_def_points()
-        #################################################### is_modified/is_value_affected/reach Defs
+        #################################################### is_modified/is_value_affected
         def_points = filter(
-            lambda point: (
-                point.is_modified or point.is_value_affected or point.is_reach_affected
-            ),
+            lambda point: (point.is_modified or point.is_value_affected),
             non_processed_defs,
         )
 
         for def_point in def_points:
+            #################################################### built-in actor
             self.update_propagation_rules(
                 list(
                     map(
@@ -2996,10 +3003,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_id": use_point.id,
                             "object_type": "use",
                         },
-                        def_point.use_points,
+                        filter(
+                            lambda point: not point.is_modified, def_point.use_points
+                        ),
                     )
                 )
             )
+            #################################################### user-defined actor
             self.update_propagation_rules(
                 list(
                     map(
@@ -3011,11 +3021,96 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_id": use_point.id,
                             "object_type": "use",
                         },
-                        def_point.callable_arguments,
+                        filter(
+                            lambda point: not point.is_modified,
+                            def_point.callable_arguments,
+                        ),
                     )
                 )
             )
             def_point.set_is_processed_for_propagation()
+
+        #################################################### is_reach_affected
+        def_points = filter(
+            lambda point: (
+                (not point.is_modified)
+                and (not point.is_value_affected)
+                and point.is_reach_affected
+            ),
+            non_processed_defs,
+        )
+
+        for def_point in def_points:
+            actor = def_point.actor
+            if actor.type == "built_in":
+                if actor.is_import_reach_affected:
+                    #################################################### actor.is_import_reach_affected
+                    self.update_propagation_rules(
+                        list(
+                            map(
+                                lambda use_point: {
+                                    "subject_id": def_point.id,
+                                    "subject_type": "def",
+                                    "propagation_rule": "is_directly_used_at"
+                                    + ("" if use_point.set_is_value_affected() else ""),
+                                    "object_id": use_point.id,
+                                    "object_type": "use",
+                                },
+                                filter(
+                                    lambda point: (
+                                        (not point.is_modified)
+                                        and (
+                                            not point.scope.startswith(def_point.scope)
+                                        )
+                                    ),
+                                    def_point.use_points,
+                                ),
+                            )
+                        )
+                    )
+                else:
+                    #################################################### ~actor.is_import_reach_affected
+                    self.update_propagation_rules(
+                        list(
+                            map(
+                                lambda use_point: {
+                                    "subject_id": def_point.id,
+                                    "subject_type": "def",
+                                    "propagation_rule": "is_directly_used_at"
+                                    + ("" if use_point.set_is_value_affected() else ""),
+                                    "object_id": use_point.id,
+                                    "object_type": "use",
+                                },
+                                filter(
+                                    lambda point: (
+                                        (not point.is_modified)
+                                        and (
+                                            (
+                                                not point.scope.startswith(
+                                                    def_point.scope
+                                                )
+                                            )
+                                            or (
+                                                len(
+                                                    set(
+                                                        def_point.actor.reachability_actor_ids
+                                                    ).difference(
+                                                        set(
+                                                            point.actor.reachability_actor_ids
+                                                        )
+                                                    )
+                                                )
+                                                != 0
+                                            )
+                                        )
+                                    ),
+                                    def_point.use_points,
+                                ),
+                            )
+                        )
+                    )
+            else:
+                pass
 
     def slice_downwards_use_points(self):
         non_processed_uses = self.get_all_non_processed_use_points()
@@ -3026,9 +3121,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         for use_point in use_points:
-            #################################################### is_modified Uses non-modified Defs
+            #################################################### is_modified intra-statement non-modified Defs
             actor = use_point.actor_point
-            if actor.type == "user_defined":
+            if actor.type == "built_in":
                 self.update_propagation_rules(
                     list(
                         map(
@@ -3041,56 +3136,33 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_type": "def",
                             },
                             filter(
-                                lambda point: (
-                                    (
-                                        point.node_data["s_pos"]
-                                        <= use_point.node_data["s_pos"]
-                                    )
-                                    and (
-                                        point.node_data["e_pos"]
-                                        >= use_point.node_data["e_pos"]
-                                    )
-                                ),
-                                actor.def_points,
+                                lambda point: not point.is_modified, actor.def_points
                             ),
                         )
                     )
                 )
             else:
-                self.update_propagation_rules(
-                    list(
-                        map(
-                            lambda def_point: {
-                                "subject_id": use_point.id,
-                                "subject_type": "use",
-                                "propagation_rule": "is_used_in_definition_of"
-                                + ("" if not def_point.set_is_modified() else ""),
-                                "object_id": def_point.id,
-                                "object_type": "def",
-                            },
-                            actor.def_points,
-                        )
-                    )
-                )
+                # Handled nested arguments in ExtendedProcessor
+                # Handled KW args in CDU construction (check_for_parsed_arguments_updates)
+                pass
 
-            #################################################### is_value_affected Uses reachability
-            if use_point.actor_point.node_data["type"] in (
-                self.ast.node_actors.reach_impacting_types
-            ):
+            #################################################### is_modified Reachability
+            if actor.node_data["type"] in (self.ast.node_actors.reach_impacting_types):
                 self.process_reachability_propagation(use_point)
 
             use_point.set_is_processed_for_propagation()
 
         #################################################### is_value_affected
         use_points = filter(
-            lambda point: ((~point.is_modified) & point.is_value_affected),
+            lambda point: ((not point.is_modified) & point.is_value_affected),
             non_processed_uses,
         )
 
         for use_point in use_points:
-            #################################################### is_value_affected Uses non-modified Defs
+            #################################################### is_value_affected intra-statement non-modified Defs
             actor = use_point.actor_point
-            if actor.type == "user_defined":
+            actor = use_point.actor_point
+            if actor.type == "built_in":
                 self.update_propagation_rules(
                     list(
                         map(
@@ -3103,17 +3175,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_type": "def",
                             },
                             filter(
-                                lambda point: (
-                                    (
-                                        point.node_data["s_pos"]
-                                        <= use_point.node_data["s_pos"]
-                                    )
-                                    and (
-                                        point.node_data["e_pos"]
-                                        >= use_point.node_data["e_pos"]
-                                    )
-                                ),
-                                actor.def_points,
+                                lambda point: (not point.is_modified), actor.def_points
                             ),
                         )
                     )
@@ -3130,12 +3192,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_id": def_point.id,
                                 "object_type": "def",
                             },
-                            actor.def_points,
+                            filter(
+                                lambda point: (
+                                    (not point.is_modified)
+                                    and (
+                                        point.node_data["s_pos"]
+                                        <= use_point.node_data["s_pos"]
+                                    )
+                                    and (
+                                        point.node_data["e_pos"]
+                                        >= use_point.node_data["e_pos"]
+                                    )
+                                ),
+                                actor.def_points,
+                            ),
                         )
                     )
                 )
 
-            #################################################### is_value_affected Uses reachability
+            #################################################### is_value_affected Reachability
             if use_point.actor_point.node_data["type"] in (
                 self.ast.node_actors.reach_impacting_types
             ):
@@ -3143,73 +3218,94 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             use_point.set_is_processed_for_propagation()
 
+        #################################################### is_reach_affected
+        # Nothing to be done bc:
+        # 1. If actor is built-in command, it is also reach affected.
+        # 2. If actor is user-defined command, it is also reach affected which affects the body.
+        # 3. If actor is reach-impacting, it and its body is also reach affected.
+        return
+
     def process_reachability_propagation(self, point):
         if isinstance(point, self.Use):
             actor_id = point.actor_point.id
             point_type = "use"
+            is_conditional = True
         elif isinstance(point, self.Actor):
             actor_id = point.id
             point_type = "actor"
+            is_conditional = False
 
         reach_affected_actor_points = filter(
             lambda actor_point: (actor_id in actor_point.reachability_actor_ids),
             self.get_all_actor_points(),
         )
-        self.update_propagation_rules(
-            list(
-                map(
-                    lambda actor_point: {
-                        "subject_id": point.id,
-                        "subject_type": point_type,
-                        "propagation_rule": "affects_reachability_of"
-                        + ("" if not actor_point.set_is_reach_affected() else ""),
-                        "object_id": actor_point.id,
-                        "object_type": "actor",
-                    },
-                    reach_affected_actor_points,
-                )
-            )
-        )
-
-        reach_affected_children_scopes = list(
-            filter(
-                lambda cdu: (actor_id in cdu.reachability_actor_id_stack),
-                self.children,
-            )
-        )
-        children = [
-            child
-            for child in self.children
-            if child.scope in reach_affected_children_scopes
-        ]
-
-        while children:
-            next_children = []
-            for child_chain in children:
-                # point affects_reachability_of def_point
-                self.update_propagation_rules(
-                    list(
-                        map(
-                            lambda def_point: {
-                                "subject_id": point.id,
-                                "subject_type": point_type,
-                                "propagation_rule": "affects_reachability_of"
-                                + ("" if not def_point.set_is_reach_affected() else ""),
-                                "object_id": def_point.id,
-                                "object_type": "def",
-                            },
-                            child_chain.get_all_actor_points(),
-                        )
-                    )
-                )
+        if is_conditional:
+            self.update_propagation_rules(
                 list(
                     map(
-                        lambda point: point.set_contamination(),
-                        child_chain.get_all_actor_points(),
+                        lambda actor_point: {
+                            "subject_id": point.id,
+                            "subject_type": point_type,
+                            "propagation_rule": "affects_reachability_of"
+                            + ("" if not actor_point.set_is_reach_affected() else ""),
+                            "object_id": actor_point.id,
+                            "object_type": "actor",
+                        },
+                        reach_affected_actor_points,
                     )
                 )
-                next_children += child_chain.children
-            children = next_children
+            )
+        else:
+            self.update_propagation_rules(
+                list(
+                    map(
+                        lambda actor_point: {
+                            "subject_id": point.id,
+                            "subject_type": point_type,
+                            "propagation_rule": "affects_reachability_of"
+                            + (
+                                ""
+                                if not actor_point.set_is_import_reach_affected()
+                                else ""
+                            ),
+                            "object_id": actor_point.id,
+                            "object_type": "actor",
+                        },
+                        reach_affected_actor_points,
+                    )
+                )
+            )
+            children = list(
+                filter(
+                    lambda cdu: (actor_id in cdu.reachability_actor_id_stack),
+                    self.children,
+                )
+            )
+            while children:
+                next_children = []
+                for child_chain in children:
+                    self.update_propagation_rules(
+                        list(
+                            map(
+                                lambda actor_point: {
+                                    "subject_id": point.id,
+                                    "subject_type": point_type,
+                                    "propagation_rule": "affects_reachability_of"
+                                    + (
+                                        ""
+                                        if not actor_point.set_is_import_reach_affected()
+                                        and actor_point.set_contamination()
+                                        else ""
+                                    ),
+                                    "object_id": actor_point.id,
+                                    "object_type": "def",
+                                },
+                                child_chain.get_all_actor_points(),
+                            )
+                        )
+                    )
+                    next_children += child_chain.children
+                children = next_children
 
     def slice_downwards(self):
         previous_propagation_rules_length = len(self.propagation_slice)
@@ -3669,18 +3765,32 @@ class CallableConditionalDefUseChains(ConditionalDefUseChains):
                     parsed_arg = def_point
                 elif parsed_arg:
                     if parsed_arg.is_modified:
-                        continue
+                        pass
                     elif def_point.is_modified:
                         parsed_arg.ast.update_node_operation(
                             parsed_arg.node_data, "updated"
                         )
                         parsed_arg.set_is_modified()
+                    list(
+                        map(
+                            lambda use_point: def_point.add_callable_argument(
+                                use_point
+                            ),
+                            parsed_arg.callable_arguments,
+                        )
+                    )
 
     def register_new_use_point(
         self, use_node_data, actor_point, use_type="VAR", preferred_name=None
     ):
         use_point = self.Use(
-            use_node_data, use_type, actor_point, self.ast, preferred_name
+            use_node_data,
+            use_type,
+            actor_point,
+            self.ast,
+            preferred_name,
+            scope=self.scope,
+            file=self.ast.file_saved_as,
         )
         registered_to = []
         actor_point.add_use_point(use_point)

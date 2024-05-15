@@ -19,10 +19,14 @@ class Actor(object):
         reachability_actor_ids,
         ast,
         actor_type="built_in",
+        scope=None,
+        file=None,
     ):
         self.id = f"{ast.commit_hash}_{ast.name}_actor_{next(Actor.id_generator)}"
         self.ast = ast
         self.type = actor_type
+        self.scop = scope
+        self.file = file
 
         # Storing the node_data
         self.node_data = node_data
@@ -35,6 +39,7 @@ class Actor(object):
         self.is_modified = node_data["operation"] != "no-op"
         self.is_value_affected = False
         self.is_reach_affected = False
+        self.is_import_reach_affected = False
         self.is_upstream = False
         self.is_in_propagation_slice = self.is_modified
         self.is_processed_for_propagation = False
@@ -58,6 +63,11 @@ class Actor(object):
 
     def set_is_reach_affected(self):
         self.is_reach_affected = True
+        self.is_in_propagation_slice = True
+
+    def set_is_import_reach_affected(self):
+        self.is_reach_affected = True
+        self.is_import_reach_affected = True
         self.is_in_propagation_slice = True
 
     def set_is_upstream(self):

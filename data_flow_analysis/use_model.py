@@ -12,10 +12,21 @@ class Use(object):
     # (see system_diff_model.py > SystemDiff.__init__())
     id_generator = itertools.count(start=1)
 
-    def __init__(self, node_data, use_type, actor_point, ast, preferred_name=None):
+    def __init__(
+        self,
+        node_data,
+        use_type,
+        actor_point,
+        ast,
+        preferred_name=None,
+        scope=None,
+        file=None,
+    ):
         self.id = f"{ast.commit_hash}_{ast.name}_use_{next(Use.id_generator)}"
         self.ast = ast
         self.type = use_type
+        self.scop = scope
+        self.file = file
 
         # Storing the node_data
         self.node_data = node_data

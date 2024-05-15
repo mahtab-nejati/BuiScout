@@ -21,10 +21,14 @@ class Def(object):
         prefix=None,
         suffix=None,
         preferred_name=None,
+        scope=None,
+        file=None,
     ):
         self.id = f"{ast.commit_hash}_{ast.name}_def_{next(Def.id_generator)}"
         self.ast = ast
         self.type = def_type
+        self.scop = scope
+        self.file = file
 
         # Storing the node_data
         self.node_data = node_data
