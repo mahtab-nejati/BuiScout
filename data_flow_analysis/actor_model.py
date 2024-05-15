@@ -25,7 +25,7 @@ class Actor(object):
         self.id = f"{ast.commit_hash}_{ast.name}_actor_{next(Actor.id_generator)}"
         self.ast = ast
         self.type = actor_type
-        self.scop = scope
+        self.scope = scope
         self.file = file
 
         # Storing the node_data

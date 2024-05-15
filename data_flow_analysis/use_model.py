@@ -25,7 +25,7 @@ class Use(object):
         self.id = f"{ast.commit_hash}_{ast.name}_use_{next(Use.id_generator)}"
         self.ast = ast
         self.type = use_type
-        self.scop = scope
+        self.scope = scope
         self.file = file
 
         # Storing the node_data
