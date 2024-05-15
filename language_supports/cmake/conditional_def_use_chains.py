@@ -3004,7 +3004,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_type": "use",
                         },
                         filter(
-                            lambda point: not point.is_modified, def_point.use_points
+                            lambda point: (not point.is_modified), def_point.use_points
                         ),
                     )
                 )
@@ -3022,7 +3022,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_type": "use",
                         },
                         filter(
-                            lambda point: not point.is_modified,
+                            lambda point: (not point.is_modified),
                             def_point.callable_arguments,
                         ),
                     )
@@ -3136,7 +3136,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                 "object_type": "def",
                             },
                             filter(
-                                lambda point: not point.is_modified, actor.def_points
+                                lambda point: (not point.is_modified), actor.def_points
                             ),
                         )
                     )
@@ -3251,7 +3251,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                             "object_id": actor_point.id,
                             "object_type": "actor",
                         },
-                        reach_affected_actor_points,
+                        filter(
+                            lambda point: (not point.is_modified),
+                            reach_affected_actor_points,
+                        ),
                     )
                 )
             )
