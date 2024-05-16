@@ -115,7 +115,12 @@ class ExtendedProcessor(NodeVisitor):
 
         subtree_nodes = self.ast.get_subtree_nodes(node_data)
         affected_nodes = filter(
-            lambda subtree_node_data: subtree_node_data["operation"] != "no-op",
+            lambda subtree_node_data: (
+                (subtree_node_data["operation"] != "no-op")
+                and (
+                    subtree_node_data["type"] not in ["bracket_comment", "line_comment"]
+                )
+            ),
             subtree_nodes.values(),
         )
         for _ in affected_nodes:
@@ -163,28 +168,8 @@ class ExtendedProcessor(NodeVisitor):
         self.visit_argument(node_data)
 
     def visit_argument(self, node_data):
-        if node_data["operation"] != "no-op":
-            return
-
-        subtree_nodes = self.ast.get_subtree_nodes(node_data)
-        affected_nodes = filter(
-            lambda subtree_node_data: subtree_node_data["operation"] != "no-op",
-            subtree_nodes.values(),
-        )
-        for _ in affected_nodes:
-            list(
-                map(
-                    lambda unaffected_node_data: self.ast.update_node_operation(
-                        unaffected_node_data, "updated"
-                    ),
-                    filter(
-                        lambda subtree_node_data: (
-                            subtree_node_data["operation"] == "no-op"
-                        ),
-                        subtree_nodes.values(),
-                    ),
-                )
-            )
-            break
-
+        self.check_and_update_node_operation(node_data)
+        children = self.ast.get_children(node_data).values()
+        for child in children:
+            self.visit_argument(child)
         return
