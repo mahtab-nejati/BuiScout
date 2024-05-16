@@ -118,7 +118,7 @@ class ExtendedProcessor(NodeVisitor):
             lambda subtree_node_data: (
                 (subtree_node_data["operation"] != "no-op")
                 and (
-                    subtree_node_data["type"] not in ["bracket_comment", "line_comment"]
+                    subtree_node_data["type"] not in self.ast.IGNORED_TYPES
                 )
             ),
             subtree_nodes.values(),
