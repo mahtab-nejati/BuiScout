@@ -3298,7 +3298,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                                         else ""
                                     ),
                                     "object_id": actor_point.id,
-                                    "object_type": "def",
+                                    "object_type": "actor",
                                 },
                                 filter(
                                     lambda point: (not point.is_modified),
