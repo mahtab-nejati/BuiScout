@@ -2916,10 +2916,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     )
                 )
             #################################################### user-defined or importer actor
-            if (
-                (actor_point.type == "user_defined")
-                and (actor_point.node_data["operation"] in {"added", "deleted", "moved"})
-            ) or (actor_point.name in importer_actors):
+            if (actor_point.type == "user_defined") or (
+                actor_point.name in importer_actors
+            ):
                 self.process_reachability_propagation(actor_point)
             actor_point.set_is_processed_for_propagation()
 
