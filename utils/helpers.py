@@ -1,4 +1,6 @@
 import pandas as pd
+from pathlib import Path
+import shutil
 from .exceptions import DebugException
 from utils.configurations import PROJECT_SPECIFIC_FILTERS
 
@@ -131,24 +133,7 @@ def write_source_code(file_path, source_code):
 
 
 # Prepare the report csv files
-def create_csv_files(summarization_methods, save_path):
-    # Initialize files
-    # # Save summaries
-    # summaries_columns = [
-    #     "commit",
-    #     "subject_file",
-    #     "operation",
-    #     "source_node",
-    #     "source_node_summary",
-    #     "source_position",
-    #     "destination_node",
-    #     "destination_node_summary",
-    #     "destination_postion",
-    # ]
-    # for sm in summarization_methods:
-    #     summaries_df = pd.DataFrame(columns=summaries_columns)
-    #     summaries_df.to_csv(save_path / f"summaries_{sm.lower()}.csv", index=False)
-
+def create_csv_files(save_path):
     # Save metadata on build changes
     build_files_columns = [
         "commit_hash",
@@ -179,3 +164,12 @@ def create_csv_files(summarization_methods, save_path):
     ]
     commits_df = pd.DataFrame(columns=commits_columns)
     commits_df.to_csv(save_path / "all_commits.csv", index=False)
+
+def clear_existing_data(SAVE_PATH):
+    # Clear existing code and gumtree outputs
+    to_remove = Path(SAVE_PATH / "code")
+    if to_remove.exists():
+        shutil.rmtree(to_remove)
+    to_remove = Path(SAVE_PATH / "gumtree_output")
+    if to_remove.exists():
+        shutil.rmtree(to_remove)

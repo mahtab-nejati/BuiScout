@@ -11,57 +11,57 @@ sys.path.append(str(ROOT_PATH))
 with open(ROOT_PATH / "config.json", "r") as f:
     config = json5.load(f)
 
-CLEAR_PROGRESS = config["CLEAR_PROGRESS"].upper()
-if CLEAR_PROGRESS == "YES":
-    CLEAR_PROGRESS = True
-else:
-    CLEAR_PROGRESS = False
+USE_MULTIPROCESSING = config["USE_MULTIPROCESSING"].upper() == "YES"
 
-VERBOSE = config["VERBOSE"].upper()
-if VERBOSE == "YES":
-    VERBOSE = True
-else:
-    VERBOSE = False
+PROCESS_AS_A_SERY = config["PROCESS_AS_A_SERY"].upper() == "YES"
 
-EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper()
-if EXECUTE_CALLABLE_TYPES == "YES":
-    EXECUTE_CALLABLE_TYPES = True
+if PROCESS_AS_A_SERY:
+    USE_EXISTING_AST_DIFFS = False
 else:
-    EXECUTE_CALLABLE_TYPES = False
+    USE_EXISTING_AST_DIFFS = config["USE_EXISTING_AST_DIFFS"].upper() == "YES"
+
+CLEAR_PROGRESS = config["CLEAR_PROGRESS"].upper() == "YES"
+
+VERBOSE = config["VERBOSE"].upper() == "YES"
+
+EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper() == "YES"
+
+USE_PROJECT_SPECIFIC_MODELS = not (config["USE_PROJECT_SPECIFIC_MODELS"].upper() == "NO")
 
 DATA_PATH = Path(config["DATA_PATH"])
-GUMTREE_OUTPUT_AVAILABLE = config["USE_EXISTING_DATA"].upper() == "YES"
 PROJECT = config["PROJECT"]
-
 REPOSITORY = config["REPOSITORY"].rstrip("/")
 if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:
     BRANCH = config["BRANCH"]
+
 if isinstance(config["COMMITS"], str) and config["COMMITS"].upper() == "ALL":
     COMMITS = None
 else:
     COMMITS = config["COMMITS"]
-
 EXCLUDED_COMMITS = config["EXCLUDED_COMMITS"]
+FILTERING = config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES"
 
 BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
-SUMMARIZATION_METHODS = list(
-    map(lambda method: method.upper(), config["SUMMARIZATION_METHODS"])
-)
-
-USE_PROJECT_SPECIFIC_MODELS = config["USE_PROJECT_SPECIFIC_MODELS"].upper()
-if USE_PROJECT_SPECIFIC_MODELS == "NO":
-    USE_PROJECT_SPECIFIC_MODELS = False
-else:
-    USE_PROJECT_SPECIFIC_MODELS = True
+ENTRY_FILES = config["ENTRY_FILES"]
 
 DATA_FLOW_ANALYSIS_MODE = config["DATA_FLOW_ANALYSIS_MODE"].upper()
 if DATA_FLOW_ANALYSIS_MODE != "GLOBAL":
     DATA_FLOW_ANALYSIS_MODE = "CHANGE_LOCATION"
-
-
 SNAPSHOT_MODE = config["SNAPSHOT_MODE"].upper() == "YES"
+
+PROJECT_SPECIFIC_FILTERS = config["PROJECT_SPECIFIC_FILTERS"]
+
+MANUAL_PATH_RESOLUTION = config["MANUAL_PATH_RESOLUTION"]
+
+
+SUMMARIZATION_METHODS = list(
+    map(lambda method: method.upper(), config["SUMMARIZATION_METHODS"])
+)
+
+
+# EXTENDED CONFIGURATIONS
 
 SAVE_PATH = Path(DATA_PATH / f"{PROJECT}_{BUILD_SYSTEM}_results")
 SAVE_PATH.mkdir(parents=True, exist_ok=True)
@@ -96,8 +96,6 @@ elif BUILD_SYSTEM == "gradle":
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
 
-ENTRY_FILES = config["ENTRY_FILES"]
-
 PATTERNS_FLATTENED = {
     "include": reduce(
         lambda a, b: a + b, map(lambda sets: sets["include"], PATTERN_SETS.values())
@@ -106,12 +104,3 @@ PATTERNS_FLATTENED = {
         lambda a, b: a + b, map(lambda sets: sets["exclude"], PATTERN_SETS.values())
     ),
 }
-
-if config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES":
-    FILTERING = True
-else:
-    FILTERING = False
-
-PROJECT_SPECIFIC_FILTERS = config["PROJECT_SPECIFIC_FILTERS"]
-
-PATH_RESOLUTIONS = config["MANUAL_PATH_RESOLUTION"]

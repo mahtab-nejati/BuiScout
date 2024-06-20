@@ -1,6 +1,6 @@
 import data_flow_analysis as cm
 import pandas as pd
-from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
+from utils.configurations import MANUAL_PATH_RESOLUTION, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -11,7 +11,7 @@ with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
 # TODO (HIGH): Look into ${ARGN} logic for arguments.
 
 class ConditionalDefUseChains(cm.ConditionalDefUseChains):
-    manual_resolution = PATH_RESOLUTIONS
+    manual_resolution = MANUAL_PATH_RESOLUTION
     exclude_resolutions = CMAKE_MODULES
 
     def register_new_def_point(

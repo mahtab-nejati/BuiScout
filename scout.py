@@ -3,15 +3,18 @@ from pydriller import Repository
 from pydriller.git import Git
 from tqdm import tqdm
 import pandas as pd
-from pathlib import Path
-import subprocess, gc, shutil, importlib
+import gc, shutil, importlib
 from datetime import datetime
 from utils.exceptions import DebugException
 from utils.helpers import (
     create_csv_files,
     file_is_target,
+    clear_existing_data
 )
 from utils.configurations import (
+    USE_MULTIPROCESSING,
+    PROCESS_AS_A_SERY,
+    USE_EXISTING_AST_DIFFS,
     CLEAR_PROGRESS,
     ROOT_PATH,
     SAVE_PATH,
@@ -25,19 +28,44 @@ from utils.configurations import (
     PATTERN_SETS,
     PATTERNS_FLATTENED,
     FILTERING,
-    SUMMARIZATION_METHODS,
     USE_PROJECT_SPECIFIC_MODELS,
     DATA_FLOW_ANALYSIS_MODE,
 )
 
-from system_commit_model import SystemDiffSeries as SystemDiffModel
 
-if USE_PROJECT_SPECIFIC_MODELS:
+SAVE_PATH = (
+    SAVE_PATH
+    / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}{'_series' if PROCESS_AS_A_SERY else ''}"
+)
+COMMITS_SAVE_PATH = SAVE_PATH / "commits"
+COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
+
+if not USE_PROJECT_SPECIFIC_MODELS:
+    if PROCESS_AS_A_SERY:
+        from system_commit_model import SystemDiffSeries as SystemDiffModel
+        # Clear existing code and gumtree outputs
+        clear_existing_data(SAVE_PATH)
+    elif USE_EXISTING_AST_DIFFS:
+        from system_commit_model import SystemDiffShortcut as SystemDiffModel
+    else:
+        from system_commit_model import SystemDiff as SystemDiffModel
+else:
     project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
     if project_specific_support_path.exists():
-        SystemDiffModel = importlib.import_module(
-            f"project_specific_support.{PROJECT}"
-        ).SystemDiffSeries
+        if PROCESS_AS_A_SERY:
+            SystemDiffModel = importlib.import_module(
+                f"project_specific_support.{PROJECT}"
+            ).SystemDiffSeries
+            # Clear existing code and gumtree outputs
+            clear_existing_data(SAVE_PATH)
+        elif USE_EXISTING_AST_DIFFS:
+            SystemDiffModel = importlib.import_module(
+                f"project_specific_support.{PROJECT}"
+            ).SystemDiffShortcut
+        else:
+            SystemDiffModel = importlib.import_module(
+                f"project_specific_support.{PROJECT}"
+            ).SystemDiff
 
 
 def analyze_commit(
@@ -80,13 +108,8 @@ def analyze_commit(
     del diff
     gc.collect()
 
-
-SAVE_PATH = SAVE_PATH / f"system_series_{DATA_FLOW_ANALYSIS_MODE.lower()}"
-COMMITS_SAVE_PATH = SAVE_PATH / "commits"
-COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
-
 if CLEAR_PROGRESS:
-    create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
+    create_csv_files(SAVE_PATH)
     completed_commits = []
 else:
     try:
@@ -94,7 +117,7 @@ else:
         completed_commits = list(completed_commits.commit_hash.unique())
     except:
         completed_commits = []
-        create_csv_files(SUMMARIZATION_METHODS, SAVE_PATH)
+        create_csv_files(SAVE_PATH)
 
 repo = Repository(
     REPOSITORY,
@@ -109,20 +132,6 @@ git_repo = Git(REPOSITORY)
 
 all_commits_start = datetime.now()
 
-
-def clear_existing_data():
-    # Clear existing code and gumtree outputs
-    to_remove = Path(SAVE_PATH / "code")
-    if to_remove.exists():
-        shutil.rmtree(to_remove)
-    to_remove = Path(SAVE_PATH / "gumtree_output")
-    if to_remove.exists():
-        shutil.rmtree(to_remove)
-
-
-# Clear existing code and gumtree outputs
-clear_existing_data()
-
 # Run tool on commits
 chronological_commit_order = 0
 if __name__ == "__main__":
@@ -135,7 +144,7 @@ if __name__ == "__main__":
         # Commit-level attributes that show whether the commit
         # has affected build/non-build files
         has_build = False
-        has_nonbuild = None  # Disabled to keep script simple
+        has_nonbuild = False
 
         # Start analysis of the commit
         commit_start = datetime.now()
@@ -162,7 +171,8 @@ if __name__ == "__main__":
             commit.modified_files
         except AttributeError:
             # Clear existing code and gumtree outputs
-            clear_existing_data()
+            if PROCESS_AS_A_SERY:
+                clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
                     f"Submodule commit {commit.hash} must be excluded from analysis."
@@ -170,32 +180,61 @@ if __name__ == "__main__":
             continue
         except ValueError:
             # Clear existing code and gumtree outputs
-            clear_existing_data()
+            if PROCESS_AS_A_SERY:
+                clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
                     f"Missing commit {commit.hash} must be excluded from analysis."
                 )
             continue
 
+        # Identify if the commit has non-build modifications
+        for modified_file in commit.modified_files:
+            if not file_is_target(modified_file, PATTERNS_FLATTENED):
+                has_nonbuild = True
+                break
+
         # Iterate over the languages and file naming conventions
         # supported by the build system
         for LANGUAGE in LANGUAGES:
+            has_current_build = False
             PATTERNS = PATTERN_SETS[LANGUAGE]
 
             # Identify if the commit has build modifications
-            if any(map(lambda mf: file_is_target(mf, PATTERNS), commit.modified_files)):
-                has_build = True
+            for modified_file in commit.modified_files:
+                if not file_is_target(modified_file, PATTERNS):
+                    has_build = True
+                    has_current_build = True
+                    break
 
+            if has_current_build:
                 # Save time by skipping
                 if commit.hash in EXCLUDED_COMMITS:
                     to_remove = SAVE_PATH / "commits" / commit.hash
                     if to_remove.exists():
                         shutil.rmtree(to_remove)
                     continue
-
-                analyzer = Process(
-                    target=analyze_commit,
-                    args=[
+                
+                if USE_MULTIPROCESSING:
+                    analyzer = Process(
+                        target=analyze_commit,
+                        args=[
+                            REPOSITORY,
+                            repo,
+                            git_repo,
+                            BRANCH,
+                            commit,
+                            ENTRY_FILES,
+                            LANGUAGE,
+                            PATTERNS,
+                            ROOT_PATH,
+                            SAVE_PATH,
+                        ],
+                    )
+                    analyzer.start()
+                    analyzer.join()
+                else:
+                    analyze_commit(
                         REPOSITORY,
                         repo,
                         git_repo,
@@ -206,11 +245,8 @@ if __name__ == "__main__":
                         PATTERNS,
                         ROOT_PATH,
                         SAVE_PATH,
-                    ],
-                )
-                analyzer.start()
-                analyzer.join()
-                gc.collect()
+                    )
+                    gc.collect()
 
         # Don't log if excluded
         if commit.hash in EXCLUDED_COMMITS:
@@ -240,6 +276,7 @@ if __name__ == "__main__":
     git_repo.checkout(BRANCH)
 
     # Clear existing code and gumtree outputs
-    clear_existing_data()
+    if PROCESS_AS_A_SERY:
+        clear_existing_data(SAVE_PATH)
 
     print(f"Finished processing in {datetime.now()-all_commits_start}")
