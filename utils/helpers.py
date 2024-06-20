@@ -17,10 +17,10 @@ def find_word_indexes(text, word):
 # GumTree node label parser
 def parse_label(label):
     # Locate properties
-    _, end_type = find_word_indexes(label, "GumTreeType")
-    start_content, end_content = find_word_indexes(label, "GumTreeContent")
-    start_pos, end_pos = find_word_indexes(label, "GumTreeSPos")
-    start_end, end_end = find_word_indexes(label, "GumTreeEPos")
+    _, end_type = find_word_indexes(label, "GumTreeNodeType")
+    start_content, end_content = find_word_indexes(label, "GumTreeNodeContent")
+    start_pos, end_pos = find_word_indexes(label, "GumTreeNodeSPos")
+    start_end, end_end = find_word_indexes(label, "GumTreeNodeEPos")
     parsed_label = {
         "type": label[end_type + 2 : start_content].strip(),
         "content": label[end_content + 2 : start_pos].strip(),
