@@ -13,7 +13,7 @@ from utils.helpers import (
 )
 from utils.configurations import (
     USE_MULTIPROCESSING,
-    PROCESS_AS_A_SERY,
+    PROCESS_AS_A_COMMIT_SERIES,
     USE_EXISTING_AST_DIFFS,
     CLEAR_PROGRESS,
     ROOT_PATH,
@@ -35,24 +35,24 @@ from utils.configurations import (
 
 SAVE_PATH = (
     SAVE_PATH
-    / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}{'_series' if PROCESS_AS_A_SERY else ''}"
+    / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}{'_series' if PROCESS_AS_A_COMMIT_SERIES else ''}"
 )
 COMMITS_SAVE_PATH = SAVE_PATH / "commits"
 COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
-if not USE_PROJECT_SPECIFIC_MODELS:
-    if PROCESS_AS_A_SERY:
-        from system_commit_model import SystemDiffSeries as SystemDiffModel
-        # Clear existing code and gumtree outputs
-        clear_existing_data(SAVE_PATH)
-    elif USE_EXISTING_AST_DIFFS:
-        from system_commit_model import SystemDiffShortcut as SystemDiffModel
-    else:
-        from system_commit_model import SystemDiff as SystemDiffModel
+if PROCESS_AS_A_COMMIT_SERIES:
+    from system_commit_model import SystemDiffSeries as SystemDiffModel
+    # Clear existing code and gumtree outputs
+    clear_existing_data(SAVE_PATH)
+elif USE_EXISTING_AST_DIFFS:
+    from system_commit_model import SystemDiffShortcut as SystemDiffModel
 else:
+    from system_commit_model import SystemDiff as SystemDiffModel
+# Overwrite if project specific models are actiavted and exist
+if USE_PROJECT_SPECIFIC_MODELS:
     project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
     if project_specific_support_path.exists():
-        if PROCESS_AS_A_SERY:
+        if PROCESS_AS_A_COMMIT_SERIES:
             SystemDiffModel = importlib.import_module(
                 f"project_specific_support.{PROJECT}"
             ).SystemDiffSeries
@@ -171,7 +171,7 @@ if __name__ == "__main__":
             commit.modified_files
         except AttributeError:
             # Clear existing code and gumtree outputs
-            if PROCESS_AS_A_SERY:
+            if PROCESS_AS_A_COMMIT_SERIES:
                 clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
@@ -180,7 +180,7 @@ if __name__ == "__main__":
             continue
         except ValueError:
             # Clear existing code and gumtree outputs
-            if PROCESS_AS_A_SERY:
+            if PROCESS_AS_A_COMMIT_SERIES:
                 clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
             # Identify if the commit has build modifications
             for modified_file in commit.modified_files:
-                if not file_is_target(modified_file, PATTERNS):
+                if file_is_target(modified_file, PATTERNS):
                     has_build = True
                     has_current_build = True
                     break
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     git_repo.checkout(BRANCH)
 
     # Clear existing code and gumtree outputs
-    if PROCESS_AS_A_SERY:
+    if PROCESS_AS_A_COMMIT_SERIES:
         clear_existing_data(SAVE_PATH)
 
     print(f"Finished processing in {datetime.now()-all_commits_start}")

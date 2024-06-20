@@ -1,7 +1,7 @@
 {
   "USE_MULTIPROCESSING": "If 'YES', assigns each commit to a process, but does not parallelize the process of commits. This is under test with the intention of avoiding reesource leakage. Disable if maximum recursion errors encountered. Default behaviour is 'NO'",
-  "PROCESS_AS_A_SERY": "If 'YES', the commits listed in the 'COMMITS' option are treated as a series and the source code and AST differencing information is cached from a previous commit for the next commit, only re-computing modified files in the next commit. If 'NO', computes are AST differences for each commit independently. Default behaviour is 'NO'.",
-  "USE_EXISTING_AST_DIFFS": "If 'YES', uses the the pre-xisting GumTree output (incompatible with 'PROCESS_AS_A_SERY'). Assumes that there was a GumTree error if data does not exist.",
+  "PROCESS_AS_A_COMMIT_SERIES": "If 'YES', the commits listed in the 'COMMITS' option are treated as a series and the source code and AST differencing information is cached from a previous commit for the next commit, only re-computing modified files in the next commit. If 'NO', computes are AST differences for each commit independently. Default behaviour is 'NO'.",
+  "USE_EXISTING_AST_DIFFS": "If 'YES', uses the the pre-xisting GumTree output (incompatible with 'PROCESS_AS_A_COMMIT_SERIES'). Assumes that there was a GumTree error if data does not exist.",
   "CLEAR_PROGRESS": "If 'YES', clears all previous progress into the list of commits, else if 'NO' continues. Default behaviour is 'NO'.",
   "VERBOSE": "If 'YES', the verbose logs will be printed to the terminal. Default behaviour is 'NO'",
   "EXECUTE_CALLABLE_TYPES": "'YES' to allow dummpy execution of user-defined command bodies, otherwise 'NO'. Default behaviour is 'NO'.",

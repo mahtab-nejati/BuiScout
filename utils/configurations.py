@@ -13,9 +13,9 @@ with open(ROOT_PATH / "config.json", "r") as f:
 
 USE_MULTIPROCESSING = config["USE_MULTIPROCESSING"].upper() == "YES"
 
-PROCESS_AS_A_SERY = config["PROCESS_AS_A_SERY"].upper() == "YES"
+PROCESS_AS_A_COMMIT_SERIES = config["PROCESS_AS_A_COMMIT_SERIES"].upper() == "YES"
 
-if PROCESS_AS_A_SERY:
+if PROCESS_AS_A_COMMIT_SERIES:
     USE_EXISTING_AST_DIFFS = False
 else:
     USE_EXISTING_AST_DIFFS = config["USE_EXISTING_AST_DIFFS"].upper() == "YES"
