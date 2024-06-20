@@ -17,6 +17,12 @@ if CLEAR_PROGRESS == "YES":
 else:
     CLEAR_PROGRESS = False
 
+VERBOSE = config["VERBOSE"].upper()
+if VERBOSE == "YES":
+    VERBOSE = True
+else:
+    VERBOSE = False
+
 EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper()
 if EXECUTE_CALLABLE_TYPES == "YES":
     EXECUTE_CALLABLE_TYPES = True

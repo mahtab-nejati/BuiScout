@@ -10,7 +10,7 @@ from utils.helpers import (
     read_dotdiff,
 )
 from diff_model import ASTDiff
-from utils.configurations import DATA_FLOW_ANALYSIS_MODE, SNAPSHOT_MODE
+from utils.configurations import DATA_FLOW_ANALYSIS_MODE, SNAPSHOT_MODE, VERBOSE
 
 
 class SystemDiff(object):
@@ -327,18 +327,21 @@ class SystemDiff(object):
     def analyze_change_location(self):
         for file_path, file_data in self.file_data.items():
             if file_data["diff"]:
-                print(f"{'#'*10} {file_path} {'#'*10}")
+                if VERBOSE:
+                    print(f"{'#'*10} {file_path} {'#'*10}")
 
                 self.source_cdu_chains.append(
                     self.ConditionalDefUseChains(file_data["diff"].source, self)
                 )
-                print(f"{'#'*10} Analyzing source {'#'*10}")
+                if VERBOSE:
+                    print(f"{'#'*10} Analyzing source {'#'*10}")
                 self.source_cdu_chains[-1].analyze()
 
                 self.destination_cdu_chains.append(
                     self.ConditionalDefUseChains(file_data["diff"].destination, self)
                 )
-                print(f"{'#'*10} Analyzing source {'#'*10}")
+                if VERBOSE:
+                    print(f"{'#'*10} Analyzing source {'#'*10}")
                 self.destination_cdu_chains[-1].analyze()
 
     def analyze_global(self):
@@ -353,8 +356,8 @@ class SystemDiff(object):
             try:
                 if self.file_data[self.current_entry_file]["diff"] is None:
                     print(
-                        f"Selected entry file {self.current_entry_file} failed due to parser error."
-                    )
+                            f"Selected entry file {self.current_entry_file} failed due to parser error."
+                        )
                     continue
             except KeyError:
                 print(f"Selected entry file {self.current_entry_file} does not exist.")
@@ -364,7 +367,8 @@ class SystemDiff(object):
                 self.file_data[self.current_entry_file]["diff"], cluster, None
             )
             chains_stash.append(self.ConditionalDefUseChains(ast, self))
-            print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+            if VERBOSE:
+                print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
             chains_stash[-1].analyze()
 
         # Set GLOBAL reachability
@@ -392,7 +396,8 @@ class SystemDiff(object):
                 ),
                 key=lambda file_path: len(file_path.split("/")),
             )
-            print(f"UNREACHED files so far: {len(unreached)}")
+            if VERBOSE:
+                print(f"UNREACHED files so far: {len(unreached)}")
             if not unreached:
                 break
             target_depth = min(
@@ -409,10 +414,12 @@ class SystemDiff(object):
                 target_file_path = candidate_unreached[0]
             else:
                 target_file_path = unreached[0]
-            print(f"NEXt FILE SELECTED {target_file_path}")
+            if VERBOSE:
+                print(f"NEXT FILE SELECTED {target_file_path}")
             ast = getattr(self.file_data[target_file_path]["diff"], cluster, None)
             chains_stash.append(self.ConditionalDefUseChains(ast, self))
-            print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
+            if VERBOSE:
+                print(f"{'#'*10} Analyzing {cluster} {'#'*10}")
             chains_stash[-1].analyze()
 
     def get_file_directory(self, file_path, cluster):

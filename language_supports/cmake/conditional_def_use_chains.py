@@ -1,6 +1,6 @@
 import data_flow_analysis as cm
 import pandas as pd
-from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, EXECUTE_CALLABLE_TYPES
+from utils.configurations import PATH_RESOLUTIONS, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -8,6 +8,7 @@ from utils.exceptions import MissingArgumentsException, DebugException
 with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
     CMAKE_MODULES = list(map(lambda entry: entry.strip("\n"), f.readlines()))
 
+# TODO (HIGH): Look into ${ARGN} logic for arguments.
 
 class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     manual_resolution = PATH_RESOLUTIONS
@@ -633,11 +634,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         actor_point = self.register_new_actor_point(node_data)
         def_point = self.register_new_def_point(node_data, actor_point, "FUNCTION")
-
+        
+        # TODO (Medium)
         # return self.process_callable_definition_location(node_data, def_point)
-        print(
-            "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a FUNCTION callable."
-        )
+        if VERBOSE:
+            print(
+                "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a FUNCTION callable."
+            )
         return
 
     # def visit_function_header(self, node_data, actor_point, *args, **kwargs):
@@ -669,10 +672,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         actor_point = self.register_new_actor_point(node_data)
         def_point = self.register_new_def_point(node_data, actor_point, "MACRO")
 
-        # return self.process_callable_definition_location(node_data, def_point)
-        print(
-            "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a MACRO callable."
-        )
+
+        # # TODO (Medium)
+        # # return self.process_callable_definition_location(node_data, def_point)
+        if VERBOSE:
+            print(
+                "CALLABLE_DEF_SITE_NOTICE: We do not process the definition location of a MACRO callable."
+            )
         return
 
     # def visit_macro_header(self, node_data, actor_point, *args, **kwargs):
@@ -1065,9 +1071,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 self.register_new_def_point(arguments[i + 1], actor_point, "VARIABLE")
                 continue
             if self.ast.unparse(argument).upper() == "CALL":
-                print(
-                    f"Support needed for command arguments for CALL keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"Support needed for command arguments for CALL keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+                    )
                 continue
 
     def visit_CMAKE_MINIMUM_REQUIRED(self, node_data):
@@ -1075,7 +1082,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
 
     def visit_CMAKE_PARSE_ARGUMENTS(self, node_data):
-        print(f"CMAKE_PARSE_ARGUMENTS called in a non-callable scope.")
+        if VERBOSE:
+            print(f"CMAKE_PARSE_ARGUMENTS called in a non-callable scope.")
 
     def visit_CMAKE_PATH(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1333,9 +1341,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Done after unsuccessful resoltuion attempt
             # to allow files with the same name as CMake modules
             if package_file_path in self.exclude_resolutions:
-                print(
-                    f"FIND_PACKAGE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {package_file_path} called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"FIND_PACKAGE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {package_file_path} called from {self.ast.file_path}"
+                    )
                 return
 
             # For files that do not exist in the project
@@ -1350,9 +1359,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if isinstance(found_files, str):
             # For manaully skipped files
             if found_files.upper() == "SKIP":
-                print(
-                    f"FIND_PACKAGE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"FIND_PACKAGE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
                 return
             else:
                 raise Exception(
@@ -1467,9 +1477,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for i, argument in enumerate(arguments):
             if self.ast.unparse(argument).upper() == "PROGRAM_ARGS":
-                print(
-                    f"Support needed for command arguments for PROGRAM_ARGS keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"Support needed for command arguments for PROGRAM_ARGS keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+                    )
 
     def visit_GET_PROPERTY(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1524,9 +1535,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Done after unsuccessful resoltuion attempt
             # to allow files with the same name as CMake modules
             if included_file_path in self.exclude_resolutions:
-                print(
-                    f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
+                    )
                 return
 
             # For files that do not exist in the project
@@ -1541,9 +1553,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if isinstance(included_files, str):
             # For manaully skipped files
             if included_files.upper() == "SKIP":
-                print(
-                    f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
                 return
             else:
                 raise Exception(
@@ -1690,9 +1703,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         except MissingArgumentsException:
             return
 
-        print(
-            f"Support needed for PROPAGATE keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for PROPAGATE keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
         # for i, argument in enumerate(arguments):
         #     if self.ast.unparse(argument).upper() == "PROPAGATE":
@@ -1710,9 +1724,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         for argument in arguments:
             if self.ast.unparse(argument).upper() == "PROGRAM":
-                print(
-                    f"Support needed for command arguments for PROGRAM keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"Support needed for command arguments for PROGRAM keyword in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+                    )
 
     def visit_SET(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1895,9 +1910,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         )
 
         # NOTE from documentations: Definitions are specified using the syntax VAR or VAR=value
-        print(
-            f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_ADD_COMPILE_OPTIONS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1911,10 +1927,12 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         if self.ast.unparse(arguments[0]).upper() == "TARGET":
             self.register_new_use_point(arguments[1], actor_point, "DELIVERABLE")
+            self.register_new_def_point(arguments[1], actor_point, "DELIVERABLE")
 
-        print(
-            f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
         # keywords = [
         #     "APPEND",
@@ -1958,9 +1976,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
-        print(
-            f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+
+        if VERBOSE:
+            print(
+                f"Support needed for depndencies and command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_ADD_DEFINITIONS(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -1973,9 +1993,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         # except MissingArgumentsException:
         #     pass
 
-        print(
-            f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_ADD_DEPENDENCIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2080,9 +2101,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         if isinstance(added_files, str):
             # For manaully skipped files
             if added_files.upper() == "SKIP":
-                print(
-                    f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
+                if VERBOSE:
+                    print(
+                        f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    )
                 return
             else:
                 raise Exception(
@@ -2102,7 +2124,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for resolution in added_files:
             # For files with GumTree error
             if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(f"Parser error for {self.ast.unparse(node_data)}")
+                print(
+                    f"ADD_SUBDIRECTORY resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                )
                 continue
 
             # Recursive resolution
@@ -2164,9 +2188,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         else:
             self.register_new_def_point(arguments[0], actor_point, "TEST")
 
-        print(
-            f"Support needed for command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for command arguments in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_AUX_SOURCE_DIRECTORY(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2254,9 +2279,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     self.register_new_use_point(argument, actor_point, "DELIVERABLE")
 
         if operation in ["EXPORT", "PACKAGE"]:
-            print(
-                f"Support needed for PACKAGE & EXPORT keywords in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-            )
+            if VERBOSE:
+                print(
+                    f"Support needed for PACKAGE & EXPORT keywords in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+                )
 
     def visit_FLTK_WRAP_UI(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2407,9 +2433,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         break
                     self.register_new_use_point(arg, actor_point, "DELIVERABLE")
 
-        print(
-            f"Support needed (partial) for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed (partial) for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_LINK_DIRECTORIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2421,9 +2448,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "LINK_LIBRARIES")
 
-        print(
-            f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_LOAD_CACHE(self, node_data):
         """
@@ -2456,9 +2484,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # arguments = self.get_sorted_arguments_data_list(node_data, "REMOVE_DEFINITIONS")
 
-        print(
-            f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_SET_SOURCE_FILES_PROPERTIES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2555,9 +2584,10 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.register_new_use_point(arguments[0], actor_point, "DELIVERABLE")
         self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
 
-        print(
-            f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
-        )
+        if VERBOSE:
+            print(
+                f"Support needed for definitions in {self.ast.unparse(node_data)}, called from {self.ast.file_path}"
+            )
 
     def visit_TARGET_COMPILE_FEATURES(self, node_data):
         actor_point = self.register_new_actor_point(node_data)
@@ -2830,7 +2860,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         This method must be implemented in the language support subclass. As the result,
         Def/Use/Actor objects that are affected have their .is_in_propagation_slice attribute set to True.
         """
-        print(f"QUERY scope in process: {self.scope}")
+        if VERBOSE:
+            print(f"QUERY scope in process: {self.scope}")
         # Downward Slicing is transitive
         self.slice_downwards()
         # Upward Slicing is not transitive
@@ -3417,7 +3448,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         actor_point = self.register_new_actor_point(node_data)
         self.generic_visit(node_data, actor_point)
 
-        arguments = self.get_sorted_arguments_data_list(node_data, "ADD_SUBDIRECTORY")
+        arguments = self.get_sorted_arguments_data_list(node_data, "SUBDIRS")
 
         # For file-level analysis (No system provided)
         if self.sysdiff.analysis_mode == "change_location":
@@ -3436,16 +3467,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 # or files that are refered to using a variable
                 if added_files is None:
                     print(
-                        f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                        f"SUBDIRS resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                     )
                     return
 
             if isinstance(added_files, str):
                 # For manaully skipped files
                 if added_files.upper() == "SKIP":
-                    print(
-                        f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                    )
+                    if VERBOSE:
+                        print(
+                            f"SUBDIRS resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                        )
                     return
                 else:
                     raise Exception(
@@ -3455,7 +3487,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # For reporting multiple resolutions
             if len(added_files) > 1:
                 print(
-                    f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
+                    f"SUBDIRS resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
                 )
 
             # Add to reachability stack
@@ -3465,7 +3497,9 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             for resolution in added_files:
                 # For files with GumTree error
                 if self.sysdiff.file_data[resolution]["diff"] is None:
-                    print(f"Parser error for {self.ast.unparse(node_data)}")
+                    print(
+                        f"SUBDIRS resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                    )
                     continue
 
                 # Recursive resolution
@@ -3476,14 +3510,14 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     ]
                 ):
                     print(
-                        f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                        f"SUBDIRS resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                     )
                     continue
 
                 # Resolving to entry point
                 if resolution == self.sysdiff.current_entry_file:
                     print(
-                        f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                        f"SUBDIRS resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
                     )
                     continue
 
