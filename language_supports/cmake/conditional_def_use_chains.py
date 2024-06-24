@@ -1,6 +1,6 @@
 import data_flow_analysis as cm
 import pandas as pd
-from utils.configurations import MANUAL_PATH_RESOLUTION, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
+from utils.configurations import PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -11,7 +11,7 @@ with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
 # TODO (HIGH): Look into ${ARGN} logic for arguments.
 
 class ConditionalDefUseChains(cm.ConditionalDefUseChains):
-    manual_resolution = MANUAL_PATH_RESOLUTION
+    manual_resolution = PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION
     exclude_resolutions = CMAKE_MODULES
 
     def register_new_def_point(
@@ -147,11 +147,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return True, resolved_path_item[0]["callee_resolved_path"]
         if len(resolved_path_item) > 1:
             raise Exception(
-                "Please make sure you do not provide two MANUAL_PATH_RESOLUTION items with the same caller_file_path and callee_file_path."
+                "Please make sure you do not provide two PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION items with the same caller_file_path and callee_file_path."
             )
         return False, None
 
-    def resolve_find_package_module_mode_file_path_best_effort(self, file_path_node):
+    def resolve_find_package_module_mode_file_path(self, file_path_node):
         """
         Returns (success_flag, resolution)
 
@@ -221,7 +221,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def resolve_find_package_config_mode_file_path_best_effort(self, file_path_node):
+    def resolve_find_package_config_mode_file_path(self, file_path_node):
         """
         Returns (success_flag, resolution)
 
@@ -311,7 +311,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def resolve_find_package_fetch_mode_file_path_best_effort(self, file_path_node):
+    def resolve_find_package_fetch_mode_file_path(self, file_path_node):
         """
         Returns (success_flag, resolution)
 
@@ -381,7 +381,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def resolve_find_package_file_path_best_effort(
+    def resolve_find_package_file_path(
         self, file_path_node, module_mode=True, confi_mode=True, fetch_mode=True
     ):
         """
@@ -407,7 +407,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 m_success,
                 m_resolutions,
-            ) = self.resolve_find_package_module_mode_file_path_best_effort(
+            ) = self.resolve_find_package_module_mode_file_path(
                 file_path_node
             )
             if not m_success:
@@ -420,7 +420,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 c_success,
                 c_resolutions,
-            ) = self.resolve_find_package_config_mode_file_path_best_effort(
+            ) = self.resolve_find_package_config_mode_file_path(
                 file_path_node
             )
             if not c_success:
@@ -433,7 +433,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 f_success,
                 f_resolutions,
-            ) = self.resolve_find_package_fetch_mode_file_path_best_effort(
+            ) = self.resolve_find_package_fetch_mode_file_path(
                 file_path_node
             )
             if not f_success:
@@ -447,7 +447,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             m_resolutions + c_resolutions + f_resolutions,
         )
 
-    def resolve_include_file_path_best_effort(self, file_path_node):
+    def resolve_include_file_path(self, file_path_node):
         """
         Returns (success_flag, resolution)
         """
@@ -551,7 +551,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return False, None
 
-    def resolve_add_subdirectory_file_path_best_effort(self, file_path_node):
+    def resolve_add_subdirectory_file_path(self, file_path_node):
         """
         Returns (success_flag, resolution)
         """
@@ -1289,7 +1289,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 (
                     resolution_success,
                     found_files,
-                ) = self.resolve_find_package_file_path_best_effort(
+                ) = self.resolve_find_package_file_path(
                     arguments[0], module_mode=module_mode, confi_mode=config_mode
                 )
                 resolution_fetched = True
@@ -1310,7 +1310,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     (
                         resolution_success,
                         found_files,
-                    ) = self.resolve_find_package_file_path_best_effort(
+                    ) = self.resolve_find_package_file_path(
                         path_name_node, module_mode=module_mode, confi_mode=config_mode
                     )
                     if resolution_success:
@@ -1330,7 +1330,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 resolution_success,
                 found_files,
-            ) = self.resolve_find_package_file_path_best_effort(
+            ) = self.resolve_find_package_file_path(
                 arguments[0], module_mode=module_mode, confi_mode=config_mode
             )
 
@@ -1528,7 +1528,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         (
             resolution_success,
             included_files,
-        ) = self.resolve_include_file_path_best_effort(arguments[0])
+        ) = self.resolve_include_file_path(arguments[0])
 
         if not resolution_success:
             # Exclude CMake module
@@ -2087,7 +2087,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         (
             resolution_success,
             added_files,
-        ) = self.resolve_add_subdirectory_file_path_best_effort(arguments[0])
+        ) = self.resolve_add_subdirectory_file_path(arguments[0])
 
         if not resolution_success:
             # For files that do not exist in the project
@@ -3460,7 +3460,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 resolution_success,
                 added_files,
-            ) = self.resolve_add_subdirectory_file_path_best_effort(argument)
+            ) = self.resolve_add_subdirectory_file_path(argument)
 
             if not resolution_success:
                 # For files that do not exist in the project

@@ -9,8 +9,8 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
     ##################################
     """
 
-    def resolve_add_subdirectory_file_path_best_effort(self, file_path_node):
-        resolved, resolutions = super().resolve_add_subdirectory_file_path_best_effort(
+    def resolve_add_subdirectory_file_path(self, file_path_node):
+        resolved, resolutions = super().resolve_add_subdirectory_file_path(
             file_path_node
         )
         if resolved:

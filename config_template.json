@@ -4,22 +4,22 @@
   "USE_EXISTING_AST_DIFFS": "If 'YES', uses the the pre-xisting GumTree output (incompatible with 'PROCESS_AS_A_COMMIT_SERIES'). Assumes that there was a GumTree error if data does not exist.",
   "CLEAR_PROGRESS": "If 'YES', clears all previous progress into the list of commits, else if 'NO' continues. Default behaviour is 'NO'.",
   "VERBOSE": "If 'YES', the verbose logs will be printed to the terminal. Default behaviour is 'NO'",
+  "DATA_FLOW_ANALYSIS_MODE": "Either 'CHANGE_LOCATION' or 'GLOBAL'. Default is 'CHANGE_LOCATION'.",
+  "SNAPSHOT_MODE": "YES if the goal is to analyze the repository in its latest version, sets previous version to empty. NO otherwise. Default behaviour is 'NO'",
   "EXECUTE_CALLABLE_TYPES": "'YES' to allow dummpy execution of user-defined command bodies, otherwise 'NO'. Default behaviour is 'NO'.",
   "USE_PROJECT_SPECIFIC_MODELS": "Either 'YES' or 'NO'. Default is 'YES', when it first attemps to find project-specific models. If not found, proceed with general models.",
+  "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "DATA_PATH": "Path to store data/results MUST NOT CONTAIN WHITESPACE",
   "PROJECT": "Project name",
   "REPOSITORY": "URL or local path to repository MUST NOT CONTAIN WHITESPACE",
   "BRANCH": "The branch to consider, keyword 'ALL' for all branches, use of 'main' or 'master' branch is recommended",
   "COMMITS": "List of commit hashes, keyword 'ALL' for all commits",
   "EXCLUDED_COMMITS": "List of commit hashes to exclude from the analysis",
-  "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "Either keyword 'YES' or 'NO' ('NO' is recommended. If 'YES' is selected, only commits with build specifications are selected from the repository. This might throw an error as we access parent commits and they might be excluded.)",
   "BUILD_SYSTEM": "Build system, e.g., 'cmake'",
   "ENTRY_FILES": [
     "The list of build system entry point files, e.g. 'CMakeLists.txt'",
     "This can be multiple files for projects with multiple independant modules."
   ],
-  "DATA_FLOW_ANALYSIS_MODE": "Either 'CHANGE_LOCATION' or 'GLOBAL'. Default is 'CHANGE_LOCATION'.",
-  "SNAPSHOT_MODE": "YES if the goal is to analyze the repository in its latest version, sets previous version to empty. NO otherwise. Default behaviour is 'NO'",
   "PROJECT_SPECIFIC_FILTERS": {
     "include": {
       "starts_with": [
@@ -38,7 +38,7 @@
       ]
     }
   },
-  "MANUAL_PATH_RESOLUTION": [
+  "PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION": [
     {
       "caller_file_path": "Path to the file calling to include the callee file. Use '*' to apply the same resolutions for everywhere in code.",
       "callee_file_path": "Path specified in the caller file to refer to the callee file.",
@@ -46,6 +46,5 @@
         "A list of relative paths to the callee file (from project root). List can have >= 1 path. Use keyword 'SKIP' (without list) to skip."
       ]
     }
-  ],
-  "SUMMARIZATION_METHODS": "List of at least one of the keyworkds ['SUBTREE', 'NODE']"
+  ]
 }
