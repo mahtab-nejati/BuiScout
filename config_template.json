@@ -20,16 +20,20 @@
     "The list of build system entry point files, e.g. 'CMakeLists.txt'",
     "This can be multiple files for projects with multiple independant modules."
   ],
-  "PROJECT_SPECIFIC_FILTERS": {
-    "include": {
-      "starts_with": [
-        "List of paths (relative to project root, no / at the beginning) to include (excluding everything else) in the analysis. default is empty list and includes all path."
-      ],
-      "ends_with": [
-        "List of file patterns to include (excluding everything else) in the analysis. default is empty list and includes all build specifications for the language."
-      ]
-    },
-    "exclude": {
+  "PROJECT_SPECIFIC_INCLUDES": {
+    "[LANGUAGE_LOWER_CASE]": {
+      "include": {
+        "starts_with": [
+          "List of paths (relative to project root, no / at the beginning) to include (added to the default patterns) in the analysis. default is empty list and includes all path."
+        ],
+        "ends_with": [
+          "List of file patterns to include (added to the default patterns) in the analysis. default is empty list and includes all build specifications for the language."
+        ]
+      }
+    }
+  },
+  "PROJECT_SPECIFIC_EXCLUDES": {
+    "[LANGUAGE_LOWER_CASE]": {
       "starts_with": [
         "List of paths (relative to project root, no / at the beginning) to exclude (within the included ones) in the analysis. default is empty list and includes all path."
       ],

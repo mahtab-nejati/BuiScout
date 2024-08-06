@@ -32,7 +32,9 @@ SNAPSHOT_MODE = config["SNAPSHOT_MODE"].upper() == "YES"
 
 EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper() == "YES"
 
-USE_PROJECT_SPECIFIC_MODELS = not (config["USE_PROJECT_SPECIFIC_MODELS"].upper() == "NO")
+USE_PROJECT_SPECIFIC_MODELS = not (
+    config["USE_PROJECT_SPECIFIC_MODELS"].upper() == "NO"
+)
 
 FILTERING = config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES"
 
@@ -53,9 +55,12 @@ EXCLUDED_COMMITS = config["EXCLUDED_COMMITS"]
 BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
 ENTRY_FILES = config["ENTRY_FILES"]
 
-PROJECT_SPECIFIC_FILTERS = config["PROJECT_SPECIFIC_FILTERS"]
+PROJECT_SPECIFIC_INCLUDES = config["PROJECT_SPECIFIC_INCLUDES"]
+PROJECT_SPECIFIC_EXCLUDES = config["PROJECT_SPECIFIC_EXCLUDES"]
 
-PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION = config["PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION"]
+PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION = config[
+    "PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION"
+]
 
 # EXTENDED CONFIGURATIONS
 
@@ -73,30 +78,75 @@ SAVE_PATH.mkdir(parents=True, exist_ok=True)
 if BUILD_SYSTEM == "cmake":
     LANGUAGES = ["cmake"]
     PATTERN_SETS = {
-        "cmake": {"include": ["CMakeLists.txt", ".cmake"], "exclude": [".h.cmake"]}
+        "cmake": {
+            "include": {"starts_with": [], "ends_with": ["CMakeLists.txt", ".cmake"]},
+            "exclude": {"starts_with": [], "ends_with": [".h.cmake"]},
+        }
     }  # cmake file name patterns
 elif BUILD_SYSTEM == "bazel":
     LANGUAGES = ["python"]
     PATTERN_SETS = {
-        "python": {"include": ["BUILD.bazel", ".bzl"], "exclude": []}
+        "python": {
+            "include": {"starts_with": [], "ends_with": ["BUILD.bazel", ".bzl"]},
+            "exclude": {"starts_with": [], "ends_with": []},
+        }
     }  # python file name patterns
 elif BUILD_SYSTEM == "gradle":
     LANGUAGES = ["kotlin", "groovy"]
     PATTERN_SETS = {
         "kotlin": {  # kotlin file name patterns
-            "include": [".gradle.kts"],
-            "exclude": [],
+            "include": {"starts_with": [], "ends_with": [".gradle.kts"]},
+            "exclude": {"starts_with": [], "ends_with": []},
         },
-        "groovy": {"include": [".gradle"], "exclude": []},  # groovy file name patterns
+        "groovy": {  # groovy file name patterns
+            "include": {"starts_with": [], "ends_with": [".gradle.kts"]},
+            "exclude": {"starts_with": [], "ends_with": []},
+        },
     }
 else:
     raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
 
+for l in LANGUAGES:
+    if l in PROJECT_SPECIFIC_INCLUDES:
+        includes = PROJECT_SPECIFIC_INCLUDES[l]
+        if "starts_with" in includes:
+            PATTERN_SETS[l]["include"]["starts_with"] = list(
+                set(PATTERN_SETS[l]["include"]["starts_with"] + includes["starts_with"])
+            )
+        if "ends_with" in includes:
+            PATTERN_SETS[l]["include"]["ends_with"] = list(
+                set(PATTERN_SETS[l]["include"]["ends_with"] + includes["ends_with"])
+            )
+    if l in PROJECT_SPECIFIC_EXCLUDES:
+        excludes = PROJECT_SPECIFIC_EXCLUDES[l]
+        if "starts_with" in excludes:
+            PATTERN_SETS[l]["exclude"]["starts_with"] = list(
+                set(PATTERN_SETS[l]["exclude"]["starts_with"] + excludes["starts_with"])
+            )
+        if "ends_with" in excludes:
+            PATTERN_SETS[l]["exclude"]["ends_with"] = list(
+                set(PATTERN_SETS[l]["exclude"]["ends_with"] + excludes["ends_with"])
+            )
+
 PATTERNS_FLATTENED = {
-    "include": reduce(
-        lambda a, b: a + b, map(lambda sets: sets["include"], PATTERN_SETS.values())
-    ),
-    "exclude": reduce(
-        lambda a, b: a + b, map(lambda sets: sets["exclude"], PATTERN_SETS.values())
-    ),
+    "include": {
+        "starts_with": reduce(
+            lambda a, b: a + b,
+            map(lambda sets: sets["include"]["starts_with"], PATTERN_SETS.values()),
+        ),
+        "ends_with": reduce(
+            lambda a, b: a + b,
+            map(lambda sets: sets["include"]["ends_with"], PATTERN_SETS.values()),
+        ),
+    },
+    "exclude": {
+        "starts_with": reduce(
+            lambda a, b: a + b,
+            map(lambda sets: sets["exclude"]["starts_with"], PATTERN_SETS.values()),
+        ),
+        "ends_with": reduce(
+            lambda a, b: a + b,
+            map(lambda sets: sets["exclude"]["ends_with"], PATTERN_SETS.values()),
+        ),
+    },
 }

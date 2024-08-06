@@ -2,7 +2,6 @@ import pandas as pd
 from pathlib import Path
 import shutil
 from .exceptions import DebugException
-from utils.configurations import PROJECT_SPECIFIC_FILTERS
 
 #################################
 ######## Helpers for AST ########
@@ -72,43 +71,43 @@ def read_dotdiff(path):
 ######## Helpers for run ########
 #################################
 # Check if the modified file a build specification
-def file_is_build(file_name, patterns={"inclde": [], "exclude": []}):
+def file_is_build(file_name, patterns):
     if file_name is None:
         raise DebugException("WEIRD PYDRILLER FILENAME")
 
-    return (file_name.endswith(tuple(patterns["include"]))) and (
-        not file_name.endswith(tuple(patterns["exclude"]))
-    )
+    if patterns["starts_with"]:
+        starts = file_name.startswith(tuple(patterns["starts_with"]))
+    else:
+        starts = False
+
+    if patterns["ends_with"]:
+        ends = file_name.endswith(tuple(patterns["ends_with"]))
+    else:
+        ends = False
+
+    return starts or ends
 
 
-def file_is_filtered(file_path, filtering_patterns=PROJECT_SPECIFIC_FILTERS):
+def file_is_filtered(file_path, filtering_patterns):
     if file_path is None:
         return True
-    if filtering_patterns["include"]["starts_with"]:
-        if not file_path.startswith(
-            tuple(filtering_patterns["include"]["starts_with"])
-        ):
+    if filtering_patterns["starts_with"]:
+        if file_path.startswith(tuple(filtering_patterns["starts_with"])):
             return True
-    if filtering_patterns["include"]["ends_with"]:
-        if not file_path.endswith(tuple(filtering_patterns["include"]["ends_with"])):
-            return True
-    if filtering_patterns["exclude"]["starts_with"]:
-        if file_path.startswith(tuple(filtering_patterns["exclude"]["starts_with"])):
-            return True
-    if filtering_patterns["exclude"]["ends_with"]:
-        if file_path.endswith(tuple(filtering_patterns["exclude"]["ends_with"])):
+    if filtering_patterns["ends_with"]:
+        if file_path.endswith(tuple(filtering_patterns["ends_with"])):
             return True
     return False
 
 
 def file_is_target(modified_file, patterns):
     if isinstance(modified_file, str):
-        return file_is_build(modified_file, patterns) and not file_is_filtered(
-            modified_file
-        )
-    return file_is_build(modified_file.filename, patterns) and not (
-        file_is_filtered(modified_file.new_path)
-        and file_is_filtered(modified_file.old_path)
+        return file_is_build(
+            modified_file, patterns["include"]
+        ) and not file_is_filtered(modified_file, patterns["exclude"])
+    return file_is_build(modified_file.filename, patterns["include"]) and not (
+        file_is_filtered(modified_file.new_path, patterns["exclude"])
+        or file_is_filtered(modified_file.old_path, patterns["exclude"])
     )
 
 
@@ -164,6 +163,7 @@ def create_csv_files(save_path):
     ]
     commits_df = pd.DataFrame(columns=commits_columns)
     commits_df.to_csv(save_path / "all_commits.csv", index=False)
+
 
 def clear_existing_data(SAVE_PATH):
     # Clear existing code and gumtree outputs
