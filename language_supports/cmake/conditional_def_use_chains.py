@@ -1,6 +1,11 @@
 import data_flow_analysis as cm
 import pandas as pd
-from utils.configurations import PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION, ROOT_PATH, EXECUTE_CALLABLE_TYPES, VERBOSE
+from utils.configurations import (
+    PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION,
+    ROOT_PATH,
+    EXECUTE_CALLABLE_TYPES,
+    VERBOSE,
+)
 from utils.exceptions import MissingArgumentsException, DebugException
 
 # CMake Modules based on the official documentation
@@ -9,6 +14,7 @@ with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
     CMAKE_MODULES = list(map(lambda entry: entry.strip("\n"), f.readlines()))
 
 # TODO (HIGH): Look into ${ARGN} logic for arguments.
+
 
 class ConditionalDefUseChains(cm.ConditionalDefUseChains):
     manual_resolution = PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION
@@ -1975,7 +1981,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         arguments = self.get_sorted_arguments_data_list(node_data, "ADD_CUSTOM_TARGET")
 
         self.register_new_def_point(arguments[0], actor_point, "DELIVERABLE")
-
 
         if VERBOSE:
             print(

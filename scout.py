@@ -6,11 +6,7 @@ import pandas as pd
 import gc, shutil, importlib
 from datetime import datetime
 from utils.exceptions import DebugException
-from utils.helpers import (
-    create_csv_files,
-    file_is_target,
-    clear_existing_data
-)
+from utils.helpers import create_csv_files, file_is_target, clear_existing_data
 from utils.configurations import (
     USE_MULTIPROCESSING,
     PROCESS_AS_A_COMMIT_SERIES,
@@ -42,6 +38,7 @@ COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
 if PROCESS_AS_A_COMMIT_SERIES:
     from system_commit_model import SystemDiffSeries as SystemDiffModel
+
     # Clear existing code and gumtree outputs
     clear_existing_data(SAVE_PATH)
 elif USE_EXISTING_AST_DIFFS:
@@ -107,6 +104,7 @@ def analyze_commit(
 
     del diff
     gc.collect()
+
 
 if CLEAR_PROGRESS:
     create_csv_files(SAVE_PATH)
@@ -214,7 +212,7 @@ if __name__ == "__main__":
                     if to_remove.exists():
                         shutil.rmtree(to_remove)
                     continue
-                
+
                 if USE_MULTIPROCESSING:
                     analyzer = Process(
                         target=analyze_commit,
