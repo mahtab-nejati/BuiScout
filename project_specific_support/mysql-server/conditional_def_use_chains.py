@@ -139,7 +139,9 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                 key=lambda pair: len(pair[0].strip("/").split("/")),
             )
         )
-        self.add_resolved_directories("CONFIGURE_COMPONENTS", node_data, resolved_directories, cluster)
+        self.add_resolved_directories(
+            "CONFIGURE_COMPONENTS", node_data, resolved_directories, cluster
+        )
 
     def visit_CONFIGURE_PLUGINS(self, node_data):
         self.visit_user_defined_normal_command(node_data)
@@ -157,17 +159,24 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                 key=lambda pair: len(pair[0].strip("/").split("/")),
             )
         )
-        self.add_resolved_directories("CONFIGURE_PLUGINS", node_data, resolved_directories, cluster)
+        self.add_resolved_directories(
+            "CONFIGURE_PLUGINS", node_data, resolved_directories, cluster
+        )
 
-    def add_resolved_directories(self,importing_command, node_data, resolved_directories, cluster):
+    def add_resolved_directories(
+        self, importing_command, node_data, resolved_directories, cluster
+    ):
         for _, resolution in resolved_directories:
             if self.sysdiff.file_data[resolution][f"data_flow_{cluster}_analysis"]:
                 continue
 
             # For files with GumTree error
             if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"{importing_command} (MySQL-Server) resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                self.log_file_path_resolution(
+                    f"{importing_command} (MySQL-Server)",
+                    "PARSER_ERROR",
+                    node_data,
+                    found_paths=[resolution],
                 )
                 continue
 
@@ -178,15 +187,21 @@ class ConditionalDefUseChains(cmake.ConditionalDefUseChains):
                     "importers"
                 ]
             ):
-                print(
-                    f"{importing_command} (MySQL-Server) resolution lead to recursive resolution for {self.ast.unparse(node_data)} resolved to {resolution} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    f"{importing_command} (MySQL-Server)",
+                    "RECURSION",
+                    node_data,
+                    found_paths=[resolution],
                 )
                 continue
 
             # Resolving to entry point
             if resolution == self.sysdiff.current_entry_file:
-                print(
-                    f"{importing_command} (MySQL-Server) resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    f"{importing_command} (MySQL-Server)",
+                    "ENTRY_POINT",
+                    node_data,
+                    found_paths=[resolution],
                 )
                 continue
 

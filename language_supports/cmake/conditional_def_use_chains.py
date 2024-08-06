@@ -413,9 +413,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 m_success,
                 m_resolutions,
-            ) = self.resolve_find_package_module_mode_file_path(
-                file_path_node
-            )
+            ) = self.resolve_find_package_module_mode_file_path(file_path_node)
             if not m_success:
                 m_resolutions = []
         else:
@@ -426,9 +424,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 c_success,
                 c_resolutions,
-            ) = self.resolve_find_package_config_mode_file_path(
-                file_path_node
-            )
+            ) = self.resolve_find_package_config_mode_file_path(file_path_node)
             if not c_success:
                 c_resolutions = []
         else:
@@ -439,9 +435,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             (
                 f_success,
                 f_resolutions,
-            ) = self.resolve_find_package_fetch_mode_file_path(
-                file_path_node
-            )
+            ) = self.resolve_find_package_fetch_mode_file_path(file_path_node)
             if not f_success:
                 f_resolutions = []
         else:
@@ -630,6 +624,41 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             )
 
         return False, None
+
+    def log_file_path_resolution(self, command, log_type, node_data, found_paths=[]):
+        sep = "\n\t\t"
+        if VERBOSE:
+            if log_type == "EXCLUDE_CMAKE_MODULE":
+                print(
+                    f"{command} resolution excluded a CMake module for {self.ast.unparse(node_data)} called from {self.ast.file_path}\n\tresolved to {found_paths[0]}"
+                )
+            elif log_type == "MANUAL_SKIP":
+                print(
+                    f"{command} resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+            return
+        else:
+            if log_type == "NOT_FOUND":
+                print(
+                    f"{command} resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                )
+            elif log_type == "MULTIPLE_PATH":
+                print(
+                    f"{command} resolution found multiple paths for {self.ast.unparse(node_data)} called from {self.ast.file_path}\n\tresolved to \n\t\t{sep.join(found_paths)}"
+                )
+            elif log_type == "PARSER_ERROR":
+                print(
+                    f"{command} resolution skipping a file with parser error for {self.ast.unparse(node_data)} called from {self.ast.file_path}\n\tresolved to {found_paths[0]}"
+                )
+            elif log_type == "RECURSION":
+                print(
+                    f"{command} resolution lead to recursive invocation for {self.ast.unparse(node_data)} called from {self.ast.file_path}\n\tresolved to {found_paths[0]}"
+                )
+            elif log_type == "ENTRY_POINT":
+                print(
+                    f"{command} resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}\n\ttresolved to {found_paths[0]}"
+                )
+            return
 
     def visit_function_definition(self, node_data, *args, **kwargs):
         """
@@ -1346,28 +1375,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Done after unsuccessful resoltuion attempt
             # to allow files with the same name as CMake modules
             if package_file_path in self.exclude_resolutions:
-                if VERBOSE:
-                    print(
-                        f"FIND_PACKAGE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {package_file_path} called from {self.ast.file_path}"
-                    )
+                self.log_file_path_resolution(
+                    "FIND_PACKAGE",
+                    "EXCLUDE_CMAKE_MODULE",
+                    node_data,
+                    found_paths=[package_file_path],
+                )
                 return
 
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if not found_files:
-                print(
-                    f"FIND_PACKAGE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
+                self.log_file_path_resolution("FIND_PACKAGE", "NOT_FOUND", node_data)
                 return
 
         # Successful resolution
         if isinstance(found_files, str):
             # For manaully skipped files
             if found_files.upper() == "SKIP":
-                if VERBOSE:
-                    print(
-                        f"FIND_PACKAGE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                    )
+                self.log_file_path_resolution("FIND_PACKAGE", "MANUAL_SKIP", node_data)
                 return
             else:
                 raise Exception(
@@ -1376,8 +1402,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # For reporting multiple resolutions
         if len(found_files) > 1:
-            print(
-                f"FIND_PACKAGE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(found_files)} called from {self.ast.file_path}"
+            self.log_file_path_resolution(
+                "FIND_PACKAGE", "MULTIPLE_PATH", node_data, found_paths=found_files
             )
 
         if node_data["operation"] in ["added", "deleted"]:
@@ -1387,8 +1413,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for resolution in found_files:
             # For files with GumTree error
             if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"FIND_PACKAGE resolution skipping a file with parser error for {self.ast_stack[-1].unparse(node_data)}"
+                self.log_file_path_resolution(
+                    "FIND_PACKAGE", "PARSER_ERROR", node_data, found_paths=[resolution]
                 )
                 continue
 
@@ -1399,15 +1425,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     "importers"
                 ]
             ):
-                print(
-                    f"FIND_PACKAGE resolution lead to recursive resolution for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                self.log_file_path_resolution(
+                    "FIND_PACKAGE", "RECURSION", node_data, found_paths=[resolution]
                 )
                 continue
 
             # Resolving to entry point
             if resolution == self.sysdiff.current_entry_file:
-                print(
-                    f"FIND_PACKAGE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                self.log_file_path_resolution(
+                    "FIND_PACKAGE", "ENTRY_POINT", node_data, found_paths=[resolution]
                 )
                 continue
 
@@ -1540,28 +1566,25 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # Done after unsuccessful resoltuion attempt
             # to allow files with the same name as CMake modules
             if included_file_path in self.exclude_resolutions:
-                if VERBOSE:
-                    print(
-                        f"INCLUDE resolution excluded a CMake module for {self.ast.unparse(node_data)}: {included_file_path} called from {self.ast.file_path}"
-                    )
+                self.log_file_path_resolution(
+                    "INCLUDE",
+                    "EXCLUDE_CMAKE_MODULE",
+                    node_data,
+                    found_paths=[included_file_path],
+                )
                 return
 
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if included_files is None:
-                print(
-                    f"INCLUDE resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                )
+                self.log_file_path_resolution("INCLUDE", "NOT_FOUND", node_data)
                 return
 
         # Successful resolution
         if isinstance(included_files, str):
             # For manaully skipped files
             if included_files.upper() == "SKIP":
-                if VERBOSE:
-                    print(
-                        f"INCLUDE resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                    )
+                self.log_file_path_resolution("INCLUDE", "MANUAL_SKIP", node_data)
                 return
             else:
                 raise Exception(
@@ -1570,8 +1593,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # For reporting multiple resolutions
         if len(included_files) > 1:
-            print(
-                f"INCLUDE resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(included_files)} called from {self.ast.file_path}"
+            self.log_file_path_resolution(
+                "INCLUDE", "MULTIPLE_PATH", node_data, found_paths=included_files
             )
 
         if node_data["operation"] in ["added", "deleted"]:
@@ -1581,8 +1604,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for resolution in included_files:
             # For files with GumTree error
             if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"INCLUDE resolution skipping a file with parser error for {self.ast_stack[-1].unparse(node_data)}"
+                self.log_file_path_resolution(
+                    "INCLUDE", "PARSER_ERROR", node_data, found_paths=[resolution]
                 )
                 continue
 
@@ -1593,15 +1616,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     "importers"
                 ]
             ):
-                print(
-                    f"INCLUDE resolution lead to recursive resolution for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                self.log_file_path_resolution(
+                    "INCLUDE", "RECURSION", node_data, found_paths=[resolution]
                 )
                 continue
 
             # Resolving to entry point
             if resolution == self.sysdiff.current_entry_file:
-                print(
-                    f"INCLUDE resolution lead to project's entry point for {self.ast_stack[-1].unparse(node_data)} called from {self.ast_stack[-1].file_path}"
+                self.log_file_path_resolution(
+                    "INCLUDE", "ENTRY_POINT", node_data, found_paths=[resolution]
                 )
                 continue
 
@@ -2097,18 +2120,17 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             # For files that do not exist in the project
             # or files that are refered to using a variable
             if added_files is None:
-                print(
-                    f"ADD_SUBDIRECTORY resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    "ADD_SUBDIRECTORY", "NOT_FOUND", node_data
                 )
                 return
 
         if isinstance(added_files, str):
             # For manaully skipped files
             if added_files.upper() == "SKIP":
-                if VERBOSE:
-                    print(
-                        f"ADD_SUBDIRECTORY resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                    )
+                self.log_file_path_resolution(
+                    "ADD_SUBDIRECTORY", "MANUAL_SKIP", node_data
+                )
                 return
             else:
                 raise Exception(
@@ -2117,8 +2139,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         # For reporting multiple resolutions
         if len(added_files) > 1:
-            print(
-                f"ADD_SUBDIRECTORY resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
+            self.log_file_path_resolution(
+                "ADD_SUBDIRECTORY", "MULTIPLE_PATH", node_data, found_paths=added_files
             )
 
         # Add to reachability stack
@@ -2128,8 +2150,11 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         for resolution in added_files:
             # For files with GumTree error
             if self.sysdiff.file_data[resolution]["diff"] is None:
-                print(
-                    f"ADD_SUBDIRECTORY resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                self.log_file_path_resolution(
+                    "ADD_SUBDIRECTORY",
+                    "PARSER_ERROR",
+                    node_data,
+                    found_paths=[resolution],
                 )
                 continue
 
@@ -2140,15 +2165,18 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                     "importers"
                 ]
             ):
-                print(
-                    f"ADD_SUBDIRECTORY resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    "ADD_SUBDIRECTORY", "RECURSION", node_data, found_paths=[resolution]
                 )
                 continue
 
             # Resolving to entry point
             if resolution == self.sysdiff.current_entry_file:
-                print(
-                    f"ADD_SUBDIRECTORY resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    "ADD_SUBDIRECTORY",
+                    "ENTRY_POINT",
+                    node_data,
+                    found_paths=[resolution],
                 )
                 continue
 
@@ -3470,18 +3498,13 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                 # For files that do not exist in the project
                 # or files that are refered to using a variable
                 if added_files is None:
-                    print(
-                        f"SUBDIRS resolution cannot resolve path for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                    )
+                    self.log_file_path_resolution("SUBDIRS", "NOT_FOUND", node_data)
                     return
 
             if isinstance(added_files, str):
                 # For manaully skipped files
                 if added_files.upper() == "SKIP":
-                    if VERBOSE:
-                        print(
-                            f"SUBDIRS resolution skipping manually set for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
-                        )
+                    self.log_file_path_resolution("SUBDIRS", "MANUAL_SKIP", node_data)
                     return
                 else:
                     raise Exception(
@@ -3490,8 +3513,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
             # For reporting multiple resolutions
             if len(added_files) > 1:
-                print(
-                    f"SUBDIRS resolution found multiple paths for {self.ast.unparse(node_data)}: {' , '.join(added_files)} called from {self.ast.file_path}"
+                self.log_file_path_resolution(
+                    "SUBDIRS", "MULTIPLE_PATH", node_data, found_paths=added_files
                 )
 
             # Add to reachability stack
@@ -3501,8 +3524,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             for resolution in added_files:
                 # For files with GumTree error
                 if self.sysdiff.file_data[resolution]["diff"] is None:
-                    print(
-                        f"SUBDIRS resolution skipping a file with parser error for {self.ast.unparse(node_data)}"
+                    self.log_file_path_resolution(
+                        "SUBDIRS", "PARSER_ERROR", node_data, found_paths=[resolution]
                     )
                     continue
 
@@ -3513,15 +3536,15 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
                         "importers"
                     ]
                 ):
-                    print(
-                        f"SUBDIRS resolution lead to recursive resolution for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    self.log_file_path_resolution(
+                        "SUBDIRS", "RECURSION", node_data, found_paths=[resolution]
                     )
                     continue
 
                 # Resolving to entry point
                 if resolution == self.sysdiff.current_entry_file:
-                    print(
-                        f"SUBDIRS resolution lead to project's entry point for {self.ast.unparse(node_data)} called from {self.ast.file_path}"
+                    self.log_file_path_resolution(
+                        "SUBDIRS", "ENTRY_POINT", node_data, found_paths=[resolution]
                     )
                     continue
 
