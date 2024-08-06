@@ -1,7 +1,7 @@
-.VSCodeCounter
-todo.md
-tryouts*
-config.json
+**/*.VSCodeCounter
+**/todo.md
+**/tryouts*
+**/config.json
 .antlr
 .Rhistory
 __pycache__/
