@@ -407,7 +407,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         manual_success, resolution = self.get_manually_resolved_path(file_path_node)
         if manual_success:
-            return True, resolution
+            return True, list(set(resolution))
 
         if module_mode:
             (
@@ -450,7 +450,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
 
         return (
             m_success or c_success or f_success,
-            m_resolutions + c_resolutions + f_resolutions,
+            list(set(m_resolutions + c_resolutions + f_resolutions)),
         )
 
     def resolve_include_file_path(self, file_path_node):
@@ -640,7 +640,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         actor_point = self.register_new_actor_point(node_data)
         def_point = self.register_new_def_point(node_data, actor_point, "FUNCTION")
-        
+
         # TODO (Medium)
         # return self.process_callable_definition_location(node_data, def_point)
         if VERBOSE:
@@ -677,7 +677,6 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         actor_point = self.register_new_actor_point(node_data)
         def_point = self.register_new_def_point(node_data, actor_point, "MACRO")
-
 
         # # TODO (Medium)
         # # return self.process_callable_definition_location(node_data, def_point)
