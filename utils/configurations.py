@@ -7,8 +7,9 @@ ROOT_PATH = Path(__file__).parent.parent
 # Appending root path to sys.path
 # to import from utils and ast_model
 sys.path.append(str(ROOT_PATH))
+docker_mountpoint = Path("/mountpoint/")
 
-with open(ROOT_PATH / "config.json", "r") as f:
+with open(docker_mountpoint / "config.json", "r") as f:
     config = json5.load(f)
 
 USE_MULTIPROCESSING = config["USE_MULTIPROCESSING"].upper() == "YES"
@@ -38,9 +39,11 @@ USE_PROJECT_SPECIFIC_MODELS = not (
 
 FILTERING = config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES"
 
-DATA_PATH = Path(config["DATA_PATH"])
+DATA_PATH = docker_mountpoint / f'{config["RELATIVE_DATA_PATH"]}'
 PROJECT = config["PROJECT"]
-REPOSITORY = config["REPOSITORY"].rstrip("/")
+REPOSITORY = str(config["REPOSITORY"].rstrip("/"))
+if not REPOSITORY.startswith("http"):
+    REPOSITORY = str(docker_mountpoint / f"{REPOSITORY}")
 if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:
