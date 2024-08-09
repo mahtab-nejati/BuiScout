@@ -9,37 +9,42 @@ ROOT_PATH = Path(__file__).parent.parent
 sys.path.append(str(ROOT_PATH))
 docker_mountpoint = Path("/mountpoint/")
 
-with open(docker_mountpoint / "config.json", "r") as f:
-    config = json5.load(f)
-
-USE_MULTIPROCESSING = config["USE_MULTIPROCESSING"].upper() == "YES"
-
-PROCESS_AS_A_COMMIT_SERIES = config["PROCESS_AS_A_COMMIT_SERIES"].upper() == "YES"
-
-if PROCESS_AS_A_COMMIT_SERIES:
-    USE_EXISTING_AST_DIFFS = False
+if "test" in sys.argv:
+    with open(docker_mountpoint / "config_test.json", "r") as f:
+        config = json5.load(f)
 else:
-    USE_EXISTING_AST_DIFFS = config["USE_EXISTING_AST_DIFFS"].upper() == "YES"
+    with open(docker_mountpoint / "config.json", "r") as f:
+        config = json5.load(f)
 
-CLEAR_PROGRESS = config["CLEAR_PROGRESS"].upper() == "YES"
+options = config["OPTIONS"]
 
-VERBOSE = config["VERBOSE"].upper() == "YES"
+RESOURCE_CONTROL = options["RESOURCE_CONTROL"]
 
-DATA_FLOW_ANALYSIS_MODE = config["DATA_FLOW_ANALYSIS_MODE"].upper()
-if DATA_FLOW_ANALYSIS_MODE != "GLOBAL":
+COMMIT_SERIES = options["COMMIT_SERIES"]
+
+if COMMIT_SERIES:
+    AST_DIFFS_REUSE = False
+else:
+    AST_DIFFS_REUSE = options["AST_DIFFS_REUSE"]
+
+PROGRESS_RESET = options["PROGRESS_RESET"]
+
+VERBOSE = options["VERBOSE"]
+
+if options["CHANGE_LOCATION_ONLY"]:
     DATA_FLOW_ANALYSIS_MODE = "CHANGE_LOCATION"
+else:
+    DATA_FLOW_ANALYSIS_MODE = "GLOBAL"
 
-SNAPSHOT_MODE = config["SNAPSHOT_MODE"].upper() == "YES"
+SNAPSHOT_MODE = options["SNAPSHOT_MODE"]
 
-EXECUTE_CALLABLE_TYPES = config["EXECUTE_CALLABLE_TYPES"].upper() == "YES"
+EXECUTE_CALLABLES = options["EXECUTE_CALLABLES"]
 
-USE_PROJECT_SPECIFIC_MODELS = not (
-    config["USE_PROJECT_SPECIFIC_MODELS"].upper() == "NO"
-)
+PROJECT_MODEL = options["PROJECT_MODEL"]
 
-FILTERING = config["FILTER_BUILDY_COMMITS_AT_INITIALIZATION"].upper() == "YES"
+FILTERING = options["INITIALIZE_WITH_BUILD_COMMITS"]
 
-DATA_PATH = docker_mountpoint / f'{config["RELATIVE_DATA_PATH"]}'
+DATA_PATH = docker_mountpoint / f'{config["RELATIVE_RESULT_PATH"]}'
 PROJECT = config["PROJECT"]
 REPOSITORY = str(config["REPOSITORY"].rstrip("/"))
 if not REPOSITORY.startswith("http"):
@@ -55,19 +60,17 @@ else:
     COMMITS = config["COMMITS"]
 EXCLUDED_COMMITS = config["EXCLUDED_COMMITS"]
 
-BUILD_SYSTEM = config["BUILD_SYSTEM"].lower()
+BUILD_TECHNOLOGY = config["BUILD_TECHNOLOGY"].lower()
 ENTRY_FILES = config["ENTRY_FILES"]
 
 PROJECT_SPECIFIC_INCLUDES = config["PROJECT_SPECIFIC_INCLUDES"]
 PROJECT_SPECIFIC_EXCLUDES = config["PROJECT_SPECIFIC_EXCLUDES"]
 
-PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION = config[
-    "PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION"
-]
+PROJECT_SPECIFIC_PATH_RESOLUTION = config["PROJECT_SPECIFIC_PATH_RESOLUTION"]
 
 # EXTENDED CONFIGURATIONS
 
-SAVE_PATH = Path(DATA_PATH / f"{PROJECT}_{BUILD_SYSTEM}_results")
+SAVE_PATH = Path(DATA_PATH / f"{PROJECT}_{BUILD_TECHNOLOGY}_results")
 SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
 # PATTERN_SETS is a dictionary with
@@ -78,36 +81,19 @@ SAVE_PATH.mkdir(parents=True, exist_ok=True)
 # str.ends_with() method.
 # To add support for a new build system, add and elif clause
 # before the else clause and specify languages and file patterns.
-if BUILD_SYSTEM == "cmake":
+if BUILD_TECHNOLOGY == "cmake":
     LANGUAGES = ["cmake"]
     PATTERN_SETS = {
         "cmake": {
-            "include": {"starts_with": [], "ends_with": ["CMakeLists.txt", ".cmake"]},
+            "include": {
+                "starts_with": [],
+                "ends_with": ["CMakeLists.txt", ".cmake"],
+            },
             "exclude": {"starts_with": [], "ends_with": [".h.cmake"]},
         }
     }  # cmake file name patterns
-elif BUILD_SYSTEM == "bazel":
-    LANGUAGES = ["python"]
-    PATTERN_SETS = {
-        "python": {
-            "include": {"starts_with": [], "ends_with": ["BUILD.bazel", ".bzl"]},
-            "exclude": {"starts_with": [], "ends_with": []},
-        }
-    }  # python file name patterns
-elif BUILD_SYSTEM == "gradle":
-    LANGUAGES = ["kotlin", "groovy"]
-    PATTERN_SETS = {
-        "kotlin": {  # kotlin file name patterns
-            "include": {"starts_with": [], "ends_with": [".gradle.kts"]},
-            "exclude": {"starts_with": [], "ends_with": []},
-        },
-        "groovy": {  # groovy file name patterns
-            "include": {"starts_with": [], "ends_with": [".gradle.kts"]},
-            "exclude": {"starts_with": [], "ends_with": []},
-        },
-    }
 else:
-    raise ValueError(f'Selected build system "{BUILD_SYSTEM}" not supported.')
+    raise ValueError(f'Selected build system "{BUILD_TECHNOLOGY}" not supported.')
 
 for l in LANGUAGES:
     if l in PROJECT_SPECIFIC_INCLUDES:

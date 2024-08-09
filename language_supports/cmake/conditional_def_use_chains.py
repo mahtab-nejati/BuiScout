@@ -1,9 +1,9 @@
 import data_flow_analysis as cm
 import pandas as pd
 from utils.configurations import (
-    PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION,
+    PROJECT_SPECIFIC_PATH_RESOLUTION,
     ROOT_PATH,
-    EXECUTE_CALLABLE_TYPES,
+    EXECUTE_CALLABLES,
     VERBOSE,
 )
 from utils.exceptions import MissingArgumentsException, DebugException
@@ -17,7 +17,7 @@ with open(ROOT_PATH / "language_supports/cmake/cmake_modules.txt", "r") as f:
 
 
 class ConditionalDefUseChains(cm.ConditionalDefUseChains):
-    manual_resolution = PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION
+    manual_resolution = PROJECT_SPECIFIC_PATH_RESOLUTION
     exclude_resolutions = CMAKE_MODULES
 
     def register_new_def_point(
@@ -138,6 +138,8 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         """
         Returns (success_flag, resolution)
         """
+        if len(self.manual_resolution)==0:
+            return False, None
         file_path = self.ast.unparse(file_path_node)
         file_path = file_path.strip('"').strip("'")
         file_path = file_path.replace(" ", "")
@@ -153,7 +155,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
             return True, resolved_path_item[0]["callee_resolved_path"]
         if len(resolved_path_item) > 1:
             raise Exception(
-                "Please make sure you do not provide two PROJECT_SPECIFIC_MANUAL_PATH_RESOLUTION items with the same caller_file_path and callee_file_path."
+                "Please make sure you do not provide two PROJECT_SPECIFIC_PATH_RESOLUTION items with the same caller_file_path and callee_file_path."
             )
         return False, None
 
@@ -1034,7 +1036,7 @@ class ConditionalDefUseChains(cm.ConditionalDefUseChains):
         self.generic_visit(node_data, actor_point)
         # self.parent_names_available = temp_flag
         if len(def_points) > 0:
-            if EXECUTE_CALLABLE_TYPES:
+            if EXECUTE_CALLABLES:
                 list(
                     map(
                         lambda def_point: self.process_callable_call_location(

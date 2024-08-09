@@ -8,10 +8,10 @@ from datetime import datetime
 from utils.exceptions import DebugException
 from utils.helpers import create_csv_files, file_is_target, clear_existing_data
 from utils.configurations import (
-    USE_MULTIPROCESSING,
-    PROCESS_AS_A_COMMIT_SERIES,
-    USE_EXISTING_AST_DIFFS,
-    CLEAR_PROGRESS,
+    RESOURCE_CONTROL,
+    COMMIT_SERIES,
+    AST_DIFFS_REUSE,
+    PROGRESS_RESET,
     ROOT_PATH,
     SAVE_PATH,
     REPOSITORY,
@@ -24,60 +24,49 @@ from utils.configurations import (
     PATTERN_SETS,
     PATTERNS_FLATTENED,
     FILTERING,
-    USE_PROJECT_SPECIFIC_MODELS,
+    PROJECT_MODEL,
     DATA_FLOW_ANALYSIS_MODE,
 )
 
 
-SAVE_PATH = (
-    SAVE_PATH
-    / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}{'_series' if PROCESS_AS_A_COMMIT_SERIES else ''}"
-)
-COMMITS_SAVE_PATH = SAVE_PATH / "commits"
-COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
+if __name__ == "__main__":
 
-if PROCESS_AS_A_COMMIT_SERIES:
-    from system_commit_model import SystemDiffSeries as SystemDiffModel
+    SAVE_PATH = (
+        SAVE_PATH
+        / f"system_{DATA_FLOW_ANALYSIS_MODE.lower()}{'_series' if COMMIT_SERIES else ''}"
+    )
+    COMMITS_SAVE_PATH = SAVE_PATH / "commits"
+    COMMITS_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
-    # Clear existing code and gumtree outputs
-    clear_existing_data(SAVE_PATH)
-elif USE_EXISTING_AST_DIFFS:
-    from system_commit_model import SystemDiffShortcut as SystemDiffModel
-else:
-    from system_commit_model import SystemDiff as SystemDiffModel
-# Overwrite if project specific models are actiavted and exist
-if USE_PROJECT_SPECIFIC_MODELS:
-    project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
-    if project_specific_support_path.exists():
-        if PROCESS_AS_A_COMMIT_SERIES:
-            SystemDiffModel = importlib.import_module(
-                f"project_specific_support.{PROJECT}"
-            ).SystemDiffSeries
-            # Clear existing code and gumtree outputs
-            clear_existing_data(SAVE_PATH)
-        elif USE_EXISTING_AST_DIFFS:
-            SystemDiffModel = importlib.import_module(
-                f"project_specific_support.{PROJECT}"
-            ).SystemDiffShortcut
-        else:
-            SystemDiffModel = importlib.import_module(
-                f"project_specific_support.{PROJECT}"
-            ).SystemDiff
+    if COMMIT_SERIES:
+        from system_commit_model import SystemDiffSeries as SystemDiffModel
 
+        # Clear existing code and gumtree outputs
+        clear_existing_data(SAVE_PATH)
+    elif AST_DIFFS_REUSE:
+        from system_commit_model import SystemDiffShortcut as SystemDiffModel
+    else:
+        from system_commit_model import SystemDiff as SystemDiffModel
+    # Overwrite if project specific models are actiavted and exist
+    if PROJECT_MODEL:
+        project_specific_support_path = ROOT_PATH / "project_specific_support" / PROJECT
+        if project_specific_support_path.exists():
+            if COMMIT_SERIES:
+                SystemDiffModel = importlib.import_module(
+                    f"project_specific_support.{PROJECT}"
+                ).SystemDiffSeries
+                # Clear existing code and gumtree outputs
+                clear_existing_data(SAVE_PATH)
+            elif AST_DIFFS_REUSE:
+                SystemDiffModel = importlib.import_module(
+                    f"project_specific_support.{PROJECT}"
+                ).SystemDiffShortcut
+            else:
+                SystemDiffModel = importlib.import_module(
+                    f"project_specific_support.{PROJECT}"
+                ).SystemDiff
 
-def analyze_commit(
-    REPOSITORY,
-    repo,
-    git_repo,
-    BRANCH,
-    commit,
-    ENTRY_FILES,
-    LANGUAGE,
-    PATTERNS,
-    ROOT_PATH,
-    SAVE_PATH,
-):
-    diff = SystemDiffModel(
+    def analyze_commit(
         REPOSITORY,
         repo,
         git_repo,
@@ -88,51 +77,61 @@ def analyze_commit(
         PATTERNS,
         ROOT_PATH,
         SAVE_PATH,
-    )
+    ):
+        diff = SystemDiffModel(
+            REPOSITORY,
+            repo,
+            git_repo,
+            BRANCH,
+            commit,
+            ENTRY_FILES,
+            LANGUAGE,
+            PATTERNS,
+            ROOT_PATH,
+            SAVE_PATH,
+        )
 
-    diff.export_csv(propagation_slice_mode=True)
+        diff.export_csv(propagation_slice_mode=True)
 
-    commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
-    commit_build_files_df.drop(
-        labels=["diff", "language_specific_info"],
-        axis=1,
-        inplace=True,
-    )
-    commit_build_files_df.to_csv(
-        SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
-    )
+        commit_build_files_df = pd.DataFrame(list(diff.file_data.values()))
+        commit_build_files_df.drop(
+            labels=["diff", "language_specific_info"],
+            axis=1,
+            inplace=True,
+        )
+        commit_build_files_df.to_csv(
+            SAVE_PATH / "all_build_files.csv", mode="a", header=False, index=False
+        )
 
-    del diff
-    gc.collect()
+        del diff
+        gc.collect()
 
-
-if CLEAR_PROGRESS:
-    create_csv_files(SAVE_PATH)
-    completed_commits = []
-else:
-    try:
-        completed_commits = pd.read_csv(SAVE_PATH / "all_commits.csv")
-        completed_commits = list(completed_commits.commit_hash.unique())
-    except:
-        completed_commits = []
+    if PROGRESS_RESET:
         create_csv_files(SAVE_PATH)
+        completed_commits = []
+    else:
+        try:
+            completed_commits = pd.read_csv(SAVE_PATH / "all_commits.csv")
+            completed_commits = list(completed_commits.commit_hash.unique())
+        except:
+            completed_commits = []
+            create_csv_files(SAVE_PATH)
 
-repo = Repository(
-    REPOSITORY,
-    only_modifications_with_file_types=(
-        PATTERNS_FLATTENED["include"] if FILTERING else None
-    ),  # See EXCEPTION_HANDLING_GitPython in comments within code
-    only_commits=COMMITS,
-    only_in_branch=BRANCH,
-    # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)
-)
-git_repo = Git(REPOSITORY)
+    repo = Repository(
+        REPOSITORY,
+        only_modifications_with_file_types=(
+            PATTERNS_FLATTENED["include"] if FILTERING else None
+        ),  # See EXCEPTION_HANDLING_GitPython in comments within code
+        only_commits=COMMITS,
+        only_in_branch=BRANCH,
+        # order="reverse",  # Orders commits from newest to oldest, default behaviour is desired (oldest to newest)
+    )
+    git_repo = Git(REPOSITORY)
 
-all_commits_start = datetime.now()
+    all_commits_start = datetime.now()
 
-# Run tool on commits
-chronological_commit_order = 0
-if __name__ == "__main__":
+    # Run tool on commits
+    chronological_commit_order = 0
     for commit in tqdm(repo.traverse_commits()):
         print(f"Commit in process: {commit.hash}")
         if commit.hash in completed_commits:
@@ -162,14 +161,14 @@ if __name__ == "__main__":
         # all the commits and just skipping the ones
         # filtered based on user's specifications.
         # This is why use of
-        # "FILTER_BUILDY_COMMITS_AT_INITIALIZATION": "NO" is recommended
+        # "INITIALIZE_WITH_BUILD_COMMITS": "NO" is recommended
         # in the configurations.
         try:
             # This will throw an error if the commit is missing
             commit.modified_files
         except AttributeError:
             # Clear existing code and gumtree outputs
-            if PROCESS_AS_A_COMMIT_SERIES:
+            if COMMIT_SERIES:
                 clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
@@ -178,7 +177,7 @@ if __name__ == "__main__":
             continue
         except ValueError:
             # Clear existing code and gumtree outputs
-            if PROCESS_AS_A_COMMIT_SERIES:
+            if COMMIT_SERIES:
                 clear_existing_data(SAVE_PATH)
             if not (commit.hash in EXCLUDED_COMMITS):
                 raise DebugException(
@@ -213,7 +212,7 @@ if __name__ == "__main__":
                         shutil.rmtree(to_remove)
                     continue
 
-                if USE_MULTIPROCESSING:
+                if RESOURCE_CONTROL:
                     analyzer = Process(
                         target=analyze_commit,
                         args=[
@@ -274,7 +273,7 @@ if __name__ == "__main__":
     git_repo.checkout(BRANCH)
 
     # Clear existing code and gumtree outputs
-    if PROCESS_AS_A_COMMIT_SERIES:
+    if COMMIT_SERIES:
         clear_existing_data(SAVE_PATH)
 
     print(f"Finished processing in {datetime.now()-all_commits_start}")
