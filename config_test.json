@@ -1,0 +1,52 @@
+{
+  "OPTIONS": {
+    "RESOURCE_CONTROL": false,
+    "COMMIT_SERIES": true,
+    "AST_DIFFS_REUSE": true,
+    "PROGRESS_RESET": true,
+    "VERBOSE": false,
+    "CHANGE_LOCATION_ONLY": false,
+    "SNAPSHOT_MODE": false,
+    "EXECUTE_CALLABLES": true,
+    "PROJECT_MODEL": true,
+    "INITIALIZE_WITH_BUILD_COMMITS": false
+  },
+  "RELATIVE_RESULT_PATH": "data/etlegacy",
+  "PROJECT": "etlegacy",
+  "REPOSITORY": "subject/etlegacy",
+  "BRANCH": "master",
+  "COMMITS": [
+    "3890f62278bc3f2df067128414a49dab1736306d",
+    "b63943d3eb53e05c390640a7de8a9b92cca22df2",
+    "c78a794722ce7af570b3e036be72273cfdafe0c5",
+    "67dbb505be7fa4559f96007027ccb92334cc3710",
+    "ac6f1ec05f96c64b474713cc6797bc578bba3b51",
+    "4a0716da34d6e4b7153d68bfe684a6df7e9d5144",
+    "b52bd903f071e79ab7bf5db8d99f280ba8e6a5e9"
+  ],
+  "EXCLUDED_COMMITS": [
+    "3890f62278bc3f2df067128414a49dab1736306d",
+    "b63943d3eb53e05c390640a7de8a9b92cca22df2"
+  ],
+  "BUILD_TECHNOLOGY": "cmake",
+  "ENTRY_FILES": ["CMakeLists.txt"],
+  "PROJECT_SPECIFIC_INCLUDES": {
+    "cmake": {
+      "starts_with": [],
+      "ends_with": ["CMakeLists.txt", ".cmake"]
+    }
+  },
+  "PROJECT_SPECIFIC_EXCLUDES": {
+    "cmake": {
+      "starts_with": ["libs/"],
+      "ends_with": [".h.cmake", ".pc.cmake"]
+    }
+  },
+  "PROJECT_SPECIFIC_PATH_RESOLUTION": [
+    {
+      "caller_file_path": "SAMPLE/PATH.cmake",
+      "callee_file_path": "${CLIENT_SRC_DIR}",
+      "callee_resolved_path": ["SAMPLE/RESOLUTION/PATH/"]
+    }
+  ]
+}
