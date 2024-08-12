@@ -1,18 +1,24 @@
 #! /bin/zsh 
 
-SUBJECT=$1
+# Check if the first argument is empty
+if [ -z "$1" ]; then
+    echo "\n\e[1m\e[32m*** Usage: [arg] where arg is the tag to be assigned to the image.***\n\e[0m"
+    DOCKER="buiscout"
+else
+    DOCKER="buiscout:$1"
+fi
+
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 
 cd $DIR
 cd ..
 
-docker image rm -f buiscout
-docker build . -t buiscout -f $DIR/Dockerfile
+cp -f $DIR/.dockerignore ./
 
-mkdir -p ./BuiScout_docker_mountpoint/data
-mkdir -p ./BuiScout_docker_mountpoint/subject
+docker image rm -f $DOCKER
+docker build . -t $DOCKER -f $DIR/Dockerfile 
+rm .dockerignore
 
-cp $DIR/config.json ./BuiScout_docker_mountpoint/.
-cp -rn ./subject/$SUBJECT ./BuiScout_docker_mountpoint/subject/.
+cp $DIR/config.json ./_BuiScout_docker_mountpoint/.
 
-docker run --rm -v "$(pwd)/BuiScout_docker_mountpoint":/mountpoint/ buiscout:latest
+docker run --rm -it -v "$(pwd)/_BuiScout_docker_mountpoint":/mountpoint/ $DOCKER bash

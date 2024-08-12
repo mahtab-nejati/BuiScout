@@ -173,3 +173,11 @@ def clear_existing_data(SAVE_PATH):
     to_remove = Path(SAVE_PATH / "gumtree_output")
     if to_remove.exists():
         shutil.rmtree(to_remove)
+
+
+def setup_init():
+    return
+
+
+def setup_is_completed():
+    return

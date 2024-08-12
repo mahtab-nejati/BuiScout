@@ -1,0 +1,54 @@
+# Ignore everything
+*
+
+# Allow files and directories
+!/BuiScout/data_flow_analysis
+!/BuiScout/diff_model
+!/BuiScout/language_supports
+!/BuiScout/project_specific_support
+!/BuiScout/system_commit_model
+!/BuiScout/test
+!/BuiScout/utils
+!/BuiScout/convert.sh
+!/BuiScout/process.sh
+!/BuiScout/requirements.txt
+!/BuiScout/scout.py
+!/tree-sitter-parser
+!/gumtree/dist/build/distributions/gumtree-3.1.0-SNAPSHOT/
+
+# Ignore unnecessary files inside allowed directories
+# This should go after the allowed directories
+**/*~
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+.antlr
+.Rhistory
+__pycache__/
+.DS_Store
+graph.gv
+graph.gv.pdf
+*.log
+.venv/
+venv/
+.idea/
+*.pickle
+.vscode
+.ipynb_checkpoints/
+KDE/
+KDE_command_analysis/
+graph_dots/
+graph_dots
+graph_dots/*
+graph_dots_final/
+koffice-plugins/
+graphs/
+
+.env/
+KDE/
+KDE_command_analysis/
+graph_dots/
+graph_dots_final/
+koffice-plugins/
+venv/
+.arm_venv/

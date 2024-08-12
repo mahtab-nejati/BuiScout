@@ -1,5 +1,6 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
 FROM ubuntu:22.04
+SHELL ["/bin/bash", "-l", "-c"]
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -48,10 +49,16 @@ COPY BuiScout /BuiScout
 RUN pip install -r /BuiScout/requirements.txt
 
 # Creates a non-root user with an explicit UID and adds permission to access the /BuiScout folder
-# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
+# # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
 # RUN adduser -u 5678 --disabled-password --force-badname --gecos "" BuiScoutUser && chown -R BuiScoutUser /BuiScout
 # USER BuiScoutUser
-
+# WORKDIR /home/BuiScoutUser
+# RUN echo '\nexport PS1="[\u@docker] \W # "' >> /home/BuiScoutUser/.bashrc
+# RUN echo '\nalias scout="python3 /BuiScout/scout.py"' >> /home/BuiScoutUser/.bashrc
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-WORKDIR /BuiScout
-CMD ["python3", "scout.py"]
+
+# CMD ["python3", "scout.py"]
+ENV HOME=/root
+WORKDIR $HOME
+RUN echo 'export PS1="\e[1m[\e[34mBuiScout\e[37m] \e[32m\W \e[37m# \e[0m"' >> $HOME/.bashrc
+RUN echo 'alias scout="python3 /BuiScout/scout.py"' >> $HOME/.bashrc

@@ -1,16 +1,3 @@
-from utils.helpers import setup_is_completed
-from importlib import import_module
-import sys
-
-
-if "init" in sys.argv:
-    import_module()
-else:
-    if not setup_is_completed():
-        pass
-    else:
-        pass
-
 from multiprocessing import Process
 from pydriller import Repository
 from pydriller.git import Git
