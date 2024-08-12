@@ -11,9 +11,9 @@
     "PROJECT_MODEL": true,
     "INITIALIZE_WITH_BUILD_COMMITS": false
   },
-  "RELATIVE_RESULT_PATH": "data/etlegacy",
+  "RELATIVE_RESULT_PATH": "test_output/etlegacy",
   "PROJECT": "etlegacy",
-  "REPOSITORY": "subject/etlegacy",
+  "REPOSITORY": "test/etlegacy",
   "BRANCH": "master",
   "COMMITS": [
     "3890f62278bc3f2df067128414a49dab1736306d",

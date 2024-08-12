@@ -10,11 +10,13 @@ sys.path.append(str(ROOT_PATH))
 docker_mountpoint = Path("/mountpoint/")
 
 if "test" in sys.argv:
-    with open(docker_mountpoint / "config_test.json", "r") as f:
+    with open(ROOT_PATH / "test/config.json", "r") as f:
         config = json5.load(f)
+    repository_directory = ROOT_PATH
 else:
     with open(docker_mountpoint / "config.json", "r") as f:
         config = json5.load(f)
+    repository_directory = docker_mountpoint
 
 options = config["OPTIONS"]
 
@@ -48,7 +50,7 @@ DATA_PATH = docker_mountpoint / f'{config["RELATIVE_RESULT_PATH"]}'
 PROJECT = config["PROJECT"]
 REPOSITORY = str(config["REPOSITORY"].rstrip("/"))
 if not REPOSITORY.startswith("http"):
-    REPOSITORY = str(docker_mountpoint / f"{REPOSITORY}")
+    REPOSITORY = str(repository_directory / f"{REPOSITORY}")
 if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:
