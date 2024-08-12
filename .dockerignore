@@ -13,6 +13,7 @@
 !/BuiScout/process.sh
 !/BuiScout/requirements.txt
 !/BuiScout/scout.py
+!/BuiScout/execute.py
 !/tree-sitter-parser
 !/gumtree/dist/build/distributions/gumtree-3.1.0-SNAPSHOT/
 

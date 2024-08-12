@@ -12,10 +12,6 @@ ENV PYTHONUNBUFFERED=1
 RUN apt update -y
 RUN apt upgrade -y
 RUN apt install -y openjdk-11-jre python3 pip graphviz graphviz-dev
-# RUN apt install -y software-properties-common
-# RUN add-apt-repository ppa:openjdk-r/ppa
-# RUN apt update -y
-# RUN apt upgrade -y
 
 # Set up tree-sitter
 RUN apt install -y curl
@@ -35,29 +31,10 @@ ENV PATH=${PATH}:/tree-sitter-parser
 # RUN npm init --yes
 # RUN npm install --save nan
 
-
-# # Set up SWAP space
-# RUN fallocate -l 16G /swapfile 
-# RUN chmod 600 /swapfile 
-# RUN mkswap /swapfile 
-# RUN swapon /swapfile 
-# RUN echo "/swapfile   swap   swap     defaults    0 0" >> /etc/fstab
-
-
 # Set up BuiScout
 COPY BuiScout /BuiScout
 RUN pip install -r /BuiScout/requirements.txt
 
-# Creates a non-root user with an explicit UID and adds permission to access the /BuiScout folder
-# # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-# RUN adduser -u 5678 --disabled-password --force-badname --gecos "" BuiScoutUser && chown -R BuiScoutUser /BuiScout
-# USER BuiScoutUser
-# WORKDIR /home/BuiScoutUser
-# RUN echo '\nexport PS1="[\u@docker] \W # "' >> /home/BuiScoutUser/.bashrc
-# RUN echo '\nalias scout="python3 /BuiScout/scout.py"' >> /home/BuiScoutUser/.bashrc
-# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-
-# CMD ["python3", "scout.py"]
 ENV HOME=/root
 WORKDIR $HOME
 RUN echo 'export PS1="\e[1m[\e[34mBuiScout\e[37m] \e[32m\W \e[37m# \e[0m"' >> $HOME/.bashrc

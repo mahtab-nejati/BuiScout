@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-import shutil
+import shutil, sys
 from .exceptions import DebugException
 
 #################################
@@ -175,9 +175,10 @@ def clear_existing_data(SAVE_PATH):
         shutil.rmtree(to_remove)
 
 
-def setup_init():
-    return
+def get_mountpoint():
+    mountpoint = Path(__file__).parent.parent.parent / "_BuiScout_mountpoint/"
+    return mountpoint
 
 
-def setup_is_completed():
-    return
+def setup_is_completed(mountpoint):
+    return mountpoint.is_dir()

@@ -2,7 +2,7 @@
 
 # Check if the first argument is empty
 if [ -z "$1" ]; then
-    echo "Usage: You can specify a tag for the docker image 'buiscout'."
+    echo '\n\e[1m\e[32m*** Usage: [tag] runs docker image buiscout:tag (with the tag). Default tag is "latest" ***\n\e[0m'
     DOCKER="buiscout"
 else
     DOCKER="buiscout:$1"
@@ -13,6 +13,6 @@ DIR="$( cd "$( dirname "$0" )" && pwd )"
 cd $DIR
 cd ..
 
-cp $DIR/config.json ./_BuiScout_docker_mountpoint/.
+cp $DIR/config.json ./_BuiScout_mountpoint/.
 
-docker run --rm -i -v "$(pwd)/_BuiScout_docker_mountpoint":/mountpoint/ $DOCKER
+docker run --rm -it -v "$(pwd)/_BuiScout_mountpoint":/_BuiScout_mountpoint/ $DOCKER bash

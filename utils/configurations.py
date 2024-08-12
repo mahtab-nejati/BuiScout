@@ -2,21 +2,23 @@ import json5
 from pathlib import Path
 from functools import reduce
 import sys
+from .helpers import get_mountpoint
 
 ROOT_PATH = Path(__file__).parent.parent
 # Appending root path to sys.path
 # to import from utils and ast_model
 sys.path.append(str(ROOT_PATH))
-docker_mountpoint = Path("/mountpoint/")
+
+mountpoint = get_mountpoint()
 
 if "test" in sys.argv:
     with open(ROOT_PATH / "test/config.json", "r") as f:
         config = json5.load(f)
     repository_directory = ROOT_PATH
 else:
-    with open(docker_mountpoint / "config.json", "r") as f:
+    with open(mountpoint / "config.json", "r") as f:
         config = json5.load(f)
-    repository_directory = docker_mountpoint
+    repository_directory = mountpoint
 
 options = config["OPTIONS"]
 
@@ -46,7 +48,7 @@ PROJECT_MODEL = options["PROJECT_MODEL"]
 
 FILTERING = options["INITIALIZE_WITH_BUILD_COMMITS"]
 
-DATA_PATH = docker_mountpoint / f'{config["RELATIVE_RESULT_PATH"]}'
+DATA_PATH = mountpoint / f'{config["RELATIVE_RESULT_PATH"]}'
 PROJECT = config["PROJECT"]
 REPOSITORY = str(config["REPOSITORY"].rstrip("/"))
 if not REPOSITORY.startswith("http"):
