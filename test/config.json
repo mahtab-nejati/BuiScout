@@ -13,7 +13,7 @@
   },
   "RELATIVE_RESULT_PATH": "test_output/etlegacy",
   "PROJECT": "etlegacy",
-  "REPOSITORY": "test/etlegacy",
+  "REPOSITORY": "https://github.com/etlegacy/etlegacy",
   "BRANCH": "master",
   "COMMITS": [
     "3890f62278bc3f2df067128414a49dab1736306d",

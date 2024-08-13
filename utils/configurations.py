@@ -2,7 +2,7 @@ import json5
 from pathlib import Path
 from functools import reduce
 import sys
-from .helpers import get_mountpoint
+from .helpers import get_mountpoint, is_url, clone_repo
 
 ROOT_PATH = Path(__file__).parent.parent
 # Appending root path to sys.path
@@ -14,11 +14,9 @@ mountpoint = get_mountpoint()
 if "test" in sys.argv:
     with open(ROOT_PATH / "test/config.json", "r") as f:
         config = json5.load(f)
-    repository_directory = ROOT_PATH
 else:
     with open(mountpoint / "config.json", "r") as f:
         config = json5.load(f)
-    repository_directory = mountpoint
 
 options = config["OPTIONS"]
 
@@ -50,9 +48,17 @@ FILTERING = options["INITIALIZE_WITH_BUILD_COMMITS"]
 
 DATA_PATH = mountpoint / f'{config["RELATIVE_RESULT_PATH"]}'
 PROJECT = config["PROJECT"]
-REPOSITORY = str(config["REPOSITORY"].rstrip("/"))
-if not REPOSITORY.startswith("http"):
-    REPOSITORY = str(repository_directory / f"{REPOSITORY}")
+
+REPOSITORY = str(config["REPOSITORY"])
+if is_url(REPOSITORY):
+    CLEAN_TRACES = True
+    clone_repo(REPOSITORY, mountpoint / f"{PROJECT}")
+    REPOSITORY = str(mountpoint / f"{PROJECT}")
+else:
+    CLEAN_TRACES = False
+    REPOSITORY = str(mountpoint / f"{REPOSITORY}")
+
+
 if config["BRANCH"].upper() == "ALL":
     BRANCH = None
 else:

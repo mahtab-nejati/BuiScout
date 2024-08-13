@@ -2,6 +2,9 @@ import pandas as pd
 from pathlib import Path
 import shutil, sys
 from .exceptions import DebugException
+from urllib.parse import urlparse
+from git import Repo
+import textwrap
 
 #################################
 ######## Helpers for AST ########
@@ -166,6 +169,7 @@ def create_csv_files(save_path):
 
 
 def clear_existing_data(SAVE_PATH):
+    print("Cleaning intermediate data.")
     # Clear existing code and gumtree outputs
     to_remove = Path(SAVE_PATH / "code")
     if to_remove.exists():
@@ -173,6 +177,15 @@ def clear_existing_data(SAVE_PATH):
     to_remove = Path(SAVE_PATH / "gumtree_output")
     if to_remove.exists():
         shutil.rmtree(to_remove)
+    print("Successfully cleaned.")
+
+
+def clear_repo_location(repo_path):
+    print("Cleaning temporary local repository.")
+    to_remove = Path(repo_path)
+    if to_remove.exists():
+        shutil.rmtree(to_remove)
+    print("Successfully cleaned.")
 
 
 def get_mountpoint():
@@ -180,5 +193,36 @@ def get_mountpoint():
     return mountpoint
 
 
-def setup_is_completed(mountpoint):
-    return mountpoint.is_dir()
+def is_url(string):
+    try:
+        result = urlparse(string)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+
+def clone_repo(repo_url, local_path):
+    if Path(local_path).is_dir():
+        print(
+            f"The local directory {local_path} already exists. Deleting existing directory:"
+        )
+        clear_repo_location(local_path)
+    print(
+        f"Cloning repository {repo_url} for temporary use. This will be removed after the analysis is completed."
+    )
+    try:
+        # Clone the repository to the specified local path
+        Repo.clone_from(repo_url, local_path)
+        print(
+            f"Repository cloned to {local_path}. This will be removed after the analysis is completed."
+        )
+    except Exception as e:
+        print(f"Cloning faile due to this error: \n{e}")
+
+
+def indent_text(text, width=50, indent="\t" * 2):
+    # Wrap the text to the specified width
+    wrapped_text = textwrap.fill(text, width=width)
+    # Indent each line of the wrapped text
+    indented_text = textwrap.indent(wrapped_text, indent)
+    return indented_text

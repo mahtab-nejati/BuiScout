@@ -8,3 +8,9 @@
 *BuiScout* relies on 4 major components that need to be setup and configured with each other.
 A docker image of the working environment is available here [TODO] with both the latest versions and the version used for our *ASE'24*.
 If you need to clone this repository and epending on your usage, you may choose to adhere to either of the following instructions.
+
+running options 
+
+- from docker
+- from this repo + build docker + run on docker
+- normal

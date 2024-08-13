@@ -68,7 +68,7 @@ The json object in your config.json file must include the following configuratio
 ## [`RELATIVE_RESULT_PATH`](#RELATIVE_RESULT_PATH) 
   (`String(Path)`, Required)
 
-  The to where the results must be stored. Must be inside the docker's mountpoint and relative to the mountpoint.
+  The path to where the results must be stored. Must be inside the docker's mountpoint and relative to the mountpoint.
 
 ## [`PROJECT`](#project)
   (`String`, Required)
@@ -78,7 +78,8 @@ The json object in your config.json file must include the following configuratio
 ## [`REPOSITORY`](#repository) 
   (`String(Path)` or `String(URL)`, Required)
 
-  If a path is provided, it must be inside the docker's mountpoint and relative to the mountpoint.
+  The local path or url pointing to the subject repository.
+  If a local path is provided, it must be inside the docker's mountpoint and relative to the mountpoint.
 
   >Note: A path to a local clone of the repository is recommended for faster analysis.
 
