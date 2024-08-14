@@ -19,6 +19,14 @@ docker image rm -f $DOCKER
 docker build . -t $DOCKER -f $DIR/Dockerfile 
 rm .dockerignore
 
-cp $DIR/config.json ./_BuiScout_mountpoint/.
+mkdir -p ./_BuiScout_mountpoint
+if [ -f "$DIR/config.json" ]; then
+    # Copy the file to the destination
+    cp $DIR/config.json ./_BuiScout_mountpoint/.
+    echo "Copied $DIR/config.json to $(pwd)/_BuiScout_mountpoint/"
+else
+    echo "Did not find $DIR/config.json."
+    echo "[1m\e[32mMake sure you place your config.json file in $(pwd)/_BuiScout_mountpoint/[0m"
+fi
 
 docker run --rm -it -v "$(pwd)/_BuiScout_mountpoint":/_BuiScout_mountpoint/ $DOCKER bash
