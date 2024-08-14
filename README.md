@@ -120,8 +120,8 @@ Because this project relies on other repositories, you must take the following s
 
 > **Note:** The commands on this page were tested on `Ubuntu 22.04`. You will need to follow different instructions on different operating systems/architectures.
 
-  0. Make sure you have [`python3`](TODO) and [`pip`](TODO) installed.
-  You can choose to create a python environment for this project.
+  0. Make sure you have [`python3`](https://www.python.org/downloads/) and [`pip`](https://pip.pypa.io/en/stable/installation/) installed.
+  It is recommended to create a python environment for the project.
   
   1. Run the following commands to install `openjdk-11-jre` and `graphviz`.
 
