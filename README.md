@@ -166,7 +166,7 @@ Because this project relies on other repositories, you must take the following s
 
 #### [Seting up Local Environment for BuiScout](#local-setup-install)
 
-  1. Download [this version of BuiScout](https://github.com/mahtab-nejati/BuiScout/releases/tag/ASE2024) or [clone its latest version]().
+  1. Download [this version of BuiScout](https://github.com/mahtab-nejati/BuiScout/releases/tag/ASE2024) or [clone its latest version](https://github.com/mahtab-nejati/BuiScout).
 
   2. In your Bash command line at the root directory of BuiScout, run the following command:
       ```shell
