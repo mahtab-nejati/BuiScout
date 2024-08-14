@@ -68,7 +68,7 @@ Because this project relies on other repositories, you must take the following s
       $ cd [Path_to_BuiScout_Location]/BuiScout
       ```
 
-  2. Make sure the files `BuiScout_build_image.sh`, `BuiScout_run_container.sh`, `process.sh`, and `convert.sh` have executable. To make these files executable, in your Bash command line and in the same working directory, run:
+  2. Make sure the files `BuiScout_build_image.sh`, `BuiScout_run_container.sh`, `process.sh`, and `convert.sh` are executable. To make these files executable, in your Bash command line and in the same working directory, run:
       ```shell
       $ chmod +x ./*.sh
       ```
@@ -173,11 +173,10 @@ Because this project relies on other repositories, you must take the following s
       $ pip install -r requirements.txt
       ````
   
-  3. Create a directory named `_BuiScout_mountpoint` in the parent directory of the root directory of BuiScout. You can do this by running the following command when you are in the root directory of BuiScout:
+  3. Make sure the files `process.sh`, and `convert.sh` are executable. To make these files executable, in your Bash command line and in the same working directory, run:
       ```shell
-      $ mkdir -p ../_BuiScout_mountpoint
-      ````
-
+      $ chmod +x ./*.sh
+      ```
 
   4. [Optional] Run the following command to create a persistent alias for BuiScout:
       ```shell
