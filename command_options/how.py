@@ -21,7 +21,7 @@ def build_process_msg():
         )
         + "\n"
     )
-    msg += f"2. Follow the {bold}{red}config guide{reset} to create your config.json file in the {bold}_BuiScout_mountpoint{reset} from step 1.\n"
+    msg += f"2. Follow the {bold}{red}configuration guide{reset} in the README to create your config.json file in the {bold}_BuiScout_mountpoint{reset} from step 1.\n"
     msg += f"3. If you are running BuiScout on a local subject repository, place this repository in the {bold}_BuiScout_mountpoint{reset} from step 1.\n"
     msg += (
         "4. Run the 'run' command to execute analysis based on your configurations.\n"

@@ -1,7 +1,8 @@
 # Ignore everything
 *
 
-# Allow files and directories
+# Allowed files and directories
+# This should go after excluding everything.
 !/BuiScout/command_options
 !/BuiScout/data_flow_analysis
 !/BuiScout/diff_model
@@ -18,7 +19,7 @@
 !/gumtree/dist/build/distributions/gumtree-3.1.0-SNAPSHOT/
 
 # Ignore unnecessary files inside allowed directories
-# This should go after the allowed directories
+# This should go after the allowed directories.
 **/*~
 **/*.log
 **/.DS_Store
