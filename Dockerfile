@@ -9,9 +9,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # OS update
-RUN apt update -y
-RUN apt upgrade -y
-RUN apt install -y openjdk-11-jre python3 pip graphviz graphviz-dev
+RUN apt-get update -y
+RUN apt-get upgrade -y
+RUN apt install -y openjdk-11-jre
+RUN apt install -y python3
+RUN apt install -y pip
+RUN apt install -y graphviz
+RUN apt install -y graphviz-dev
 
 # Set up tree-sitter
 RUN apt install -y curl
